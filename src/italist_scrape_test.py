@@ -1,13 +1,29 @@
 import requests,os
-from bs4 import BeautifulSoup
+
 import pytest
 from pathlib import Path
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+import seleniumwire.undetected_chromedriver as uc
+
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import ElementNotVisibleException, StaleElementReferenceException
+from selenium.common.exceptions import NoSuchElementException,TimeoutException
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+from selenium.webdriver.support import expected_conditions as EC
 
 # Create a session object
 session = requests.Session()
 
 #target purse
 target = "locky bb"
+
+
 
 urls = [
     # 'https://www.italist.com/us/',
@@ -18,6 +34,36 @@ urls = [
     # 'https://www.therealreal.com/' #requires login
 ]
 
+def get_driver():
+
+    seleniumwire_options = {
+            # 'proxy': {
+            #     'http':'http://S9ut1ooaahvD1OLI:DGHQMuozSx9pfIDX_country-us@geo.iproyal.com:12321',
+            #     'https':'https://S9ut1ooaahvD1OLI:DGHQMuozSx9pfIDX_country-us@geo.iproyal.com:12321'
+            # },
+            'detach':True
+        }
+
+    uc_chrome_options = uc.ChromeOptions()
+    
+    #stop images from loading - improve page speed and reduce proxy data usage
+    # uc_chrome_options.add_argument('--blink-settings=imagesEnabled=false')
+    
+    #ignore ssl issues from https
+    # uc_chrome_options.set_capability('acceptSslCerts',True)
+    uc_chrome_options.add_argument('--blink-settings=imagesEnabled=false','--ignore-ssl-errors=yes','--ignore-certificate-errors','--allow-running-insecure-content')
+    # uc_chrome_options.add_argument('--ignore-certificate-errors')
+    # uc_chrome_options.add_argument('--allow-running-insecure-content')
+
+            
+    #undetected chromedriver with proxy with chromedriver manager no .exe path
+    driver = uc.Chrome(service=Service(ChromeDriverManager().install()),options=uc_chrome_options)
+    
+    return driver
+
+driver = get_driver()
+driver.get('https://bot.sannysoft.com/')
+
 #for each url in urls, nav to and search for target purse
 #the process of this could be different for each depending on site layout. 
 # Define a function to fetch the page content
@@ -26,6 +72,37 @@ def fetch_page(url):
     response.raise_for_status()  # Ensure we get a valid response
     return response.text
 
+
+
+def italist_elements():
+    
+    """
+        for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
+        second page for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76&skip=60
+
+        first page for all brands -> https://www.italist.com/us/women/bags/76/?on_sale=1
+        second page for all brands -> https://www.italist.com/us/women/bags/76/?skip=60&on_sale=1
+
+        pagination using url - "skip=60" puts you at 2nd page. "skip=120" puts you at 3rd page
+
+        element targeting:
+            jsx-680171959 product-grid-container - this is parent container of all listings
+                jsx-4016361043 brand - card element brand name
+                jsx-4016361043 productName - card element product name
+                jsx-3297103580 price - card element price 
+
+
+        approach:
+            get all elements in parent container
+                for each element
+                    extract brand, productName,price
+
+    """
+    driver = get_driver()
+    driver.get("https://bot.sannysoft.com/")
+
+# italist_elements()
+    
 
 #extract html
 def parse_url1(html):
@@ -89,13 +166,16 @@ def write_file(file_path,html):
         file.write(html)
 
 def process_url_runner(urls):
+
+   
+
     for url in urls:
         
         name = parse_url(url)
         file_path = create_file(name)
         html = extract_html_url(url)
         write_file(file_path,html)
-    
+
 
 process_url_runner(urls)
 
