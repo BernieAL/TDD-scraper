@@ -117,22 +117,23 @@ def italist_elements():
     # product_container = driver.find_element(By.CLASS_NAME,'product-grid-container')
     
     product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
-    print(product_container.get_attribute('innerText'))
-    brand = product_container.find_element(By.XPATH,"//div[contains(@class, 'brand')]")
-    productName = product_container.find_element(By.XPATH,"//div[contains(@class, 'productName')]")
+    all_listings = product_container.find_elements(By.TAG_NAME, "a")
+    for listing in all_listings:
+        brand = product_container.find_element(By.XPATH,"//div[contains(@class, 'brand')]")
+        productName = product_container.find_element(By.XPATH,"//div[contains(@class, 'productName')]")
     
-    #a listing card will either have sale price or regular price. 
-    #attempt to find sale price first, if thats not found, return price
-    try:
-        salePrice = product_container.find_element(By.XPATH,"//span[contains(@class, 'sales-price')]")
-        price_result = salePrice
-    except NoSuchElementException:
+        #a listing card will either have sale price or regular price. 
+        #attempt to find sale price first, if thats not found, return price
         try:
-            price = product_container.find_element(By.XPATH,"//span[contains(@class, 'price')]")
-            price_result = price
+            salePrice = product_container.find_element(By.XPATH,"//span[contains(@class, 'sales-price')]")
+            price_result = salePrice
         except NoSuchElementException:
-            price_result = None
-            print("Neither 'sales-price' nor 'price' could be found.")
+            try:
+                price = product_container.find_element(By.XPATH,"//span[contains(@class, 'price')]")
+                price_result = price
+            except NoSuchElementException:
+                price_result = None
+                print("Neither 'sales-price' nor 'price' could be found.")
             
     # Now you can use price_element as needed
     if price_result:
