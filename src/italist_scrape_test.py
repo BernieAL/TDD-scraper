@@ -17,6 +17,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.proxy import Proxy, ProxyType
 from selenium.webdriver.support import expected_conditions as EC
 
+import time
+import random
+
 # Create a session object
 session = requests.Session()
 
@@ -51,9 +54,13 @@ def get_driver():
     
     #ignore ssl issues from https
     # uc_chrome_options.set_capability('acceptSslCerts',True)
-    uc_chrome_options.add_argument('--blink-settings=imagesEnabled=false','--ignore-ssl-errors=yes','--ignore-certificate-errors','--allow-running-insecure-content')
+   
     # uc_chrome_options.add_argument('--ignore-certificate-errors')
     # uc_chrome_options.add_argument('--allow-running-insecure-content')
+    uc_chrome_options.add_argument('--blink-settings=imagesEnabled=false')
+    uc_chrome_options.add_argument('--ignore-ssl-errors=yes')
+    uc_chrome_options.add_argument('--ignore-certificate-errors')
+    uc_chrome_options.add_argument('--allow-running-insecure-content')
 
             
     #undetected chromedriver with proxy with chromedriver manager no .exe path
@@ -61,8 +68,8 @@ def get_driver():
     
     return driver
 
-driver = get_driver()
-driver.get('https://bot.sannysoft.com/')
+# driver = get_driver()
+
 
 #for each url in urls, nav to and search for target purse
 #the process of this could be different for each depending on site layout. 
@@ -99,23 +106,39 @@ def italist_elements():
 
     """
     driver = get_driver()
-    driver.get("https://bot.sannysoft.com/")
+    # # driver.get("https://bot.sannysoft.com/")
+    # driver.get("Prada Bags for Women ALWAYS LIKE A SALE.html")
 
-# italist_elements()
+    file_path = os.path.abspath('Prada Bags for Women ALWAYS LIKE A SALE.html')
+    file_url = 'file:///' + file_path.replace('\\','/')
+    # print(file_path)
+    driver.get(file_url)
+
+    # product_container = driver.find_element(By.CLASS_NAME,'product-grid-container')
+    
+    product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
+    print(product_container.text)
+    # brand = product_container.find_element(By.CLASS_NAME,'brand')
+    # print(brand.get_attribute('innerText'))
+    # time.sleep(random.uniform(3,9))
+    time.sleep(5)
+    driver.close()
+
+italist_elements()
     
 
-#extract html
-def parse_url1(html):
-    soup = BeautifulSoup(html, 'html.parser')
+# #extract html
+# def parse_url1(html):
+#     soup = BeautifulSoup(html, 'html.parser')
     
-# def scrape_url(url):
-#     html = fetch_page(url)
-#     if "example1.com" in url:
-#         return parse_url1(html)
-#     elif "example2.com" in url:
-#         return parse_url2(html)
-#     else:
-#         return {'error': 'No parser defined for this URL'}
+# # def scrape_url(url):
+# #     html = fetch_page(url)
+# #     if "example1.com" in url:
+# #         return parse_url1(html)
+# #     elif "example2.com" in url:
+# #         return parse_url2(html)
+# #     else:
+# #         return {'error': 'No parser defined for this URL'}
 
 #parse url name to use as filename
 def parse_url(url):
@@ -177,7 +200,7 @@ def process_url_runner(urls):
         write_file(file_path,html)
 
 
-process_url_runner(urls)
+# process_url_runner(urls)
 
     #for given url, make request,
 
