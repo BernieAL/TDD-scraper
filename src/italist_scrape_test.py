@@ -117,7 +117,31 @@ def italist_elements():
     # product_container = driver.find_element(By.CLASS_NAME,'product-grid-container')
     
     product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
-    print(product_container.text)
+    print(product_container.get_attribute('innerText'))
+    brand = product_container.find_element(By.XPATH,"//div[contains(@class, 'brand')]")
+    productName = product_container.find_element(By.XPATH,"//div[contains(@class, 'productName')]")
+    
+    #a listing card will either have sale price or regular price. 
+    #attempt to find sale price first, if thats not found, return price
+    try:
+        salePrice = product_container.find_element(By.XPATH,"//span[contains(@class, 'sales-price')]")
+        price_result = salePrice
+    except NoSuchElementException:
+        try:
+            price = product_container.find_element(By.XPATH,"//span[contains(@class, 'price')]")
+            price_result = price
+        except NoSuchElementException:
+            price_result = None
+            print("Neither 'sales-price' nor 'price' could be found.")
+            
+    # Now you can use price_element as needed
+    if price_result:
+        print("Found price:", price_result.text)
+    else:
+        print("No price element found.")
+
+    
+    # print(brand.get_attribute('innerText'))
     # brand = product_container.find_element(By.CLASS_NAME,'brand')
     # print(brand.get_attribute('innerText'))
     # time.sleep(random.uniform(3,9))
