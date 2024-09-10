@@ -1,0 +1,113 @@
+version: '3.8'
+services:
+
+    # container_pgsql:
+    #   hostname: pgsql
+    #   container_name: pgsql
+    #   restart: always
+    #   build: 
+    #     context: ./
+    #     dockerfile: Dockerfile.container_psql
+    #   ports:
+    #       - "5433:5432"
+    #   networks:
+    #     - my-network
+    #   volumes:
+    #     - ./sql_init_scripts:/docker-entrypoint-initdb.d
+    #   env_file:
+    #     - backend_copy/.env.docker
+    #   environment:
+    #     - RUNNING_IN_DOCKER=1
+
+    container_rbmq:
+      hostname: rbmq
+      container_name: rbmq
+      build:
+        context: ./
+        dockerfile: Dockerfile.rbmq
+      ports: 
+          - "15672:15672"
+      networks:
+        - my-network
+      stdin_open: true
+      tty: true
+      # env_file:
+      #   - backend_copy/.env.docker
+      environment:
+        - RUNNING_IN_DOCKER=1
+
+    container_main: 
+      container_name: container_main
+      hostname: container_main
+      build: 
+        context: ./
+        dockerfile: Dockerfile.main
+      ports:
+        - "7777:7777"
+      networks:
+        - my-network     
+      restart: on-failure
+      tty: true
+      stdin_open: true
+      depends_on: 
+        - container_rbmq
+      # env_file:
+      #   - backend_copy/.env.docker
+      environment:
+        - RUNNING_IN_DOCKER=1
+
+    container_selenium_worker:
+      hostname: selenium_worker
+      container_name: selenium_worker
+      build:
+          context: ./
+          dockerfile: Dockerfile.selenium_worker
+      depends_on:
+        - container_rbmq
+      networks:
+        - my-network
+      restart: on-failure
+      tty: true
+      stdin_open: true
+      # env_file:
+      #   - backend_copy/.env.docker
+      environment:
+        - RUNNING_IN_DOCKER=1
+
+    # email_worker:
+    #   hostname: email_worker
+    #   container_name: email_worker
+    #   build:
+    #       context: ./
+    #       dockerfile: Dockerfile.container_email_worker
+    #   depends_on:
+    #     - container_rbmq
+    #   networks:
+    #     - my-network
+    #   restart: on-failure
+    #   tty: true
+    #   stdin_open: true
+    #   env_file:
+    #     - backend_copy/.env.docker
+    #   environment:
+    #     - RUNNING_IN_DOCKER=1
+
+
+
+
+networks:
+      my-network: {}
+
+
+
+
+
+
+    # container_scrape:
+    #   build:
+    #       context: ./
+    #       dockerfile: Dockerfile.container_scrape
+    #   ports:
+    #     - "7777:7777"     
+    #   tty: true
+    #   stdin_open: true    

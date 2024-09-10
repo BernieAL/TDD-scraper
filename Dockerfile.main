@@ -1,0 +1,23 @@
+FROM python:3.9
+
+WORKDIR /src
+
+
+# COPY src/.env /src/.env
+COPY src/bot_main_driver.py /src/bot_main_driver.py 
+COPY ../requirements.txt /src/requirements.txt
+COPY ../rbmq /rbmq 
+
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+
+# ENV PYTHONPATH="${PYTHONPATH}:/backend_copy"
+
+
+EXPOSE 7777
+
+#set entry point to custom script - starting gunicorn with config
+# COPY cont_B_entrypoint.sh /cont_B_entrypoint.sh
+# RUN chmod +x /cont_B_entrypoint.sh
+# ENTRYPOINT ["/cont_B_entrypoint.sh"]
+
+CMD ["python","bot_main_driver.py"]

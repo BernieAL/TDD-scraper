@@ -1,0 +1,29 @@
+#install chrome for scrape process
+FROM python:3.9
+
+WORKDIR /app
+
+
+# COPY src/.env /src/.env
+
+
+RUN apt-get update && apt-get install -y wget unzip && \
+    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt install -y ./google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb && \
+    apt-get clean
+
+COPY selenium_worker/bot_selenium_scraper.py /app/bot_selenium_scraper.py
+COPY selenium_worker/scrape_worker.py  /app/scrape_worker.py
+COPY ../requirements.txt /app/requirements.txt
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+# Install Blinker (fix for missing module issue)
+RUN pip install blinker
+RUN apt-get update && apt-get install -y wget nano
+
+
+# #Set the command to keep the container open
+# CMD ["tail", "-f", "/dev/null"]
+
+# Set the command to run the worker script
+CMD ["python", "/app/scrape_worker.py"]
