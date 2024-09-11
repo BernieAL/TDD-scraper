@@ -11,4 +11,4 @@ if parent_dir not in sys.path:
 
 from rbmq.scrape_producer import add_to_queue    
 
-add_to_queue("bot.sannysoft.com")
+add_to_queue("https://bot.sannysoft.com")
