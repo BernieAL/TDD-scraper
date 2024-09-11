@@ -54,7 +54,8 @@ services:
       # env_file:
       #   - backend_copy/.env.docker
       environment:
-        - RUNNING_IN_DOCKER=1
+        - RABBITMQ_HOST=rbmq
+      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/src/bot_main_driver.py"]
 
     container_selenium_worker:
       hostname: selenium_worker
@@ -72,7 +73,9 @@ services:
       # env_file:
       #   - backend_copy/.env.docker
       environment:
-        - RUNNING_IN_DOCKER=1
+        - RABBITMQ_HOST=rbmq
+      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/scrape_worker.py"]
+     
 
     # email_worker:
     #   hostname: email_worker

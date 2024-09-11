@@ -36,8 +36,13 @@ def main():
 
         url = body.decode('utf-8')
         ch.basic_ack(delivery_tag = method.delivery_tag)
+        print(f"Message received: {url}")
 
-        perform_url_scrape(url)
+        res = perform_url_scrape(url)
+        if res == True:
+            print("scrape successful")
+        if res == False:
+            print("scrape unsuccessful")
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='scrape_tasks',on_message_callback=callback)
@@ -46,3 +51,6 @@ def main():
       #listen indefinitley for messages
     print(chalk.blue('[*] waiting for messages. To exit press CTRL+C'))
     channel.start_consuming()
+
+if __name__ == "__main__":
+    main()

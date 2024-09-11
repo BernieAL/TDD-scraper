@@ -15,6 +15,12 @@ RUN apt-get update && apt-get install -y wget unzip && \
 
 COPY selenium_worker/bot_selenium_scraper.py /app/bot_selenium_scraper.py
 COPY selenium_worker/scrape_worker.py  /app/scrape_worker.py
+
+# Copy the wait-for-it script
+COPY wait-for-it-master/wait-for-it.sh /usr/local/bin/wait-for-it.sh
+RUN chmod +x /usr/local/bin/wait-for-it.sh
+
+
 COPY ../requirements.txt /app/requirements.txt
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 # Install Blinker (fix for missing module issue)
@@ -22,8 +28,5 @@ RUN pip install blinker
 RUN apt-get update && apt-get install -y wget nano
 
 
-# #Set the command to keep the container open
-# CMD ["tail", "-f", "/dev/null"]
-
-# Set the command to run the worker script
-CMD ["python", "/app/scrape_worker.py"]
+# Combine both commands in a single CMD using bash
+CMD /bin/bash -c "python /app/scrape_worker.py && tail -f /dev/null"

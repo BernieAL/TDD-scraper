@@ -70,4 +70,4 @@ def perform_url_scrape(url):
     driver.get(url)
     title = driver.title
     print(f" Successfully accessed {url}, Page title is {title}")
-
+    return True

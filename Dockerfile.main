@@ -5,6 +5,11 @@ WORKDIR /src
 
 # COPY src/.env /src/.env
 COPY src/bot_main_driver.py /src/bot_main_driver.py 
+
+# Copy the wait-for-it script
+COPY wait-for-it-master/wait-for-it.sh /usr/local/bin/wait-for-it.sh
+RUN chmod +x /usr/local/bin/wait-for-it.sh
+
 COPY ../requirements.txt /src/requirements.txt
 COPY ../rbmq /rbmq 
 
@@ -20,4 +25,4 @@ EXPOSE 7777
 # RUN chmod +x /cont_B_entrypoint.sh
 # ENTRYPOINT ["/cont_B_entrypoint.sh"]
 
-CMD ["python","bot_main_driver.py"]
+CMD ["python", "/src/bot_main_driver.py"]
