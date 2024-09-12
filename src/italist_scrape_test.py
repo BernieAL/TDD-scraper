@@ -109,60 +109,64 @@ def italist_elements():
     # # driver.get("https://bot.sannysoft.com/")
     # driver.get("Prada Bags for Women ALWAYS LIKE A SALE.html")
 
-    file_path = os.path.abspath('Prada Bags for Women ALWAYS LIKE A SALE.html')
+    file_path = os.path.abspath('src/Prada Bags for Women ALWAYS LIKE A SALE.html')
     file_url = 'file:///' + file_path.replace('\\','/')
     # print(file_path)
     driver.get(file_url)
 
     # product_container = driver.find_element(By.CLASS_NAME,'product-grid-container')
     
-    # product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
-    # time.sleep(5)
-    # all_listings = product_container.find_elements(By.CSS_SELECTOR ,".//a")
+    product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
+    time.sleep(5)
+    all_listings = driver.find_elements(By.XPATH, "//div[contains(@class, 'product-grid-container')]//a")
+
     # time.sleep(4)
     # # print(all_listings)
-    wait = WebDriverWait(driver, 10)
-    product_container = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "div.product-grid-container")))
-    all_listings = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.product-grid-container a")))
-    for listing in all_listings:
+
+    # product_container = wait.until(EC.visibility_of_element_located((By.XPATH "//div.product-grid-container")))
+    # all_listings = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.product-grid-container a")))
+    for listing in all_listings[:11]:
         
-        
+        # print(listing.text)
         #LOCATING BRAND NAME
         try:
             # brand = listing.find_element(By.XPATH,".//div[contains(@class, 'brand')]")
             brand = listing.find_element(By.CSS_SELECTOR,"div.brand")
             print(brand.text)
-            print(brand.get_attribute('innerText'))
+            # print(brand.get_attribute('innerText'))
         except NoSuchElementException:
             print("no brand found - skipping to next iteration")
             continue
 
 
-        # #LOCATION PRODUCT NAME
-        # try:
-        #     productName = listing.find_element(By.XPATH,".//div[contains(@class, 'productName')]")
-        #     print(productName.text)
-        #     print(productName.get_attribute('innerText'))
+        #LOCATION PRODUCT NAME
+        try:
+            productName = listing.find_element(By.XPATH,".//div[contains(@class, 'productName')]")
+            print(productName.text)
+            # print(productName.get_attribute('innerText'))
 
-        # except NoSuchElementException:
-        #     print("no product name found")
+        except NoSuchElementException:
+            print("no product name found")
 
-        # #LOCATING PRICE
-        # #a listing card will either have sale price or regular price. 
-        # #attempt to find sale price first, if thats not found, return price
-        # try:
-        #     salePrice = listing.find_element(By.XPATH,".//span[contains(@class, 'sales-price')]")
-        #     price_result = salePrice
-        # except NoSuchElementException:
-        #     try:
-        #         price = listing.find_element(By.XPATH,".//span[contains(@class, 'price')]")
-        #         price_result = price
-        #         print("Found price:", price_result.text)
-        #     except NoSuchElementException:
-        #         price_result = None
-        #         print("Neither 'sales-price' nor 'price' could be found.")
-        #         print("Found price:", price_result.text)
-                
+        #LOCATING PRICE
+        #a listing card will either have sale price or regular price. 
+        #attempt to find sale price first, if thats not found, return price
+        try:
+            salePrice = listing.find_element(By.XPATH,".//span[contains(@class, 'sales-price')]")
+            price_result = salePrice
+            print("Found price:", price_result.text)
+            print("-------")
+        except NoSuchElementException:
+            try:
+                price = listing.find_element(By.XPATH,".//span[contains(@class, 'price')]")
+                price_result = price
+                print("Found price:", price_result.text)
+                print("--------")
+            except NoSuchElementException:
+                price_result = None
+                print("Neither 'sales-price' nor 'price' could be found.")
+                print("--------")
+              
                 
             
         # # Now you can use price_element as needed
