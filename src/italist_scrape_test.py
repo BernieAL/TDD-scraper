@@ -1,5 +1,5 @@
-import requests,os
-
+import requests,os,csv
+from datetime import datetime
 import pytest
 from pathlib import Path
 from selenium import webdriver
@@ -79,135 +79,6 @@ def fetch_page(url):
     response.raise_for_status()  # Ensure we get a valid response
     return response.text
 
-
-
-def italist_elements():
-    
-    """
-        for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
-        second page for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76&skip=60
-
-        first page for all brands -> https://www.italist.com/us/women/bags/76/?on_sale=1
-        second page for all brands -> https://www.italist.com/us/women/bags/76/?skip=60&on_sale=1
-
-        pagination using url - "skip=60" puts you at 2nd page. "skip=120" puts you at 3rd page
-
-        element targeting:
-            jsx-680171959 product-grid-container - this is parent container of all listings
-                jsx-4016361043 brand - card element brand name
-                jsx-4016361043 productName - card element product name
-                jsx-3297103580 price - card element price 
-
-
-        approach:
-            get all elements in parent container
-                for each element
-                    extract brand, productName,price
-
-    """
-    driver = get_driver()
-    # # driver.get("https://bot.sannysoft.com/")
-    # driver.get("Prada Bags for Women ALWAYS LIKE A SALE.html")
-
-    file_path = os.path.abspath('src/Prada Bags for Women ALWAYS LIKE A SALE.html')
-    file_url = 'file:///' + file_path.replace('\\','/')
-    # print(file_path)
-    driver.get(file_url)
-
-    # product_container = driver.find_element(By.CLASS_NAME,'product-grid-container')
-    
-    product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
-    time.sleep(5)
-    num_listings = driver.find_element(By.XPATH,"//span[contains(@class, 'result-count')]").text
-
-    """
-    all listings is supposed to grab 'a' tag elements inside product-grid-container, 
-    but it may include 'a' elements from outside of product-grid-container
-    to combat this, we use the number of results displayed on the web page to filter all_listings
-    - so we dont bother checking 'a' tag elements that are outside of product-grid-container
-    Ex. if theres 171 results on the page, we slice all_listings to [:171]
-    """
-    all_listings = driver.find_elements(By.XPATH, "//div[contains(@class, 'product-grid-container')]//a")
-
-    # time.sleep(4)
-    # # print(all_listings)
-
-    # product_container = wait.until(EC.visibility_of_element_located((By.XPATH "//div.product-grid-container")))
-    # all_listings = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.product-grid-container a")))
-    for listing in all_listings[:171]:
-        
-        # print(listing.text)
-        #LOCATING BRAND NAME
-        try:
-            # brand = listing.find_element(By.XPATH,".//div[contains(@class, 'brand')]")
-            brand = listing.find_element(By.CSS_SELECTOR,"div.brand")
-            print(brand.text)
-            # print(brand.get_attribute('innerText'))
-        except NoSuchElementException:
-            print("no brand found - skipping to next iteration")
-            continue
-
-
-        #LOCATION PRODUCT NAME
-        try:
-            productName = listing.find_element(By.XPATH,".//div[contains(@class, 'productName')]")
-            print(productName.text)
-            # print(productName.get_attribute('innerText'))
-
-        except NoSuchElementException:
-            print("no product name found")
-
-        #LOCATING PRICE
-        #a listing card will either have sale price or regular price. 
-        #attempt to find sale price first, if thats not found, return price
-        try:
-            salePrice = listing.find_element(By.XPATH,".//span[contains(@class, 'sales-price')]")
-            price_result = salePrice
-            print("Found price:", price_result.text)
-            print("-------")
-        except NoSuchElementException:
-            try:
-                price = listing.find_element(By.XPATH,".//span[contains(@class, 'price')]")
-                price_result = price
-                print("Found price:", price_result.text)
-                print("--------")
-            except NoSuchElementException:
-                price_result = None
-                print("Neither 'sales-price' nor 'price' could be found.")
-                print("--------")
-              
-                
-            
-        # # Now you can use price_element as needed
-        # if price_result:
-        #     print("Found price:", price_result.text)
-        # else:
-        #     print("No price element found.")
-
-    
-    # print(brand.get_attribute('innerText'))
-    # brand = product_container.find_element(By.CLASS_NAME,'brand')
-    # print(brand.get_attribute('innerText'))
-    # time.sleep(random.uniform(3,9))
-    time.sleep(5)
-    driver.close()
-
-italist_elements()
-    
-
-# #extract html
-# def parse_url1(html):
-#     soup = BeautifulSoup(html, 'html.parser')
-    
-# # def scrape_url(url):
-# #     html = fetch_page(url)
-# #     if "example1.com" in url:
-# #         return parse_url1(html)
-# #     elif "example2.com" in url:
-# #         return parse_url2(html)
-# #     else:
-# #         return {'error': 'No parser defined for this URL'}
-
 #parse url name to use as filename
 def parse_url(url):
 
@@ -256,6 +127,124 @@ def write_file(file_path,html):
     with open(file_path,'w',encoding='utf-8') as file:
         file.write(html)
 
+
+def italist_elements():
+    
+    current_date = datetime.now()
+    formatted_date = current_date.strftime('%Y-%d-%m')
+    italist_output_file = f"src/file_output/italist_{formatted_date}"
+    date_italist_output_file = os.path.abspath(italist_output_file)
+    
+
+    """
+        for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
+        second page for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76&skip=60
+
+        first page for all brands -> https://www.italist.com/us/women/bags/76/?on_sale=1
+        second page for all brands -> https://www.italist.com/us/women/bags/76/?skip=60&on_sale=1
+
+        pagination using url - "skip=60" puts you at 2nd page. "skip=120" puts you at 3rd page
+
+        element targeting:
+            jsx-680171959 product-grid-container - this is parent container of all listings
+                jsx-4016361043 brand - card element brand name
+                jsx-4016361043 productName - card element product name
+                jsx-3297103580 price - card element price 
+
+
+        approach:
+            get all elements in parent container
+                for each element
+                    extract brand, productName,price
+
+    """
+    driver = get_driver()
+    # # driver.get("https://bot.sannysoft.com/")
+    # driver.get("Prada Bags for Women ALWAYS LIKE A SALE.html")
+
+    file_path = os.path.abspath('src/Prada Bags for Women ALWAYS LIKE A SALE.html')
+    file_url = 'file:///' + file_path.replace('\\','/')
+    # print(file_path)
+    driver.get(file_url)
+
+    # product_container = driver.find_element(By.CLASS_NAME,'product-grid-container')
+    
+    product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
+    time.sleep(5)
+    num_listings = driver.find_element(By.XPATH,"//span[contains(@class, 'result-count')]").text
+
+    """
+    all listings is supposed to grab 'a' tag elements inside product-grid-container, 
+    but it may include 'a' elements from outside of product-grid-container
+    to combat this, we use the number of results displayed on the web page to filter all_listings
+    - so we dont bother checking 'a' tag elements that are outside of product-grid-container
+    Ex. if theres 171 results on the page, we slice all_listings to [:171]
+    """
+    all_listings = driver.find_elements(By.XPATH, "//div[contains(@class, 'product-grid-container')]//a")
+
+   
+    with open(date_italist_output_file,mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Brand','Product Name','Price'])
+
+
+        for listing in all_listings[:171]:
+            
+            # print(listing.text)
+            #LOCATING BRAND NAME
+            try:
+                # brand = listing.find_element(By.XPATH,".//div[contains(@class, 'brand')]")
+                brand = listing.find_element(By.CSS_SELECTOR,"div.brand").text
+                print(brand)
+                # print(brand.get_attribute('innerText'))
+            except NoSuchElementException:
+                print("no brand found - skipping to next iteration")
+                continue
+
+
+            #LOCATION PRODUCT NAME
+            try:
+                productName = listing.find_element(By.XPATH,".//div[contains(@class, 'productName')]").text
+                print(productName)
+                # print(productName.get_attribute('innerText'))
+
+            except NoSuchElementException:
+                print("no product name found")
+
+            #LOCATING PRICE
+            #a listing card will either have sale price or regular price. 
+            #attempt to find sale price first, if thats not found, return price
+            try:
+                salePrice = listing.find_element(By.XPATH,".//span[contains(@class, 'sales-price')]")
+                price_result = salePrice.text
+                print("Found price:", price_result)
+                print("-------")
+            except NoSuchElementException:
+                try:
+                    price = listing.find_element(By.XPATH,".//span[contains(@class, 'price')]")
+                    price_result = price.text
+                    print("Found price:", price_result)
+                    print("--------")
+                except NoSuchElementException:
+                    price_result = None
+                    print("Neither 'sales-price' nor 'price' could be found.")
+                    print("--------")
+                
+                    
+                
+            # # Now you can use price_element as needed
+            # if price_result:
+            #     print("Found price:", price_result)
+            # else:
+            #     print("No price element found.")
+
+            listing_line = f"{brand},{productName},{price_result} \n"
+            file.write(listing_line)
+
+        time.sleep(5)
+        driver.close()
+italist_elements()
+
 def process_url_runner(urls):
 
    
@@ -267,10 +256,6 @@ def process_url_runner(urls):
         html = extract_html_url(url)
         write_file(file_path,html)
 
-
-# process_url_runner(urls)
-
-    #for given url, make request,
 
 
 

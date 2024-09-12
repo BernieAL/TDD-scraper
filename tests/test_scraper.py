@@ -1,9 +1,12 @@
 import pytest, requests, time
 from src.scraper import fetch_html,parse_html,save_report
-from unittest.mock import patch
+from unittest.mock import MagicMock,patch
 from selenium import webdriver
 from chromedriver_py import binary_path
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 
+from src.italist_scrape_test import italist_elements
 
 @patch("requests.get")
 def test_mocked_request(mock_get):
@@ -37,7 +40,6 @@ def test_fetch_html():
     html = fetch_html(url)
     assert "<title>Example Domain</title>" in html
 
-
 """
 test that parse_html function can parse given html
 """
@@ -45,7 +47,6 @@ def test_parse_html():
     html = "<html><head><title>Test Title</title></head></html>"
     title = parse_html(html)
     assert title == "Test Title"
-
 
 """
 test that function can generate a report from data
@@ -103,8 +104,6 @@ def test_report_generation():
     assert "https://example.com" in content
 
 
-
-
 def test_rate_limiting():
     urls = ["https://example.com/page1", "https://example.com/page2"]
     start_time = time.time()
@@ -123,8 +122,6 @@ def test_retry_logic(requests_mock):
     result = fetch_html_with_retry(url, retries=2)
     assert result == "Success"
 
-
-
 def test_javascript_rendering():
     svc = webdriver.ChromeService(executable_path=binary_path)
     driver = webdriver.Chrome(service=svc)
@@ -134,3 +131,64 @@ def test_javascript_rendering():
     
     assert "Expected Content" in content
     driver.quit()
+
+
+
+@patch('src.italist_scrape_test.get_driver')
+def test_italist_extraction(mock_get_driver):
+
+    """
+    patch the get_driver function - this mocks browser driver to avoid using real browser
+
+    mock find_element behavior:
+        for each listing, find_element calls are mocked to return MagicMock elements 
+        that simulate text of the web elements (brand,product name,price)
+
+    side_effect is used to simulate different cases
+        for mock_listing_1 - all elements are found successfully
+
+        for mock_listing_2 the sales_price is missing, but regular price is found
+
+    
+    """
+
+    #create mock web driver and mock elements
+    mock_driver = MagicMock()
+    mock_get_driver.return_value = mock_driver
+
+    #create mock for product grid container
+    mock_product_container = MagicMock()
+
+    #create mock listings
+    mock_listing_1 = MagicMock()
+    mock_listing_2 = MagicMock()
+
+    #mock first listing with all elements (brand,productName,sales-price)
+    mock_listing_1.find_element.side_effect = [
+        MagicMock(text='Prada'),
+        MagicMock(text='Black Re-nylon Beauty Case'),
+        MagicMock(text='USD 418')
+    ]
+
+     # Mock the second listing with no sales-price, only regular price
+    mock_listing_2.find_element.side_effect = [
+        MagicMock(text='Gucci'),                # brand
+        MagicMock(text='Leather Belt'),         # product name
+        NoSuchElementException,                 # sales-price not found
+        MagicMock(text='USD 500')               # regular price
+    ]
+    
+    #mock product grid contaner and its listings
+    mock_driver.find_element.return_value = mock_product_container
+    mock_product_container.find_elements.return_value = [mock_listing_1,mock_listing_2]
+
+    #call function we want to test
+    italist_elements()
+
+    #assrt driver.get was called with correct file path
+    mock_driver.get.assert_called_once()
+
+    #assert mock find_element was called correctly for each listing
+    assert mock_listing_1.find_element.call_count == 3 # brand, productName, sales-price
+    assert mock_listing_2.find_element.call_count == 4 # brand, productName, sales-price (fail), price
+    
