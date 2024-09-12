@@ -128,8 +128,9 @@ def write_file(file_path,html):
         file.write(html)
 
 
-def italist_elements():
+def italist_scrape(url):
     
+    #build output file name with current date - this file will be used to write scraped data to
     current_date = datetime.now()
     formatted_date = current_date.strftime('%Y-%d-%m')
     italist_output_file = f"src/file_output/italist_{formatted_date}"
@@ -158,19 +159,10 @@ def italist_elements():
                     extract brand, productName,price
 
     """
-    driver = get_driver()
-    # # driver.get("https://bot.sannysoft.com/")
-    # driver.get("Prada Bags for Women ALWAYS LIKE A SALE.html")
+    driver = get_driver() 
+    driver.get(url)
 
-    file_path = os.path.abspath('src/Prada Bags for Women ALWAYS LIKE A SALE.html')
-    file_url = 'file:///' + file_path.replace('\\','/')
-    # print(file_path)
-    driver.get(file_url)
-
-    # product_container = driver.find_element(By.CLASS_NAME,'product-grid-container')
-    
-    product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
-    time.sleep(5)
+    # time.sleep(5)
     num_listings = driver.find_element(By.XPATH,"//span[contains(@class, 'result-count')]").text
 
     """
@@ -182,15 +174,15 @@ def italist_elements():
     """
     all_listings = driver.find_elements(By.XPATH, "//div[contains(@class, 'product-grid-container')]//a")
 
-   
+    
+    #open output file to be written to
     with open(date_italist_output_file,mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['Brand','Product Name','Price'])
 
 
-        for listing in all_listings[:171]:
-            
-            # print(listing.text)
+        for listing in all_listings[:num_listings]:
+        
             #LOCATING BRAND NAME
             try:
                 # brand = listing.find_element(By.XPATH,".//div[contains(@class, 'brand')]")
@@ -229,34 +221,155 @@ def italist_elements():
                     price_result = None
                     print("Neither 'sales-price' nor 'price' could be found.")
                     print("--------")
-                
-                    
-                
-            # # Now you can use price_element as needed
-            # if price_result:
-            #     print("Found price:", price_result)
-            # else:
-            #     print("No price element found.")
 
             listing_line = f"{brand},{productName},{price_result} \n"
             file.write(listing_line)
 
         time.sleep(5)
         driver.close()
-italist_elements()
+
+
+#testing italist extraction using local file as url
+# file_path = os.path.abspath('src/Prada Bags for Women ALWAYS LIKE A SALE.html')
+# url = 'file:///' + file_path.replace('\\','/')
+# italist_scrape(url)
+
+
+def get_num_listings(driver):
+
+    """
+    Gets num of listings displayed on page 
+    """
+    try:
+        #element on web page shows numeric value of search results
+        num_listings = driver.find_element(By.XPATH,"//span[contains(@class, 'result-count')]").text
+        return int(num_listings)
+    except NoSuchElementException:
+        print("Could not find the number of listings.")
+        return 0
+
+def get_listings(driver):
+    """
+    Finds all <a> elements inside product grid container
+    """
+    try:
+        return driver.find_elements(By.XPATH, "//div[contains(@class, 'product-grid-container')]//a")
+    except NoSuchElementException:
+        print("Could not find listings")
+        return []
+
+def extract_listing_data(listing):
+
+    """
+    Extracts the brand, product name, and price from a single listing.
+    """
+    try:
+        brand = listing.find_element(By.CSS_SELECTOR, "div.brand").text
+    except NoSuchElementException:
+        brand = "No brand"
+
+    try:
+        product_name = listing.find_element(By.XPATH, ".//div[contains(@class, 'productName')]").text
+    except NoSuchElementException:
+        product_name = "No product name"
+
+    try:
+        sale_price = listing.find_element(By.XPATH, ".//span[contains(@class, 'sales-price')]").text
+        price = sale_price
+    except NoSuchElementException:
+        try:
+            price = listing.find_element(By.XPATH, ".//span[contains(@class, 'price')]").text
+        except NoSuchElementException:
+            price = "No price"
+
+    return brand, product_name, price
+
+def build_output_file_name():
+    """Generates a default output file name based on the current date."""
+    current_date = datetime.now().strftime('%Y-%d-%m')
+    italist_output_file = f"src/file_output/italist_{current_date}.csv"
+    return os.path.abspath(italist_output_file)
+
+
+def italist_scrape_2(url,output_file=None):
+    """
+    Scrapes the specified Italist URL and writes the results (Brand, Product Name, Price) to a CSV file.
+
+    Parameters:
+    - url (str): The URL to scrape.
+    - output_file (str): Optional path to the output file. If not provided, a default path will be used.
+    """
+
+    #initialize webdriver
+    driver = get_driver()
+
+    try:
+        driver.get(url)
+        time.sleep(2) #wait for page to load
+
+        #get all listings in product grid container
+        all_listings = get_listings(driver)
+        
+        #get number of search results
+        num_listings = get_num_listings(driver)
+        
+        #set default output file if none provided
+        if output_file is None:
+            output_file = build_output_file_name()
+        
+        with open(output_file,mode='w',newline='',encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Brand','Product Name','Price'])
+
+            #process listings and write to file
+            for listing in all_listings[:num_listings]:
+                brand,product_name, price = extract_listing_data(listing)
+                writer.writerow([brand,product_name,price])
+                print(f"Written: {brand}, {product_name}, {price}")
+
+    except Exception as e:
+        print(f"Error Occured: {e}")
+    
+    finally:
+        driver.quit()
+#testing italist extraction using local file as url
+file_path = os.path.abspath('src/Prada Bags for Women ALWAYS LIKE A SALE.html')
+url = 'file:///' + file_path.replace('\\','/')
+italist_scrape_2(url)
+
+
 
 def process_url_runner(urls):
 
-   
-
+    scrapers_functions = [
+        ('Italist Scraper',italist_scrape_2),
+        # ('Fashionphole Scraper', fashionphile_scrape_2),
+        # ('Cettire Scraper',cettire_scrape_2),
+        # ('Cettire Scraper',cettire_scrape_2),
+        # ('Cettire Scraper',cettire_scrape_2),
+    ]
     for url in urls:
         
-        name = parse_url(url)
-        file_path = create_file(name)
-        html = extract_html_url(url)
-        write_file(file_path,html)
-
-
+        # name = parse_url(url)
+        # file_path = create_file(name)
+        # html = extract_html_url(url)
+        # write_file(file_path,html)
+        try:
+            italist_scrape_2(url)
+        except:
+            print("issue with italist scraper")
+        try:
+            fashionphile_scrape_2(url)
+        except:
+            print("issue with fashionphile_scraper")
+        try:
+            cettire_scrape_2(url)
+        except:
+            print("issue with cettire_scrape_2 scraper")
+        try:
+            rebag_scrape_2(url)
+        except:
+            print("issue with rebag_scrape_2")    
 
 
 # -----------------------------------------------------------------------------------------------------

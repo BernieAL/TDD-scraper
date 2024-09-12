@@ -6,7 +6,7 @@ from chromedriver_py import binary_path
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
-from src.italist_scrape_test import italist_elements
+from src.italist_scrape_test import italist_scrape
 
 @patch("requests.get")
 def test_mocked_request(mock_get):
@@ -183,7 +183,7 @@ def test_italist_extraction(mock_get_driver):
     mock_product_container.find_elements.return_value = [mock_listing_1,mock_listing_2]
 
     #call function we want to test
-    italist_elements()
+    italist_scrape()
 
     #assrt driver.get was called with correct file path
     mock_driver.get.assert_called_once()
