@@ -118,6 +118,15 @@ def italist_elements():
     
     product_container = driver.find_element(By.XPATH, "//div[contains(@class, 'product-grid-container')]")
     time.sleep(5)
+    num_listings = driver.find_element(By.XPATH,"//span[contains(@class, 'result-count')]").text
+
+    """
+    all listings is supposed to grab 'a' tag elements inside product-grid-container, 
+    but it may include 'a' elements from outside of product-grid-container
+    to combat this, we use the number of results displayed on the web page to filter all_listings
+    - so we dont bother checking 'a' tag elements that are outside of product-grid-container
+    Ex. if theres 171 results on the page, we slice all_listings to [:171]
+    """
     all_listings = driver.find_elements(By.XPATH, "//div[contains(@class, 'product-grid-container')]//a")
 
     # time.sleep(4)
@@ -125,7 +134,7 @@ def italist_elements():
 
     # product_container = wait.until(EC.visibility_of_element_located((By.XPATH "//div.product-grid-container")))
     # all_listings = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.product-grid-container a")))
-    for listing in all_listings[:11]:
+    for listing in all_listings[:171]:
         
         # print(listing.text)
         #LOCATING BRAND NAME
