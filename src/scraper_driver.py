@@ -21,17 +21,19 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from scrapers.italist_scraper import italist_driver
 
-brand = "prada"
-query = "bags"
 
 
-def run_scrapers(brand,query):
+def run_scrapers(brand,query,local):
 
     """
         this is the driver script for all website scrapers
     """
-    italist_driver(brand,query,True)
+    italist_driver(brand,query,local)
 
 
 if __name__ == "__main__":
-    run_scrapers(brand,query,True)
+    
+    brand = "prada"
+    query = "bags"
+    local = True
+    run_scrapers(brand,query,local)

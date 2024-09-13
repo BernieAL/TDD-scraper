@@ -20,6 +20,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
 
+from utils import copy_file
+
 # Create a session object
 session = requests.Session()
 
@@ -46,8 +48,10 @@ italist_branded_bags_url = f"https://www.italist.com/us/brands/{brand}/110/women
 
 
 #for testing using locally saved copy of website
+""" Reminder - this is a single saved web page that will be specific to specific bag or search
+"""
 local_saved_file_path = os.path.abspath('src/local_websites/Prada Bags for Women ALWAYS LIKE A SALE.html')
-file_as_url = 'file:///' + local_saved_file_path.replace('\\','/')
+local_url = 'file:///' + local_saved_file_path.replace('\\','/')
 
 
 
@@ -168,10 +172,10 @@ def italist_scrape_2(url,brand,query,output_file=None):
         with open(output_file,mode='w',newline='',encoding='utf-8') as file:
             writer = csv.writer(file)
             current_date = datetime.now().strftime('%Y-%d-%m')
-            writer.writerow(current_date)
-            writer.writerow(brand,query)
-            writer.writerow("-----------------")
+            file.write(f"Scraped: {current_date} \n")
+            file.write(f"Query: {brand}-{query} \n")
             writer.writerow(['Brand','Product Name','Price'])
+            file.write('---------------------- \n')
 
             #process listings and write to file
             for listing in all_listings[:num_listings]:
@@ -192,34 +196,40 @@ def italist_scrape_2(url,brand,query,output_file=None):
 # italist_scrape_2(url)
 
 
-def italist_driver(brand,query,local=False):
+def italist_driver(brand,query,local):
 
     """
     local means we are testing with locally saved copy of website 
     to limit requests to live site 
     """
-    
-    match query and local:
-        case "bags",False:   
-            italist_branded_bags_url = f"https://www.italist.com/us/brands/{brand}/110/women/?categories%5B%5D=76"
-            #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
-            italist_scrape_2(italist_branded_bags_url,brand,query)
-        case "all",False:
-            italist_general_param_url = f"https://www.italist.com/us/brands/{brand}/110/women/"
-            # next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=1&categories%5B%5D=437&skip=60
-            italist_scrape_2(italist_general_param_url)
-        case "bags",False:   
-            italist_branded_bags_url = f"https://www.italist.com/us/brands/{brand}/110/women/?categories%5B%5D=76"
-            #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
-            italist_scrape_2(italist_branded_bags_url,brand,query)
-        case "all",False:
-            italist_general_param_url = f"https://www.italist.com/us/brands/{brand}/110/women/"
-            # next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=1&categories%5B%5D=437&skip=60
-            italist_scrape_2(italist_general_param_url)
-    
+    try:
+        match (query,local):
+            
+            # case ("bags",False):   
+            #     italist_branded_bags_url = f"https://www.italist.com/us/brands/{brand}/110/women/?categories%5B%5D=76"
+            #     #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
+            #     italist_scrape_2(italist_branded_bags_url,brand,query)
+            # case ("all",False):
+            #     italist_general_param_url = f"https://www.italist.com/us/brands/{brand}/110/women/"
+            #     # next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=1&categories%5B%5D=437&skip=60
+            #     italist_scrape_2(italist_general_param_url)
+            
+            case ("bags",True):   
+                #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
+                italist_scrape_2(local_url,brand,query)
+            case ("all",True):
+                #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
+                italist_scrape_2(local_url,brand,query)
+            case _:
+                print("No matching case found.")
 
-        #use bags url and paramterize into it
-    
+            #use bags url and paramterize into it
+    except Exception as e:
+        # Log the error and handle it gracefully
+        print(f"An error occurred in italist_driver: {e}")
+        # Optionally: log the stack trace for debugging
+        import traceback
+        traceback.print_exc()
 
 # italist_driver("prada","bags")
 # italist_driver("prada","general")
