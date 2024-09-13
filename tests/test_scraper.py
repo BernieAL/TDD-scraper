@@ -6,7 +6,7 @@ from chromedriver_py import binary_path
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
-from src.italist_scrape_test import italist_scrape
+from src.italist_scraper import italist_scrape
 
 @patch("requests.get")
 def test_mocked_request(mock_get):

@@ -8057,3 +8057,9 @@ selenium_worker  |  Successfully accessed https://bot.sannysoft.com, Page title 
 [2K[2Kselenium_worker  | scrape successful
 [2Kselenium_worker  | scrape successful
 selenium_worker  | scrape successful
+[2K[2K[2Krbmq             | [38;5;87m2024-09-13 16:58:51.523806+00:00 [notice] <0.86.0>     alarm_handler: {clear,system_memory_high_watermark}[0m
+rbmq             | [38;5;87m2024-09-13 16:58:51.523806+00:00 [notice] <0.86.0>     alarm_handler: {clear,system_memory_high_watermark}[0m
+rbmq             | [38;5;87m2024-09-13 16:58:51.523806+00:00 [notice] <0.86.0>     alarm_handler: {clear,system_memory_high_watermark}[0m
+[2K[2K[2Krbmq             | [38;5;87m2024-09-13 17:04:51.580701+00:00 [notice] <0.86.0>     alarm_handler: {set,{system_memory_high_watermark,[]}}[0m
+rbmq             | [38;5;87m2024-09-13 17:04:51.580701+00:00 [notice] <0.86.0>     alarm_handler: {set,{system_memory_high_watermark,[]}}[0m
+rbmq             | [38;5;87m2024-09-13 17:04:51.580701+00:00 [notice] <0.86.0>     alarm_handler: {set,{system_memory_high_watermark,[]}}[0m
