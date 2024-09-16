@@ -23,12 +23,38 @@ from scrapers.italist_scraper import italist_driver
 
 
 
+src_dir = os.path.dirname(os.path.abspath(__file__))
+input_data_file_path = os.path.join(src_dir,'input_data','search_criteria.csv')
+
+
+
+
 def run_scrapers(brand,query,local):
 
     """
         this is the driver script for all website scrapers
     """
-    italist_driver(brand,query,local)
+    with open(input_data_file_path,'r',newline='',encoding='utf-8') as file:
+        csv_reader = csv.reader(file)
+        
+        header = next(csv_reader) #skip header row
+        for row in csv_reader:
+            print(row)
+            if not row:
+                print("skipping row ")
+
+            
+            if len(row) == 2:
+                brand,query = row
+                print(brand)
+                print(query)
+                # italist_driver(brand,query,local)
+
+            elif len(row) == 3:
+                brand,query,specific = row
+                #italist_driver not set up for specific item yet
+                # italist_driver(brand,query,specific,local)  
+            
 
 
 if __name__ == "__main__":

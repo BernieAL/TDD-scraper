@@ -20,7 +20,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
 
-from utils import copy_file
+# from utils.copy_file import copy_file
 
 # Create a session object
 session = requests.Session()
@@ -100,6 +100,8 @@ def get_num_listings(driver):
         print("Could not find the number of listings.")
         return 0
 
+
+
 def get_listings(driver):
     """
     Finds all <a> elements inside product grid container
@@ -110,12 +112,42 @@ def get_listings(driver):
         print("Could not find listings")
         return []
 
+
+def generate_id_from_url(url):
+    """
+    Based on url structure:
+
+    https://www.italist.com/us/women/bags/luggage/calf-leather-pouch/14430526/14598217/prada/
+    
+    using to generate a unique id
+    we will use this to track if a listing is still present on the page
+    if not, then it was sold.
+    we will also use this to track any changes in listing price over duration available
+
+    """
+    tokens = url.split('/')
+    print(tokens[-2])
+    print(tokens[-3])
+    print(tokens[-4])
+
+
+generate_id_from_url("https://www.italist.com/us/women/bags/luggage/calf-leather-pouch/14430526/14598217/prada/")
+
 def extract_listing_data(listing):
 
     """
     Extracts the brand, product name, and price from a single listing.
     """
+    
     try:
+        listing_url = listing.get_attribute('href')
+        print(listing_url)
+        
+    except NoSuchElementException:
+        print("no url")
+
+    try:
+
         brand = listing.find_element(By.CSS_SELECTOR, "div.brand").text
     except NoSuchElementException:
         brand = "No brand"
@@ -182,7 +214,10 @@ def italist_scrape_2(url,brand,query,output_file=None):
                 brand,product_name, price = extract_listing_data(listing)
                 writer.writerow([brand,product_name,price])
                 print(f"Written: {brand}, {product_name}, {price}")
-
+        
+        #create copy of file, store in LTR storage
+        # copy_file(output_file)
+    
     except Exception as e:
         print(f"Error Occured: {e}")
     
@@ -231,7 +266,7 @@ def italist_driver(brand,query,local):
         import traceback
         traceback.print_exc()
 
-# italist_driver("prada","bags")
+# italist_driver("prada","bags",True)
 # italist_driver("prada","general")
 
 # ---------------------------------------------------------
