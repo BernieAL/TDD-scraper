@@ -48,7 +48,7 @@ def run_scrapers(brand,query,local):
                 brand,query = row
                 print(brand)
                 print(query)
-                # italist_driver(brand,query,local)
+                italist_driver(brand,query,local)
 
             elif len(row) == 3:
                 brand,query,specific = row

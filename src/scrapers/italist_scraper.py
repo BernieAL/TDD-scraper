@@ -113,25 +113,33 @@ def get_listings(driver):
         return []
 
 
+
 def generate_id_from_url(url):
     """
     Based on url structure:
 
     https://www.italist.com/us/women/bags/luggage/calf-leather-pouch/14430526/14598217/prada/
     
-    using to generate a unique id
-    we will use this to track if a listing is still present on the page
-    if not, then it was sold.
-    we will also use this to track any changes in listing price over duration available
+    Generate a unique id to track if a listing is still present on the page.
+    Also used to track changes in listing price over the duration it is available.
 
     """
-    tokens = url.split('/')
-    print(tokens[-2])
-    print(tokens[-3])
-    print(tokens[-4])
+    try:
+        tokens = url.split('/')
+        
+        # Ensure there are enough tokens to form a unique ID
+        if len(tokens) < 5:
+            raise ValueError("URL structure is invalid or incomplete.")
+        
+        unique_product_id = f"{tokens[-3]}-{tokens[-4]}"
+        return unique_product_id
+
+    except Exception as e:
+        print(f"Error in function 'generate_id_from_url': {e}")
+        return None
 
 
-generate_id_from_url("https://www.italist.com/us/women/bags/luggage/calf-leather-pouch/14430526/14598217/prada/")
+# print(generate_id_from_url("https://www.italist.com/us/women/bags/luggage/calf-leather-pouch/14430526/14598217/prada/"))
 
 def extract_listing_data(listing):
 
@@ -141,13 +149,13 @@ def extract_listing_data(listing):
     
     try:
         listing_url = listing.get_attribute('href')
-        print(listing_url)
+        product_id = generate_id_from_url(listing_url)
+        # print(listing_url)
         
     except NoSuchElementException:
         print("no url")
 
     try:
-
         brand = listing.find_element(By.CSS_SELECTOR, "div.brand").text
     except NoSuchElementException:
         brand = "No brand"
@@ -166,14 +174,13 @@ def extract_listing_data(listing):
         except NoSuchElementException:
             price = "No price"
 
-    return brand, product_name, price
+    return brand, product_name, price, product_id
 
 def build_output_file_name(brand,query):
     """Generates a default output file name based on the current date."""
     current_date = datetime.now().strftime('%Y-%d-%m')
     italist_output_file = f"src/file_output/italist_{current_date}_{brand}_{query}.csv"
     return os.path.abspath(italist_output_file)
-
 
 def italist_scrape_2(url,brand,query,output_file=None):
     """
@@ -206,14 +213,15 @@ def italist_scrape_2(url,brand,query,output_file=None):
             current_date = datetime.now().strftime('%Y-%d-%m')
             file.write(f"Scraped: {current_date} \n")
             file.write(f"Query: {brand}-{query} \n")
-            writer.writerow(['Brand','Product Name','Price'])
+            writer.writerow(['Brand','Product Name','Price','Product_ID'])
             file.write('---------------------- \n')
 
             #process listings and write to file
             for listing in all_listings[:num_listings]:
-                brand,product_name, price = extract_listing_data(listing)
-                writer.writerow([brand,product_name,price])
-                print(f"Written: {brand}, {product_name}, {price}")
+                brand,product_name, price, product_id= extract_listing_data(listing)
+              
+                writer.writerow([brand,product_name,price,product_id])
+                print(f"Written: {brand}, {product_name}, {price},{product_id}")
         
         #create copy of file, store in LTR storage
         # copy_file(output_file)
@@ -266,7 +274,7 @@ def italist_driver(brand,query,local):
         import traceback
         traceback.print_exc()
 
-# italist_driver("prada","bags",True)
+italist_driver("prada","bags",True)
 # italist_driver("prada","general")
 
 # ---------------------------------------------------------
