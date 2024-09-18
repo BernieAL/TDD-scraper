@@ -100,8 +100,6 @@ def get_num_listings(driver):
         print("Could not find the number of listings.")
         return 0
 
-
-
 def get_listings(driver):
     """
     Finds all <a> elements inside product grid container
@@ -111,8 +109,6 @@ def get_listings(driver):
     except NoSuchElementException:
         print("Could not find listings")
         return []
-
-
 
 def generate_id_from_url(url):
     """

@@ -8063,3 +8063,57 @@ rbmq             | [38;5;87m2024-09-13 16:58:51.523806+00:00 [notice] <0.86.0> 
 [2K[2K[2Krbmq             | [38;5;87m2024-09-13 17:04:51.580701+00:00 [notice] <0.86.0>     alarm_handler: {set,{system_memory_high_watermark,[]}}[0m
 rbmq             | [38;5;87m2024-09-13 17:04:51.580701+00:00 [notice] <0.86.0>     alarm_handler: {set,{system_memory_high_watermark,[]}}[0m
 rbmq             | [38;5;87m2024-09-13 17:04:51.580701+00:00 [notice] <0.86.0>     alarm_handler: {set,{system_memory_high_watermark,[]}}[0m
+[2K[2K[2Krbmq             | [38;5;214m2024-09-17 17:42:01.035300+00:00 [warning] <0.717.0> closing AMQP connection <0.717.0> (192.168.144.2:59416 -> 192.168.144.3:5672, vhost: '/', user: 'guest'):[0m
+[2Krbmq             | [38;5;214m2024-09-17 17:42:01.035300+00:00 [warning] <0.717.0> closing AMQP connection <0.717.0> (192.168.144.2:59416 -> 192.168.144.3:5672, vhost: '/', user: 'guest'):[0m
+[2Krbmq             | [38;5;214m2024-09-17 17:42:01.035300+00:00 [warning] <0.717.0> client unexpectedly closed TCP connection[0m
+rbmq             | [38;5;214m2024-09-17 17:42:01.035300+00:00 [warning] <0.717.0> client unexpectedly closed TCP connection[0m
+rbmq             | [38;5;214m2024-09-17 17:42:01.035300+00:00 [warning] <0.717.0> closing AMQP connection <0.717.0> (192.168.144.2:59416 -> 192.168.144.3:5672, vhost: '/', user: 'guest'):[0m
+[2Krbmq             | [38;5;214m2024-09-17 17:42:01.035300+00:00 [warning] <0.717.0> client unexpectedly closed TCP connection[0m
+selenium_worker exited with code 0
+selenium_worker exited with code 0
+selenium_worker exited with code 0
+[2K[2Krbmq             | [38;5;87m2024-09-17 17:42:05.675557+00:00 [notice] <0.64.0> SIGTERM received - shutting down[0m
+[2Krbmq             | [38;5;87m2024-09-17 17:42:05.675557+00:00 [notice] <0.64.0> [0m
+rbmq             | [38;5;87m2024-09-17 17:42:05.675557+00:00 [notice] <0.64.0> SIGTERM received - shutting down[0m
+[2Krbmq             | [38;5;87m2024-09-17 17:42:05.675557+00:00 [notice] <0.64.0> [0m
+[2Krbmq             | [38;5;87m2024-09-17 17:42:05.675557+00:00 [notice] <0.64.0> SIGTERM received - shutting down[0m
+[2Krbmq             | [38;5;87m2024-09-17 17:42:05.675557+00:00 [notice] <0.64.0> [0m
+[2K[2K[2Krbmq             | [38;5;214m2024-09-17 17:42:05.709890+00:00 [warning] <0.553.0> HTTP listener registry could not find context rabbitmq_prometheus_tls[0m
+rbmq             | [38;5;214m2024-09-17 17:42:05.709890+00:00 [warning] <0.553.0> HTTP listener registry could not find context rabbitmq_prometheus_tls[0m
+rbmq             | [38;5;214m2024-09-17 17:42:05.709890+00:00 [warning] <0.553.0> HTTP listener registry could not find context rabbitmq_prometheus_tls[0m
+[2K[2Krbmq             | [38;5;214m2024-09-17 17:42:05.732785+00:00 [warning] <0.553.0> HTTP listener registry could not find context rabbitmq_management_tls[0m
+rbmq             | [38;5;214m2024-09-17 17:42:05.732785+00:00 [warning] <0.553.0> HTTP listener registry could not find context rabbitmq_management_tls[0m
+[2Krbmq             | [38;5;214m2024-09-17 17:42:05.732785+00:00 [warning] <0.553.0> HTTP listener registry could not find context rabbitmq_management_tls[0m
+[2K[2K[2Krbmq             | 2024-09-17 17:42:05.765311+00:00 [info] <0.689.0> stopped TCP listener on [::]:5672[0m
+rbmq             | 2024-09-17 17:42:05.765311+00:00 [info] <0.689.0> stopped TCP listener on [::]:5672[0m
+rbmq             | 2024-09-17 17:42:05.765311+00:00 [info] <0.689.0> stopped TCP listener on [::]:5672[0m
+[2K[2K[2Krbmq             | 2024-09-17 17:42:05.770037+00:00 [info] <0.472.0> Virtual host '/' is stopping[0m
+rbmq             | 2024-09-17 17:42:05.770037+00:00 [info] <0.472.0> Virtual host '/' is stopping[0m
+rbmq             | 2024-09-17 17:42:05.770037+00:00 [info] <0.472.0> Virtual host '/' is stopping[0m
+[2K[2Krbmq             | 2024-09-17 17:42:05.770785+00:00 [info] <0.5106.0> Closing all connections in vhost '/' on node 'rabbit@rbmq' because the vhost is stopping[0m
+rbmq             | 2024-09-17 17:42:05.770785+00:00 [info] <0.5106.0> Closing all connections in vhost '/' on node 'rabbit@rbmq' because the vhost is stopping[0m
+[2Krbmq             | 2024-09-17 17:42:05.770785+00:00 [info] <0.5106.0> Closing all connections in vhost '/' on node 'rabbit@rbmq' because the vhost is stopping[0m
+[2Krbmq             | 2024-09-17 17:42:05.821565+00:00 [info] <0.485.0> Stopping message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent'[0m
+[2K[2Krbmq             | 2024-09-17 17:42:05.821565+00:00 [info] <0.485.0> Stopping message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent'[0m
+rbmq             | 2024-09-17 17:42:05.821565+00:00 [info] <0.485.0> Stopping message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent'[0m
+[2K[2Krbmq             | 2024-09-17 17:42:05.837297+00:00 [info] <0.485.0> Message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent' is stopped[0m
+[2Krbmq             | 2024-09-17 17:42:05.837483+00:00 [info] <0.481.0> Stopping message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_transient'[0m
+rbmq             | 2024-09-17 17:42:05.837297+00:00 [info] <0.485.0> Message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent' is stopped[0m
+[2Krbmq             | 2024-09-17 17:42:05.837483+00:00 [info] <0.481.0> Stopping message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_transient'[0m
+[2Krbmq             | 2024-09-17 17:42:05.837297+00:00 [info] <0.485.0> Message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent' is stopped[0m
+[2Krbmq             | 2024-09-17 17:42:05.837483+00:00 [info] <0.481.0> Stopping message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_transient'[0m
+[2Krbmq             | 2024-09-17 17:42:05.843844+00:00 [info] <0.481.0> Message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_transient' is stopped[0m
+[2K[2Krbmq             | 2024-09-17 17:42:05.843844+00:00 [info] <0.481.0> Message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_transient' is stopped[0m
+rbmq             | 2024-09-17 17:42:05.843844+00:00 [info] <0.481.0> Message store for directory '/var/lib/rabbitmq/mnesia/rabbit@rbmq/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L/msg_store_transient' is stopped[0m
+[2K[2K[2Krbmq             | [38;5;87m2024-09-17 17:42:05.965618+00:00 [notice] <0.86.0>     alarm_handler: {clear,system_memory_high_watermark}[0m
+rbmq             | [38;5;87m2024-09-17 17:42:05.965618+00:00 [notice] <0.86.0>     alarm_handler: {clear,system_memory_high_watermark}[0m
+[2Krbmq             | [38;5;87m2024-09-17 17:42:05.965618+00:00 [notice] <0.86.0>     alarm_handler: {clear,system_memory_high_watermark}[0m
+rbmq             | [38;5;87m2024-09-17 17:42:05.966082+00:00 [notice] <0.86.0>     alarm_handler: {clear,{disk_almost_full,"/"}}[0m
+[2K[2K[2Krbmq             | [38;5;87m2024-09-17 17:42:05.966082+00:00 [notice] <0.86.0>     alarm_handler: {clear,{disk_almost_full,"/"}}[0m
+rbmq             | [38;5;87m2024-09-17 17:42:05.966082+00:00 [notice] <0.86.0>     alarm_handler: {clear,{disk_almost_full,"/"}}[0m
+rbmq             | [38;5;87m2024-09-17 17:42:05.966134+00:00 [notice] <0.86.0>     alarm_handler: {clear,{disk_almost_full,"/etc/hosts"}}[0m
+[2K[2Krbmq             | [38;5;87m2024-09-17 17:42:05.966134+00:00 [notice] <0.86.0>     alarm_handler: {clear,{disk_almost_full,"/etc/hosts"}}[0m
+rbmq             | [38;5;87m2024-09-17 17:42:05.966134+00:00 [notice] <0.86.0>     alarm_handler: {clear,{disk_almost_full,"/etc/hosts"}}[0m
+rbmq exited with code 0
+rbmq exited with code 0
+rbmq exited with code 0
