@@ -11,6 +11,6 @@ if parent_dir not in sys.path:
 
 
 PRODUCT_INSERT_QUERY = """
-    INSERT INTO products(product_id,last_scrape_date,last_price)
-    VALUES (%s,%s,%s)
+    INSERT INTO products(product_id,brand,last_scrape_date,last_price)
+    VALUES (%s,%s,%s,%s)
 """

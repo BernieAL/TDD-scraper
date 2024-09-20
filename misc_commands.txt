@@ -1,0 +1,10 @@
+commands im tired of typing
+
+
+docker build -f Dockerfile.pgsql -t pgsql .
+docker run -it --name pgsql -p 5433:5432 pgsql
+docker exec -it pgsql /bin/sh
+
+
+python3 /db/db_seed_script.py 
+python3 /Analysis/compare_data.py

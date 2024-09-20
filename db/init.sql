@@ -8,6 +8,7 @@ CREATE DATABASE designer_products;
 -- Create a table in the designer_products database
 CREATE TABLE products (
     product_id VARCHAR(50) PRIMARY KEY,
+    brand VARCHAR(50),
     last_scrape_date DATE,
     last_price DECIMAL(10, 2)
 );

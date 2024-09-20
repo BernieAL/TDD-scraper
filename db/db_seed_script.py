@@ -41,7 +41,7 @@ with open(sample_file_path,'r') as file:
     scrape_date = next(csv_reader)
     scrape_date_str = ((scrape_date[0]).split(':'))[1].strip()
     scrape_date_obj = datetime.strptime(scrape_date_str,'%Y-%d-%m').date()
-    print(scrape_date_obj)
+    print(f"file scrape date - {scrape_date_obj}")
 
     #skip the fi header lines in file
     for i in range(1,4):
@@ -56,10 +56,11 @@ with open(sample_file_path,'r') as file:
         price = row[2].split()[1] #extract price from string Ex. "USD 1195"
         product_id = row[3]
         
-        cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,scrape_date_obj,price))
-        conn.commit
+        cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,brand,scrape_date_obj,price))
+        conn.commit()
         #insert into db
         
         # print(f"{product_id},{brand},{product},{price}")
+    conn.close()
 
         
