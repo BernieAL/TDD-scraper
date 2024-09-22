@@ -85,13 +85,13 @@ def fetch_product_ids_and_prices(brand):
         #     print(f"Product ID: {product_id}, Last Price: {last_price}")
 
         # Convert to list of dictionaries
-        products = [{'product_id':row[0], 'last_price': row[1]} for row in result]
-               
+        products = [{'product_id':row[0], 'last_price': (row[1])} for row in result]
+
         return products
         
     except Exception as e:
         print(f"(fetch_products_ids) Error: {Exception}")
-
+    
 
 if __name__ == "__main__":
     # print(fetch_product_ids('Prada'))
