@@ -1,6 +1,6 @@
 Scraped: 2024-23-09 
 Query: prada-bags 
-Product_ID,Brand,Product Name,Price
+Product_ID,Brand,Product_Name,Curr_Price,Curr_Scrape_Date,Prev_Price,Prev_Scrape_Date
 ---------------------- 
 14699240-14531549,Prada,Black Re-nylon Beauty Case,USD 418 
 14696885-14529194,Prada,Shoulder Bag,USD 3955

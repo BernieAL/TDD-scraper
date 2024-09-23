@@ -31,7 +31,7 @@ test_input_file = os.path.join(file_output_dir,'italist_2024-17-09_prada_bags.cs
 #1 - get all existing product_ids from db
 # existing_product_ids = set(fetch_product_ids('Prada'))
 existing_product_ids_and_prices = fetch_product_ids_and_prices('Prada')
-
+print(existing_product_ids_and_prices)
 #convert from list of dicts to dict
 existing_product_id_prices_dict = {}
 for e in existing_product_ids_and_prices:
@@ -66,8 +66,15 @@ with open(test_input_file,mode='r') as file:
     csv_reader = csv.DictReader(file)
     # Iterate over each row and print product data
     for row in csv_reader:
-        print(f"Brand: {row['Brand']}, Product: {row['Product_Name']}, Price: {row['Price']}, ID: {row['Product_ID']}")
-
+        print(f"ID: {row['Product_ID']}, "
+            f"Brand: {row['Brand']}, "
+            f"Product: {row['Product_Name']}, "
+            f"Curr Price: {row['Curr_Price']}, "
+            f"Curr_Scrape_Date: {row['Curr_Scrape_Date']}, "
+            f"Prev Price: {row['Prev_Date']}, "
+            f"Prev_Scrape_Date: {row['Prev_Scrape_Date']}"
+            )
+      
         #check if scraped product is in db
         if row['Product_ID'] in existing_product_id_prices_dict:
             print(f"product found in db")
@@ -76,28 +83,30 @@ with open(test_input_file,mode='r') as file:
             #this simplifies logic in upudate function by not having to check if new price is populated or not.
             temp = {
                 'product_id':row['product_id'],
-                'last_scrape_date': 'scrape_date',
+                'last_scrape_date': scrape_date,
                 'last_price':row['Price'],
             }
             updated_products.push(temp)
-
+            print(f"updated product")
             #mark as seen by popping 'seen' product from db dictionary - what remains are db items thaat are no longer on website anymore - meaning they are sold
             existing_product_id_prices_dict.pop(product_id)
-
+            print(f"product popped")
+            
+           
 
         else:
             temp = {
                 'product_id':row['product_id'],
                 'brand':row['Brand'],
                 # 'product_name':row['Product_Name'],
-                'last_scrape_date': 'scrape_date',
+                'last_scrape_date': scrape_date,
                 'last_price':row['Price'],
             }
             #if no, push product to new_products array to be bulk inserted to db later
             new_products.push(temp)
 
             
-
+print(existing_product_id_prices_dict)
 
 
 #4 - bulk insert new products

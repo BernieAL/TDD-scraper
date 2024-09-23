@@ -209,7 +209,7 @@ def italist_scrape_2(url,brand,query,output_file=None):
             current_date = datetime.now().strftime('%Y-%d-%m')
             file.write(f"Scraped: {current_date} \n")
             file.write(f"Query: {brand}-{query} \n")
-            writer.writerow(['Product_ID','Brand','Product Name','Price'])
+            writer.writerow(['Product_ID','Brand','Product_Name','Curr_Price','Curr_Scrape_Date','Prev_Price','Prev_Scrape_Date'])
             file.write('---------------------- \n')
 
             #process listings and write to file

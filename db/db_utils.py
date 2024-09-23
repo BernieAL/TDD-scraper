@@ -76,7 +76,7 @@ def fetch_product_ids_and_prices(brand):
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-        query = "SELECT product_id, last_price FROM products WHERE brand = %s"
+        query = "SELECT product_id, curr_price, FROM products WHERE brand = %s"
         cur.execute(query,(brand,))
         result = cur.fetchall()
         
@@ -85,13 +85,15 @@ def fetch_product_ids_and_prices(brand):
         #     print(f"Product ID: {product_id}, Last Price: {last_price}")
 
         # Convert to list of dictionaries
-        products = [{'product_id':row[0], 'last_price': (row[1])} for row in result]
+        products = [{'product_id':row[0], 'curr_price': (row[1])} for row in result]
 
         return products
         
     except Exception as e:
-        print(f"(fetch_products_ids) Error: {Exception}")
-    
+        print(f"(fetch_products_ids_and_prices) Error: {Exception}")
+
+
+  
 def bulk_update_existing(update_products):
     """
     Recieves list of dicts containing products to be updated in the db
