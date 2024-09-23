@@ -31,7 +31,7 @@ file_output_dir = os.path.join(curr_dir,'..','src','file_output')
 # print(os.path.isdir(file_output_dir))
 
 
-sample_file_path = os.path.join(file_output_dir,'italist_2024-17-09_prada_bags.csv')
+sample_file_path = os.path.join(file_output_dir,'italist_2024-23-09_prada_bags.csv')
 
 with open(sample_file_path,'r') as file:
     csv_reader = csv.reader(file)
@@ -50,17 +50,27 @@ with open(sample_file_path,'r') as file:
 
     for row in csv_reader:
        
+        product_id = row[0]
+        brand = row[1]
+        product_name = row[2]
+        curr_price = row[3].split()[1] #extract price from string Ex. "USD 1195"
+        prev_price = curr_price
 
-        brand = row[0]
-        product = row[1]
-        price = row[2].split()[1] #extract price from string Ex. "USD 1195"
-        product_id = row[3]
+        curr_scrape_date = scrape_date_obj
+        prev_scrape_date = scrape_date_obj
         
-        cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,brand,scrape_date_obj,price))
+
+        cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,
+                                                            brand,
+                                                            product_name,
+                                                            curr_price,
+                                                            curr_scrape_date,
+                                                            prev_price,
+                                                            prev_scrape_date))
         conn.commit()
         #insert into db
         
-        # print(f"{product_id},{brand},{product},{price}")
+        
     conn.close()
 
         

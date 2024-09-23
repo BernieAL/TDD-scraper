@@ -71,33 +71,25 @@ with open(test_input_file,mode='r') as file:
         #check if scraped product is in db
         if row['Product_ID'] in existing_product_id_prices_dict:
             print(f"product found in db")
-            #if yes, check if any price changes -> compare scraped price to db price
-            if row['Price'] != existing_product_id_prices_dict[product_id]:
-                
-                #if yes, push product to update_products array with new price to updated in db later
-                temp = {
-                    'product_id':row['product_id'],
-                    'last_scrape_date': 'scrape_date',
-                    'last_price':row['Price'],
-                }
-                updated_products.push(temp)
+        
+            #update price and scrape date from scrape data into db by default - even if price is the same 
+            #this simplifies logic in upudate function by not having to check if new price is populated or not.
+            temp = {
+                'product_id':row['product_id'],
+                'last_scrape_date': 'scrape_date',
+                'last_price':row['Price'],
+            }
+            updated_products.push(temp)
 
-                #mark as seen by popping 'seen' product from db dictionary - what remains are db items thaat are no longer on website anymore - meaning they are sold
-                existing_product_id_prices_dict.pop(product_id)
+            #mark as seen by popping 'seen' product from db dictionary - what remains are db items thaat are no longer on website anymore - meaning they are sold
+            existing_product_id_prices_dict.pop(product_id)
 
-            #only update the last_scrape date
-            else:
-                temp = {
-                    'product_id':row['product_id'],
-                    'last_scrape_date': 'scrape_date',
-                }
-                updated_products.push(temp)
 
         else:
             temp = {
                 'product_id':row['product_id'],
                 'brand':row['Brand'],
-                # 'Product_name':row['Product_Name'],
+                # 'product_name':row['Product_Name'],
                 'last_scrape_date': 'scrape_date',
                 'last_price':row['Price'],
             }

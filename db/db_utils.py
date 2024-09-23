@@ -92,6 +92,78 @@ def fetch_product_ids_and_prices(brand):
     except Exception as e:
         print(f"(fetch_products_ids) Error: {Exception}")
     
+def bulk_update_existing(update_products):
+    """
+    Recieves list of dicts containing products to be updated in the db
+    Will be dict containing most recent price and date of scrape
+
+    Ex.
+        [
+            {
+                'product_id':row['product_id'],
+                'last_scrape_date': 'scrape_date',
+                'last_price':row['Price'],
+            },
+            {},
+            ....
+        ]
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        update_query =  """
+                        UPDATE products
+                        SET last_scrape_date = %s
+                        SET last_price = %s
+                        WHERE product_id = %s
+                        """
+        
+        #create list of tuples from update_products list of dicts     
+        update_data_tuples = [(product['last_scrape_date'],product['last_price'],product['product_id']) for product in update_products]
+        cur.executemany(update_query,update_data_tuples)
+        conn.commit()
+    except Exception as e:
+        print(f"(BULK_UPDATE) - An error occurred: {e}")
+        conn.rollback()  # Rollback in case of error
+    
+
+
+def bulk_insert_new(new_products):
+    
+    """
+    Recieves list of dicts containing  new products to be inserted into db
+    Ex.
+    Ex.
+     [
+        {
+            'product_id':row['product_id'],
+            'brand':row['Brand'],
+            #'Product_name':row['Product_Name'],
+            'last_scrape_date': 'scrape_date',
+            'last_price':row['Price'],
+        }
+     ]
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        new_product_query = """
+                            INSERT into products(product_id,brand,product_name,last_scrape_date,last_price)
+                            VALUES (%s,%s,%s,%s,%s)
+                            """
+
+        new_products_as_tuples =[(product['product_id'],
+                                product['brand'],
+                                product['product_name'],
+                                product['last_scrape_date'],
+                                product['last_price']) 
+                                for product in new_products]
+
+        cur.executemany(new_product_query,new_products_as_tuples)
+    except Exception as e:
+        print(f"(BULK_INSERT_NEW) - An error occurred: {e}")
+        conn.rollback()  # Rollback in case of error
 
 if __name__ == "__main__":
     # print(fetch_product_ids('Prada'))
