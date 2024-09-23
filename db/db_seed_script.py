@@ -43,7 +43,7 @@ with open(sample_file_path,'r') as file:
     scrape_date_obj = datetime.strptime(scrape_date_str,'%Y-%d-%m').date()
     print(f"file scrape date - {scrape_date_obj}")
 
-    #skip the fi header lines in file
+    #skip the first header lines in file
     for i in range(1,4):
      next(csv_reader)
     
@@ -59,6 +59,7 @@ with open(sample_file_path,'r') as file:
         curr_scrape_date = scrape_date_obj
         prev_scrape_date = scrape_date_obj
         
+        print(f"{product_id},{brand},{product_name},{curr_price},{curr_scrape_date},{prev_price},{prev_scrape_date}")
 
         cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,
                                                             brand,

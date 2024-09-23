@@ -9,11 +9,11 @@ CREATE DATABASE designer_products;
 CREATE TABLE products (
     product_id VARCHAR(50) PRIMARY KEY,
     brand VARCHAR(50),
-    product_name VARCHAR(50),
-    scrape_date DATE,
+    product_name VARCHAR(150),
     curr_price DECIMAL(10, 2),
-    last_scrape_date DATE,
-    prev_price DECIMAL(10, 2)
+    curr_scrape_date DATE,
+    prev_price DECIMAL(10, 2),
+    prev_scrape_date DATE
 );
 
 
