@@ -92,6 +92,32 @@ def fetch_product_ids_and_prices(brand):
     except Exception as e:
         print(f"(fetch_products_ids_and_prices) Error: {Exception}")
 
+def fetch_product_ids_prices_dates(brand):
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        query = "SELECT product_id, curr_price, curr_scrape_date, prev_price, prev_scrape_date FROM products WHERE brand = %s"
+        cur.execute(query,(brand,))
+        result = cur.fetchall()
+        print(result)
+        # for row in result:
+        #     product_id,last_price = row
+        #     print(f"Product ID: {product_id}, Last Price: {last_price}")
+
+        # Convert to list of dictionaries
+        products = [
+                    {'product_id':row[0], 
+                     'curr_price': (row[1]),
+                     'curr_scrape_date':(row[1]),
+                     'prev_price':(row[1]),
+                     'prev_scrape_date':(row[1])
+                     } for row in result
+                    ]
+
+        return products
+        
+    except Exception as e:
+        print(f"(fetch_products_ids_and_prices) Error: {Exception}")
 
   
 def bulk_update_existing(update_products):
@@ -169,5 +195,6 @@ def bulk_insert_new(new_products):
 
 if __name__ == "__main__":
     # print(fetch_product_ids('Prada'))
-    print(fetch_product_ids_and_prices('Prada'))
+    # print(fetch_product_ids_and_prices('Prada'))
+    print(fetch_product_ids_prices_dates('Prada'))
        
