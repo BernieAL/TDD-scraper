@@ -31,9 +31,9 @@ file_output_dir = os.path.join(curr_dir,'..','src','file_output')
 # print(os.path.isdir(file_output_dir))
 
 
-sample_file_path = os.path.join(file_output_dir,'italist_2024-23-09_prada_bags.csv')
+sample_seed_data_path = os.path.join(file_output_dir,'italist_2024-24-09_prada_bags.csv')
 
-with open(sample_file_path,'r') as file:
+with open(sample_seed_data_path,'r') as file:
     csv_reader = csv.reader(file)
 
 

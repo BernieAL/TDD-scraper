@@ -76,10 +76,10 @@ def fetch_product_ids_and_prices(brand):
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-        query = "SELECT product_id, curr_price, FROM products WHERE brand = %s"
+        query = "SELECT product_id, curr_price FROM products WHERE brand = %s"
         cur.execute(query,(brand,))
         result = cur.fetchall()
-        
+        print(result)
         # for row in result:
         #     product_id,last_price = row
         #     print(f"Product ID: {product_id}, Last Price: {last_price}")

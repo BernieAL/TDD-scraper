@@ -22,7 +22,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 file_output_dir = os.path.join(curr_dir,'..','src','file_output')
 print(os.path.isdir(file_output_dir))
 
-test_input_file = os.path.join(file_output_dir,'italist_2024-17-09_prada_bags.csv')
+test_input_file = os.path.join(file_output_dir,'italist_2024-24-09_prada_bags.csv')
 
 
 
@@ -31,12 +31,12 @@ test_input_file = os.path.join(file_output_dir,'italist_2024-17-09_prada_bags.cs
 #1 - get all existing product_ids from db
 # existing_product_ids = set(fetch_product_ids('Prada'))
 existing_product_ids_and_prices = fetch_product_ids_and_prices('Prada')
-print(existing_product_ids_and_prices)
+# print(existing_product_ids_and_prices)
 #convert from list of dicts to dict
 existing_product_id_prices_dict = {}
 for e in existing_product_ids_and_prices:
     product_id = e['product_id']
-    last_price = float(e['last_price'])
+    last_price = float(e['curr_price'])
     existing_product_id_prices_dict[product_id] = last_price
 
 
@@ -66,25 +66,25 @@ with open(test_input_file,mode='r') as file:
     csv_reader = csv.DictReader(file)
     # Iterate over each row and print product data
     for row in csv_reader:
-        print(f"ID: {row['Product_ID']}, "
-            f"Brand: {row['Brand']}, "
-            f"Product: {row['Product_Name']}, "
-            f"Curr Price: {row['Curr_Price']}, "
-            f"Curr_Scrape_Date: {row['Curr_Scrape_Date']}, "
-            f"Prev Price: {row['Prev_Date']}, "
-            f"Prev_Scrape_Date: {row['Prev_Scrape_Date']}"
+        print(f"ID: {row['product_id']}, "
+            f"Brand: {row['brand']}, "
+            f"Product: {row['product_name']}, "
+            f"Curr Price: {row['curr_price']}, "
+            f"Curr_Scrape_Date: {row['curr_scrape_date']}, "
+            f"Prev Price: {row['prev_price']}, "
+            f"Prev_Scrape_Date: {row['prev_scrape_date']}"
             )
       
         #check if scraped product is in db
-        if row['Product_ID'] in existing_product_id_prices_dict:
+        if row['product_id'] in existing_product_id_prices_dict:
             print(f"product found in db")
         
             #update price and scrape date from scrape data into db by default - even if price is the same 
             #this simplifies logic in upudate function by not having to check if new price is populated or not.
             temp = {
                 'product_id':row['product_id'],
-                'last_scrape_date': scrape_date,
-                'last_price':row['Price'],
+                'prev_scrape_date': row['prev_scrape_date'],
+                'curr_price':row['curr_price'],
             }
             updated_products.push(temp)
             print(f"updated product")
@@ -97,10 +97,10 @@ with open(test_input_file,mode='r') as file:
         else:
             temp = {
                 'product_id':row['product_id'],
-                'brand':row['Brand'],
+                'brand':row['brand'],
                 # 'product_name':row['Product_Name'],
                 'last_scrape_date': scrape_date,
-                'last_price':row['Price'],
+                'curr_price':row['price'],
             }
             #if no, push product to new_products array to be bulk inserted to db later
             new_products.push(temp)
