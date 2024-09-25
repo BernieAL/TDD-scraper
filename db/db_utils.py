@@ -99,7 +99,7 @@ def fetch_product_ids_prices_dates(brand):
         query = "SELECT product_id, curr_price, curr_scrape_date, prev_price, prev_scrape_date FROM products WHERE brand = %s"
         cur.execute(query,(brand,))
         result = cur.fetchall()
-        print(result)
+        # print(result)
         # for row in result:
         #     product_id,last_price = row
         #     print(f"Product ID: {product_id}, Last Price: {last_price}")
