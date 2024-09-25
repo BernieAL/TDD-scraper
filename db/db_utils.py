@@ -139,13 +139,13 @@ def bulk_update_existing(update_products):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        print(f"products to be updated {update_products}")
+        # print(f"products to be updated {update_products} ----------")
         update_query =  """
                         UPDATE products
-                        SET curr_price = %s
-                        SET curr_scrape_date = %s
-                        SET prev_price = %s
-                        SET prev_scrape_date = %s
+                        SET curr_price = %s,
+                            curr_scrape_date = %s,
+                            prev_price = %s,
+                            prev_scrape_date = %s
                         WHERE product_id = %s
                         """
         
@@ -157,6 +157,7 @@ def bulk_update_existing(update_products):
                                product['product_id']
                                ) 
                                for product in update_products]
+        # print(chalk.red(update_data_tuples))
         cur.executemany(update_query,update_data_tuples)
         conn.commit()
     except Exception as e:
