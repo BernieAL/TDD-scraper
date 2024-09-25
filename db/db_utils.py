@@ -139,21 +139,32 @@ def bulk_update_existing(update_products):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        print(f"products to be updated {update_products}")
         update_query =  """
                         UPDATE products
-                        SET last_scrape_date = %s
-                        SET last_price = %s
+                        SET curr_price = %s
+                        SET curr_scrape_date = %s
+                        SET prev_price = %s
+                        SET prev_scrape_date = %s
                         WHERE product_id = %s
                         """
         
         #create list of tuples from update_products list of dicts     
-        update_data_tuples = [(product['last_scrape_date'],product['last_price'],product['product_id']) for product in update_products]
+        update_data_tuples = [(product['curr_price'],
+                               product['curr_scrape_date'],
+                               product['prev_price'],
+                               product['prev_scrape_date'],
+                               product['product_id']
+                               ) 
+                               for product in update_products]
         cur.executemany(update_query,update_data_tuples)
         conn.commit()
     except Exception as e:
         print(f"(BULK_UPDATE) - An error occurred: {e}")
         conn.rollback()  # Rollback in case of error
     
+    # Print a success message if no exception occurred
+    print(f"Bulk update successful. {cur.rowcount} rows updated.")
 
 
 def bulk_insert_new(new_products):

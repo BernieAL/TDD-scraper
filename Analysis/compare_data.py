@@ -1,5 +1,5 @@
 
-import os,sys,csv
+import os,sys,csv,json
 import psycopg2
 from datetime import datetime
 from simple_chalk import chalk
@@ -13,7 +13,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 #now import will work
-from db.db_utils import fetch_product_ids,fetch_product_ids_and_prices,fetch_product_ids_prices_dates
+from db.db_utils import fetch_product_ids_prices_dates, bulk_update_existing, bulk_insert_new
 
 
 #get path to current file
@@ -23,7 +23,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 file_output_dir = os.path.join(curr_dir,'..','src','file_output')
 print(os.path.isdir(file_output_dir))
 
-test_input_file = os.path.join(file_output_dir,'italist_2024-24-09_prada_bags.csv')
+test_input_file = os.path.join(file_output_dir,'italist_2024-25-09_prada_bags.csv')
 
 
 
@@ -70,7 +70,7 @@ for prod in existing_product_ids_prices_dates:
                                                    'prev_price':prev_price,
                                                    'prev_scrape_date':prev_scrape_date,
                                                    }
-print(chalk.red(existing_product_id_prices_dict))
+# print(chalk.red(existing_product_id_prices_dict))
 # for e in existing_product_ids_and_prices:
 #     product_id = e['product_id']
 #     last_price = float(e['curr_price'])
@@ -99,18 +99,19 @@ with open(test_input_file,mode='r') as file:
     query = query_line[0].split(':')[1].strip()
     print("Query:",query)
 
+    #gets header and goes to next line
+    headers = next(csv_reader)  
+   
+ 
     #switch to csv.DictReader for rest of row for reading product data
-    csv_reader = csv.DictReader(file)
+    csv_reader = csv.DictReader(file,fieldnames=headers)
     # Iterate over each row and print product data
     for row in csv_reader:
-        print(f"ID: {row['product_id']}, "
+
+        print(chalk.red(f"ID: {row['product_id']}, "
             f"Brand: {row['brand']}, "
-            f"Product: {row['product_name']}, "
-            f"Curr Price: {row['curr_price']}, "
-            f"Curr_Scrape_Date: {row['curr_scrape_date']}, "
-            f"Prev Price: {row['prev_price']}, "
-            f"Prev_Scrape_Date: {row['prev_scrape_date']}"
-            )
+            f"Product: {row['product_name']},"
+            f"Curr Price: {row['curr_price']},"))
       
         #check if scraped product is in db
         if row['product_id'] in existing_product_id_prices_dict:
@@ -126,6 +127,21 @@ with open(test_input_file,mode='r') as file:
                    #update curr to be scraped price 
                    existing_product_id_prices_dict[row['product_id']]['curr_price'] = row['curr_price']
 
+                   #update dates
+                   existing_product_id_prices_dict[row['product_id']]['prev_scrape_date'] = existing_product_id_prices_dict[row['product_id']]['curr_scrape_date']
+                   existing_product_id_prices_dict[row['product_id']]['curr_scrape_date'] = scrape_date
+
+                   temp = {
+                    'product_id':row['product_id'],               
+                    'curr_price':row['curr_price'],
+                    'curr_scrape_date': scrape_date,
+                    'prev_price': existing_product_id_prices_dict[row['product_id']]['prev_price'],
+                    'prev_scrape_date': existing_product_id_prices_dict[row['product_id']]['prev_scrape_date']
+                   }
+
+                    
+                   updated_products.append(temp)
+
             #if no change in prices - only update the dates
             else:
                 existing_product_id_prices_dict[row['product_id']]['prev_scrape_date'] = existing_product_id_prices_dict[row['product_id']]['curr_scrape_date']
@@ -137,8 +153,8 @@ with open(test_input_file,mode='r') as file:
                     'product_id':row['product_id'],               
                     'curr_price':row['curr_price'],
                     'curr_scrape_date': scrape_date,
-                    'prev_price': row['prev_price'],
-                    'prev_scrape_date':row['prev_scrape_date']
+                    'prev_price': existing_product_id_prices_dict[row['product_id']]['prev_price'],
+                    'prev_scrape_date': existing_product_id_prices_dict[row['product_id']]['prev_scrape_date']
                 }
             
                 updated_products.append(temp)
@@ -163,12 +179,16 @@ with open(test_input_file,mode='r') as file:
             #if no, push product to new_products array to be bulk inserted to db later
             new_products.append(temp)
 
-#empty check - if any values left, these were not found in scraped data, meaning they are sold           
-print(f" sold items - {existing_product_id_prices_dict}")
+# #empty check - if any values left, these were not found in scraped data, meaning they are sold           
+# print(f" sold items - {existing_product_id_prices_dict}")
+
+
+# print(chalk.green(f"products to be updated {updated_products}"))
 
 
 #4 - bulk insert new products
-
+bulk_update_existing(updated_products)
+# bulk_insert_new(updated_products)
 #5 - bulk update price changes
 
 #6 - mark items that remain in existing_product_ids as sold
