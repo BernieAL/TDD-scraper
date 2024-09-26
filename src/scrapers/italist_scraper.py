@@ -87,6 +87,14 @@ def get_driver():
     
     return driver
 
+def get_numeric_only(price_str):
+    """
+    raw extract price looks like "USD 4089" - this function strips out chars and spaces, returning only numeric
+    
+    """
+    price = price_str.split("USD")[1]
+    return int(price)
+
 def get_num_listings(driver):
 
     """
@@ -170,6 +178,8 @@ def extract_listing_data(listing):
         except NoSuchElementException:
             price = "No price"
 
+    price = get_numeric_only(price)
+
     return product_id, brand, product_name, price
 
 def build_output_file_name(brand,query):
@@ -209,7 +219,7 @@ def italist_scrape_2(url,brand,query,output_file=None):
             current_date = datetime.now().strftime('%Y-%d-%m')
             file.write(f"Scraped: {current_date} \n")
             file.write(f"Query: {brand}-{query} \n")
-            writer.writerow(['product_id','brand','product_name','curr_price','curr_scrape_date','prev_price','prev_scrape_date'])
+            writer.writerow(['product_id','brand','product_name','curr_price'])
             file.write('---------------------- \n')
 
             #process listings and write to file
@@ -480,3 +490,7 @@ def test_file_content(create_file):
         contents = file.read().strip()
 
     assert contents == "test",f"File content is '{contents}, but expected 'test'."
+
+
+if __name__ == "__main__":
+    print(get_numeric_only("USD 4088"))

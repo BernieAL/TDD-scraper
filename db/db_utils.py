@@ -99,18 +99,18 @@ def fetch_product_ids_prices_dates(brand):
         query = "SELECT product_id, curr_price, curr_scrape_date, prev_price, prev_scrape_date FROM products WHERE brand = %s"
         cur.execute(query,(brand,))
         result = cur.fetchall()
-        # print(result)
+
+    
         # for row in result:
-        #     product_id,last_price = row
-        #     print(f"Product ID: {product_id}, Last Price: {last_price}")
+        #    print(row)
 
         # Convert to list of dictionaries
         products = [
                     {'product_id':row[0], 
                      'curr_price': (row[1]),
-                     'curr_scrape_date':(row[1]),
-                     'prev_price':(row[1]),
-                     'prev_scrape_date':(row[1])
+                     'curr_scrape_date':(row[2]),
+                     'prev_price':(row[3]),
+                     'prev_scrape_date':(row[4])
                      } for row in result
                     ]
 

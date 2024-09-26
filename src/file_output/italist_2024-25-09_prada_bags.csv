@@ -1,64 +1,64 @@
-Scraped: 2024-25-09 
+Scraped: 2024-26-09 
 Query: prada-bags 
-product_id,brand,product_name,curr_price,curr_scrape_date,prev_price,prev_scrape_date
+product_id,brand,product_name,curr_price
 ---------------------- 
-14699240-14531549,Prada,Black Re-nylon Beauty Case,USD 410
-14696885-14529194,Prada,Shoulder Bag,USD 38999
-14696866-14529175,Prada,Black Leather Cleo Shoulder Bag,USD 31333 
-14696865-14529174,Prada,Brown Suede Prada Buckle Large Handbag,USD 482323 
-14687555-14519864,Prada,Printed Leather Mini Galleria Handbag,USD 422312
-14687437-14519746,Prada,Shoulder Bag,USD 12444
-14679027-14511336,Prada,Light Grey Leather Arquã¨ Handbag,USD 2167 
-14679026-14511335,Prada,Brown Suede Large Shoulder Bag,USD 3134 
-14670757-14503066,Prada,Black Nylon Small Backpack,USD 1749
-14664354-14496663,Prada,Caramel Leather Re-edition 1978 Bucket Bag,USD 1877 
-14664353-14496662,Prada,Black Nappa Leather Mini Bucket Bag,USD 2167 
-14664352-14496661,Prada,Black Leather Bucket Bag,USD 3134 
-14650505-14482814,Prada,Logo Medium Tote Bag,USD 3361
-14650492-14482801,Prada,Caramel Leather Crossbody Bag,USD 219
-14645226-14477535,Prada,Shoulder Bag,USD 2537
-14628287-14460596,Prada,Light Pink Leather Crossbody Bag,USD 2747 
-14625136-14457445,Prada,Caramel Leather Crossbody Bag,USD 2071 
-14625132-14457441,Prada,Grey Leather Crossbody Bag,USD 2747 
-14625131-14457440,Prada,Caramel Leather Mini Prada Re-edition Shoulder Bag,USD 2071 
-14625130-14457439,Prada,Black Leather Mini Prada Re-edition Shoulder Bag,USD 2071 
-14625129-14457438,Prada,Pastel Yellow Leather Arquã¨ Handbag,USD 2167 
-14597352-14429661,Prada,Black Leather Shopping Bag,USD 4198 
-14573761-14406070,Prada,Embroidered Fabric Large Symbole Shopping Bag,USD 2747 
-14572513-14404822,Prada,Caramel Leather Crossbody Bag,USD 2167 
-14568709-14401018,Prada,Shoulder Bag,USD 3955
-14568707-14401016,Prada,Belted Handbag,USD 4986
-14565352-14397661,Prada,Caramel Leather Shopping Bag,USD 3424 
-14565351-14397660,Prada,Caramel Leather Shopping Bag,USD 3811 
-14565350-14397659,Prada,Raffia Crossbody Bag,USD 2071 
-14565349-14397658,Prada,Black Raffia Crossbody Bag,USD 2071 
-14565340-14397649,Prada,Embroidered Fabric Large Symbole Shopping Bag,USD 2941 
-14565339-14397648,Prada,Embroidered Fabric Large Symbole Shopping Bag,USD 2747 
-14565338-14397647,Prada,Embroidered Fabric Micro Symbole Handbag,USD 1926 
-14565337-14397646,Prada,Embroidered Fabric Small Symbole Shopping Bag,USD 2554 
-14558494-14390803,Prada,Embroidered Fabric Small Symbole Shopping Bag,USD 2554 
-14557360-14389669,Prada,Embroidered Fabric Small Symbole Shopping Bag,USD 2554 
-14554718-14387027,Prada,Cappuccino Leather Shoulder Bag,USD 2511
-14551812-14384121,Prada,Black Leather Crossbody Bag,USD 2189
-14533201-14365510,Prada,Black Leather Crossbody Bag,USD 2167 
-14517370-14349679,Prada,Midnight Blue Re-nylon Large Re-edition 1978 Shopping Bag,USD 1684 
-14517368-14349677,Prada,White Leather Cleo Shoulder Bag,USD 2554 
-14517365-14349674,Prada,Sand Leather Small Panier Handbag,USD 2844 
-14463824-14296133,Prada,Black Leather Crossbody Bag,USD 2071 
-14455300-14287609,Prada,Re-edition 1978 Re-nylon And Saffiano Large Black Top Case,USD 2457
-14445396-14277705,Prada,Light Pink Leather Shoulder Bag,USD 2361 
-14385668-14217977,Prada,Mud Re-nylon Large Re-edition 1978 Shopping Bag,USD 1684 
-14633205-14465514,Prada,Leather Crossbody Medium Bag,USD 2163
-14627108-14459417,Prada,Prada Buckle Small Leather Bag,USD 3477
-14627105-14459414,Prada,Prada Buckle Leather Bag,USD 3982
-14602957-14435266,Prada,Tote,USD 2091
-14602956-14435265,Prada,Tote,USD 3361
-14602953-14435262,Prada,Backpack,USD 1554
-14602941-14435250,Prada,Shoulder Bag,USD 1115
-14586701-14419010,Prada,Prada Arqué Leather Shoulder Bag,USD 2264
-14566061-14398370,Prada,Tote,USD 1896
-14530345-14362654,Prada,Tote,USD 968
-14628464-14460773,Prada,Caramel Leather Shopping Bag,USD 4198 
-14609462-14441771,Prada,Cleo Shoulder Bag,USD 2554 
-14598217-14430526,Prada,Calf Leather Pouch,USD 1115
-14544713-14377022,Prada,Caramel Leather Medium Prada Buckle Handbag,USD 4097
+14699240-14531549,Prada,Black Re-nylon Beauty Case,418
+14696885-14529194,Prada,Shoulder Bag,3955
+14696866-14529175,Prada,Black Leather Cleo Shoulder Bag,3714
+14696865-14529174,Prada,Brown Suede Prada Buckle Large Handbag,4681
+14687555-14519864,Prada,Printed Leather Mini Galleria Handbag,4294
+14687437-14519746,Prada,Shoulder Bag,1174
+14679027-14511336,Prada,Light Grey Leather Arquã¨ Handbag,2167
+14679026-14511335,Prada,Brown Suede Large Shoulder Bag,3134
+14670757-14503066,Prada,Black Nylon Small Backpack,1749
+14664354-14496663,Prada,Caramel Leather Re-edition 1978 Bucket Bag,1877
+14664353-14496662,Prada,Black Nappa Leather Mini Bucket Bag,2167
+14664352-14496661,Prada,Black Leather Bucket Bag,3134
+14650505-14482814,Prada,Logo Medium Tote Bag,3361
+14650492-14482801,Prada,Caramel Leather Crossbody Bag,2189
+14645226-14477535,Prada,Shoulder Bag,2537
+14628287-14460596,Prada,Light Pink Leather Crossbody Bag,2747
+14625136-14457445,Prada,Caramel Leather Crossbody Bag,2071
+14625132-14457441,Prada,Grey Leather Crossbody Bag,2747
+14625131-14457440,Prada,Caramel Leather Mini Prada Re-edition Shoulder Bag,2071
+14625130-14457439,Prada,Black Leather Mini Prada Re-edition Shoulder Bag,2071
+14625129-14457438,Prada,Pastel Yellow Leather Arquã¨ Handbag,2167
+14597352-14429661,Prada,Black Leather Shopping Bag,4198
+14573761-14406070,Prada,Embroidered Fabric Large Symbole Shopping Bag,2747
+14572513-14404822,Prada,Caramel Leather Crossbody Bag,2167
+14568709-14401018,Prada,Shoulder Bag,3955
+14568707-14401016,Prada,Belted Handbag,4986
+14565352-14397661,Prada,Caramel Leather Shopping Bag,3424
+14565351-14397660,Prada,Caramel Leather Shopping Bag,3811
+14565350-14397659,Prada,Raffia Crossbody Bag,2071
+14565349-14397658,Prada,Black Raffia Crossbody Bag,2071
+14565340-14397649,Prada,Embroidered Fabric Large Symbole Shopping Bag,2941
+14565339-14397648,Prada,Embroidered Fabric Large Symbole Shopping Bag,2747
+14565338-14397647,Prada,Embroidered Fabric Micro Symbole Handbag,1926
+14565337-14397646,Prada,Embroidered Fabric Small Symbole Shopping Bag,2554
+14558494-14390803,Prada,Embroidered Fabric Small Symbole Shopping Bag,2554
+14557360-14389669,Prada,Embroidered Fabric Small Symbole Shopping Bag,2554
+14554718-14387027,Prada,Cappuccino Leather Shoulder Bag,2511
+14551812-14384121,Prada,Black Leather Crossbody Bag,2189
+14533201-14365510,Prada,Black Leather Crossbody Bag,2167
+14517370-14349679,Prada,Midnight Blue Re-nylon Large Re-edition 1978 Shopping Bag,1684
+14517368-14349677,Prada,White Leather Cleo Shoulder Bag,2554
+14517365-14349674,Prada,Sand Leather Small Panier Handbag,2844
+14463824-14296133,Prada,Black Leather Crossbody Bag,2071
+14455300-14287609,Prada,Re-edition 1978 Re-nylon And Saffiano Large Black Top Case,2457
+14445396-14277705,Prada,Light Pink Leather Shoulder Bag,2361
+14385668-14217977,Prada,Mud Re-nylon Large Re-edition 1978 Shopping Bag,1684
+14633205-14465514,Prada,Leather Crossbody Medium Bag,2163
+14627108-14459417,Prada,Prada Buckle Small Leather Bag,3477
+14627105-14459414,Prada,Prada Buckle Leather Bag,3982
+14602957-14435266,Prada,Tote,2091
+14602956-14435265,Prada,Tote,3361
+14602953-14435262,Prada,Backpack,1554
+14602941-14435250,Prada,Shoulder Bag,1115
+14586701-14419010,Prada,Prada Arqué Leather Shoulder Bag,2264
+14566061-14398370,Prada,Tote,1896
+14530345-14362654,Prada,Tote,968
+14628464-14460773,Prada,Caramel Leather Shopping Bag,4198
+14609462-14441771,Prada,Cleo Shoulder Bag,2554
+14598217-14430526,Prada,Calf Leather Pouch,1115
+14544713-14377022,Prada,Caramel Leather Medium Prada Buckle Handbag,4097

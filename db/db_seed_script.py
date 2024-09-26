@@ -53,7 +53,9 @@ with open(sample_seed_data_path,'r') as file:
         product_id = row[0]
         brand = row[1]
         product_name = row[2]
-        curr_price = row[3].split()[1] #extract price from string Ex. "USD 1195"
+        # curr_price = row[3].split()[1] #extract price from string Ex. "USD 1195"
+        curr_price = row[3]
+
         prev_price = curr_price
 
         curr_scrape_date = scrape_date_obj
