@@ -102,13 +102,15 @@ with open(test_input_file,mode='r') as file:
 
     #gets header and goes to next line
     headers = next(csv_reader)  
-   
+    #skip "------- in csv"
+    next(csv_reader)
  
     #switch to csv.DictReader for rest of row for reading product data
     csv_reader = csv.DictReader(file,fieldnames=headers)
     # Iterate over each row and print product data
     for row in csv_reader:
-
+        
+        
         print(chalk.red(f"ID: {row['product_id']}, "
             f"Brand: {row['brand']}, "
             f"Product: {row['product_name']},"
@@ -160,10 +162,10 @@ with open(test_input_file,mode='r') as file:
             
                 updated_products.append(temp)
 
-            print(f"updated product")
+            print(chalk.yellow(f"updated product {temp}"))
             #mark as seen by popping 'seen' product from db dictionary - what remains are db items thaat are no longer on website anymore - meaning they are sold
             existing_product_id_prices_dict.pop(row['product_id'])
-            print(f"product popped")
+            print(chalk.red(f"product popped - marked as seen"))
             
            
         #if scraped product not in db - this is a new product
@@ -174,21 +176,23 @@ with open(test_input_file,mode='r') as file:
                 'product_name':row['product_name'],
                 'curr_price':row['curr_price'],
                 'curr_scrape_date': scrape_date,
-                'prev_price': row['curr_price'],
-                'prev_scrape_date':scrape_date
+                'prev_price': row['curr_price'],  #no prev price, use curr as initial val
+                'prev_scrape_date':scrape_date  #no prev scrape date, use curr date as initial val
             }
+            print(chalk.green(f"new product to be added {temp}"))
             #if no, push product to new_products array to be bulk inserted to db later
             new_products.append(temp)
 
 # #empty check - if any values left, these were not found in scraped data, meaning they are sold           
 # print(f" sold items - {existing_product_id_prices_dict}")
 
-#4 - bulk udate new products
+#4 - bulk update existing products
+# bulk_update_existing(updated_products)
+# print(f"items to be updated {updated_products}")
 
-bulk_update_existing(updated_products)
-
-#5- bulk insert new products
-# bulk_insert_new(updated_products)
+# 5- bulk insert new products
+# print(f"new items to insert {new_products}")
+bulk_insert_new(new_products)
 
 #6 - mark items that remain in existing_product_ids as sold
 
