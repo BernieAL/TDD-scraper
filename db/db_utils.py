@@ -168,6 +168,49 @@ def bulk_update_existing(update_products):
     print(f"Bulk update successful. {cur.rowcount} rows updated.")
 
 
+def bulk_update_sold(sold_products):
+
+    """sold_products is exisint_product_id_prices_dict rec'd from compare_data.py
+        
+       Structure is:
+        existing_product_id_prices_dict[product_id] = {'curr_price':curr_price,
+                                                        'curr_scrape_date':curr_scrape_date,
+                                                        'prev_price':prev_price,
+                                                        'prev_scrape_date':prev_scrape_date,
+                                                        }
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        update_sold_query = """
+                            UPDATE products
+                            SET sold_date = %s,
+                                sold = %s
+                            WHERE product_id = %s
+                            """
+        update_data_as_tuples = []
+        for k,v in sold_products.items():
+            product_id = k
+            sold_date = v['curr_scrape_date']
+            sold = True
+            update_data_as_tuples.append((sold_date,sold,product_id))
+
+        print(update_data_as_tuples)
+        # #create list of tuples from sold_products list of dicts     
+        # update_data_as_tuples = [(product['curr_scrape_date'], # using curr as sold_date
+        #                           True,                        #  setting from F to T
+        #                           product['product_id']) 
+        #                        for product in sold_products]
+        cur.executemany(update_sold_query,update_data_as_tuples)
+        conn.commit()
+    except Exception as e:
+        print(f"(BULK_UPDATE-SOLD) - An error occurred: {e}")
+        conn.rollback()  # Rollback in case of error
+    
+     # Print a success message if no exception occurred
+    print(f"Bulk update of sold products successful. {cur.rowcount} rows updated.")
+
 def bulk_insert_new(new_products):
     
     """

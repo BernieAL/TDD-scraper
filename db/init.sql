@@ -13,7 +13,9 @@ CREATE TABLE products (
     curr_price DECIMAL(10, 2),
     curr_scrape_date DATE,
     prev_price DECIMAL(10, 2),
-    prev_scrape_date DATE
+    prev_scrape_date DATE,
+    sold_date DATE,
+    sold BOOLEAN
 );
 
 

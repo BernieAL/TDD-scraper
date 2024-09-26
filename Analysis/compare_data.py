@@ -13,7 +13,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 #now import will work
-from db.db_utils import fetch_product_ids_prices_dates, bulk_update_existing, bulk_insert_new
+from db.db_utils import fetch_product_ids_prices_dates, bulk_update_existing, bulk_insert_new,bulk_update_sold
 
 
 #get path to current file
@@ -177,7 +177,10 @@ with open(test_input_file,mode='r') as file:
                 'curr_price':row['curr_price'],
                 'curr_scrape_date': scrape_date,
                 'prev_price': row['curr_price'],  #no prev price, use curr as initial val
-                'prev_scrape_date':scrape_date  #no prev scrape date, use curr date as initial val
+                'prev_scrape_date':scrape_date,  #no prev scrape date, use curr date as initial val
+                'sold_date':None,
+                'sold':False
+
             }
             print(chalk.green(f"new product to be added {temp}"))
             #if no, push product to new_products array to be bulk inserted to db later
@@ -186,15 +189,17 @@ with open(test_input_file,mode='r') as file:
 # #empty check - if any values left, these were not found in scraped data, meaning they are sold           
 # print(f" sold items - {existing_product_id_prices_dict}")
 
-#4 - bulk update existing products
+# #4 - bulk update existing products
 # bulk_update_existing(updated_products)
-# print(f"items to be updated {updated_products}")
+# # print(f"items to be updated {updated_products}")
 
-# 5- bulk insert new products
-# print(f"new items to insert {new_products}")
-bulk_insert_new(new_products)
+# # 5- bulk insert new products
+# # print(f"new items to insert {new_products}")
+# bulk_insert_new(new_products)
 
 #6 - mark items that remain in existing_product_ids as sold
+bulk_update_sold(existing_product_id_prices_dict)
+
 
         
 

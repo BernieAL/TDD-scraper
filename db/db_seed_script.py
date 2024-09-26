@@ -49,19 +49,23 @@ with open(sample_seed_data_path,'r') as file:
     
 
     for row in csv_reader:
-       
+        """csv row structure -> product_id,brand,product_name,curr_price"""
         product_id = row[0]
         brand = row[1]
         product_name = row[2]
         # curr_price = row[3].split()[1] #extract price from string Ex. "USD 1195"
         curr_price = row[3]
+        prev_price = curr_price #no prev price, use curr as initial val
 
-        prev_price = curr_price
+        curr_scrape_date = scrape_date_obj 
+        prev_scrape_date = scrape_date_obj #no prev scrape date, use curr date as initial val
 
-        curr_scrape_date = scrape_date_obj
-        prev_scrape_date = scrape_date_obj
+        sold_date = None
+        sold = False
         
-        print(f"{product_id},{brand},{product_name},{curr_price},{curr_scrape_date},{prev_price},{prev_scrape_date}")
+
+        
+        print(f"{product_id},{brand},{product_name},{curr_price},{curr_scrape_date},{prev_price},{prev_scrape_date},{sold_date},{sold}")
 
         cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,
                                                             brand,
@@ -69,7 +73,9 @@ with open(sample_seed_data_path,'r') as file:
                                                             curr_price,
                                                             curr_scrape_date,
                                                             prev_price,
-                                                            prev_scrape_date))
+                                                            prev_scrape_date,
+                                                            sold_date,
+                                                            sold))
         conn.commit()
         #insert into db
         
