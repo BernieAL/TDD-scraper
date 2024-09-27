@@ -14,7 +14,7 @@ if parent_dir not in sys.path:
 
 #now import will work
 from db.db_utils import fetch_product_ids_prices_dates, bulk_update_existing, bulk_insert_new,bulk_update_sold
-
+from rbmq.price_change_producer import publish_to_queue
 
 #get path to current file
 curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -136,8 +136,11 @@ with open(test_input_file,mode='r') as file:
                     'prev_scrape_date': existing_product_id_prices_dict[row['product_id']]['prev_scrape_date']
                    }
 
-                    
+                   #add to updated_products list 
                    updated_products.append(temp)
+                
+                   #publish product to queue for analysis
+                   publish_to_queue(temp)
 
             #if no change in prices - only update the dates
             else:
@@ -194,7 +197,8 @@ with open(test_input_file,mode='r') as file:
 #6 - mark items that remain in existing_product_ids as sold
 bulk_update_sold(existing_product_id_prices_dict)
 
-
+#after processing all products - send completing signal to queue
+publish_to_queue({"type":"BATCH COMPLETE"})
         
 
 
