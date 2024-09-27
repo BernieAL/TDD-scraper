@@ -20,7 +20,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 
-def publish_to_queue(product):
+def publish_to_queue(product_msg):
     # Set up the connection parameters (use correct RabbitMQ host and credentials)
     connection_params = pika.ConnectionParameters(
         host='localhost',  # Ensure this is the correct host, change if necessary
@@ -34,8 +34,11 @@ def publish_to_queue(product):
     
     channel.queue_declare(queue='price_change_queue',durable=True)
     
-    product['curr_scrape_date'] = (product['curr_scrape_date']).strftime('%Y-%m-%d')
-    product['prev_scrape_date'] = (product['prev_scrape_date']).strftime('%Y-%m-%d')
+
+    #if not not end signal message - convert dates to strings to not throw serialization error cause of datetime format
+    if product_msg.get('type') != 'BATCH_COMPLETE':
+        product_msg['curr_scrape_date'] = (product_msg['curr_scrape_date']).strftime('%Y-%m-%d')
+        product_msg['prev_scrape_date'] = (product_msg['prev_scrape_date']).strftime('%Y-%m-%d')
 
     #   'curr_scrape_date': scrape_date,
     #                 'prev_price': existing_product_id_prices_dict[row['product_id']]['prev_price'],
@@ -45,9 +48,9 @@ def publish_to_queue(product):
     # publish product to quueue
     channel.basic_publish(exchange='', 
                           routing_key='price_change_queue', 
-                          body=json.dumps(product),
+                          body=json.dumps(product_msg),
                           properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent))
-    print(f"Sent task: {product}")
+    print(f"Sent task: {product_msg}")
     connection.close()
 
 if __name__ == "__main__":

@@ -198,7 +198,7 @@ with open(test_input_file,mode='r') as file:
 bulk_update_sold(existing_product_id_prices_dict)
 
 #after processing all products - send completing signal to queue
-publish_to_queue({"type":"BATCH COMPLETE"})
+publish_to_queue({"type":"BATCH_COMPLETE"})
         
 
 
