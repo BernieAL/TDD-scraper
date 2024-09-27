@@ -21,7 +21,7 @@ def main():
 
     # Set up the connection parameters (use correct RabbitMQ host and credentials)
     connection_params = pika.ConnectionParameters(
-        host='rbmq',  # Ensure this is the correct host, change if necessary
+        host='localhost',  # Ensure this is the correct host, change if necessary
         port=5672,          # Default RabbitMQ port
         credentials=pika.PlainCredentials('guest', 'guest')
     )

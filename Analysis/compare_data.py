@@ -71,12 +71,6 @@ for prod in existing_product_ids_prices_dates:
                                                    'prev_price':prev_price,
                                                    'prev_scrape_date':prev_scrape_date,
                                                    }
-# print(chalk.red(existing_product_id_prices_dict))
-# for e in existing_product_ids_and_prices:
-#     product_id = e['product_id']
-#     last_price = float(e['curr_price'])
-#     existing_product_id_prices_dict[product_id] = last_price
-
 
 #2 - read in scraped data and compare these to db product_ids to scraped product_ids
 updated_products = []
