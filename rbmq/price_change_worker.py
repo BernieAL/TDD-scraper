@@ -15,6 +15,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
+from Analysis.price_analysis import get_all_messages
 
 def main():
 
@@ -25,23 +26,35 @@ def main():
         credentials=pika.PlainCredentials('guest', 'guest')
     )
 
-    
+
     # Establish the connection using the connection_params object directly
     connection = pika.BlockingConnection(connection_params)
     
     channel = connection.channel()
     channel.queue_declare(queue='price_change_queue',durable=True) 
     
+    #list to hold recieved messages
+    recd_products = []
+
     def callback(ch,method,properties,body):
 
         msg = json.loads(body)
         ch.basic_ack(delivery_tag = method.delivery_tag)
         print(f"Message received: {msg}")
 
-        if msg.get('type') == 'BATCH_COMPLETE':
-            print('begin batch analysis')
-        else:   
+        if msg.get('type') != 'BATCH_COMPLETE':
             print('product added to queue')
+            recd_products.append(msg) 
+
+        elif msg.get('type') == 'BATCH_COMPLETE':   
+           
+
+            print('begin batch price analysis')
+            get_all_messages(recd_products)
+
+
+            #clear list after processing
+            recd_products.clear()
 
         # res = perform_url_scrape(url)
         # if res == True:
