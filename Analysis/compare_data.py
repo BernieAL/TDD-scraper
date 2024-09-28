@@ -130,7 +130,7 @@ with open(test_input_file,mode='r') as file:
 
                    temp = {
                     'product_id':row['product_id'],               
-                    'curr_price':row['curr_price'],
+                    'curr_price':float(row['curr_price']),
                     'curr_scrape_date': scrape_date,
                     'prev_price': existing_product_id_prices_dict[row['product_id']]['prev_price'],
                     'prev_scrape_date': existing_product_id_prices_dict[row['product_id']]['prev_scrape_date']
@@ -151,7 +151,7 @@ with open(test_input_file,mode='r') as file:
                 #this simplifies logic in upudate function by not having to check if new price is populated or not.
                 temp = {
                     'product_id':row['product_id'],               
-                    'curr_price':row['curr_price'],
+                    'curr_price':float(row['curr_price']),
                     'curr_scrape_date': scrape_date,
                     'prev_price': existing_product_id_prices_dict[row['product_id']]['prev_price'],
                     'prev_scrape_date': existing_product_id_prices_dict[row['product_id']]['prev_scrape_date']
@@ -171,9 +171,9 @@ with open(test_input_file,mode='r') as file:
                 'product_id':row['product_id'],
                 'brand':row['brand'],
                 'product_name':row['product_name'],
-                'curr_price':row['curr_price'],
+                'curr_price':float(row['curr_price']),
                 'curr_scrape_date': scrape_date,
-                'prev_price': row['curr_price'],  #no prev price, use curr as initial val
+                'prev_price': float(row['curr_price']),  #no prev price, use curr as initial val
                 'prev_scrape_date':scrape_date,  #no prev scrape date, use curr date as initial val
                 'sold_date':None,
                 'sold':False

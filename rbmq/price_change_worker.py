@@ -15,7 +15,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Analysis.price_analysis import get_all_messages
+from Analysis.pandas_price_analysis import calc_price_percentage
 
 def main():
 
@@ -50,7 +50,7 @@ def main():
            
 
             print('begin batch price analysis')
-            get_all_messages(recd_products)
+            calc_price_percentage(recd_products)
 
 
             #clear list after processing
