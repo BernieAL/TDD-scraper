@@ -15,7 +15,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Analysis.pandas_price_analysis import calc_price_percentage
+from Analysis.pandas_price_analysis import  calc_percentage_diff_driver
 
 def main():
 
@@ -50,8 +50,16 @@ def main():
            
 
             print('begin batch price analysis')
-            calc_price_percentage(recd_products)
+            try:
+                calc_percentage_diff_driver(recd_products)
+            except Exception as e:
+                print(e)
 
+            
+            try:
+                send_email_with_report()
+            except Exception as e:
+                print(e)
 
             #clear list after processing
             recd_products.clear()
