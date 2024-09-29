@@ -16,7 +16,7 @@ app_password = os.getenv("GOOGLE_APP_PW")
 sender_email = os.getenv("GOOGLE_SENDER_EMAIL")  # Your email
 subject = "Daily Price Change Report"
 
-def send_email_with_report(receiver_email, report_file_path, veh):
+def send_email_with_report(receiver_email, report_file_path, query):
     # Create a secure SSL context
     context = ssl.create_default_context()
 
@@ -27,7 +27,7 @@ def send_email_with_report(receiver_email, report_file_path, veh):
     message['Subject'] = subject
 
     # Email body
-    body = f"Hi there,\n\nPlease find attached the daily price change report for {veh}."
+    body = f"Hi there,\n\nPlease find attached the daily price change report for {query}."
     message.attach(MIMEText(body, 'plain'))
 
     # Attach the report
@@ -46,7 +46,7 @@ def send_email_with_report(receiver_email, report_file_path, veh):
         with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
             server.login(sender_email, app_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
-            print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {receiver_email} - FOR VEH: {veh}"))
+            print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {receiver_email} - FOR VEH: {query}"))
     
     except Exception as e:
         print(chalk.red(f"There was an error sending the email: {e}"))
@@ -55,5 +55,5 @@ if __name__ == "__main__":
     # Example usage
     report_path = 'path_to_report.csv'
     recipient_email = 'user@example.com'
-    vehicle_name = 'Prada Bags'
-    send_email_with_report(recipient_email, report_path, vehicle_name)
+    query_name = 'Prada Bags'
+    send_email_with_report(recipient_email, report_path, query_name)

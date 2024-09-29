@@ -55,10 +55,10 @@ def reorder_columns(df):
     cols = ['price_change_percent_signed'] + [col for col in df.columns if col != 'price_change_percent_signed']
     return df[cols]
 
-# Function to save DataFrame to CSV
-def save_to_csv(df, filename):
-    df.to_csv(filename, index=False)
-    print(f"Filtered DataFrame saved to '{filename}'")
+# # Function to save DataFrame to CSV
+# def save_to_csv(df, filename):
+#     df.to_csv(filename, index=False)
+#     print(f"Filtered DataFrame saved to '{filename}'")
 
 # Main function to run the process
 def calc_percentage_diff_driver(product_data):
@@ -78,9 +78,12 @@ def calc_percentage_diff_driver(product_data):
     df_filtered = filter_percent_changes(df, threshold=5)
     
     # Step 6: Save the filtered DataFrame to CSV
-    save_to_csv(df_filtered, 'filtered_products.csv')
+    report_file_path = 'filtered_products.csv'
+    df_filtered.to_csv(report_file_path,index=False)
     
-    return df_filtered
+    print(f"Filtered DataFrame saved to '{report_file_path}'")
+    
+    return report_file_path
 
 if __name__ == "__main__":
     

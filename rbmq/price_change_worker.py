@@ -16,6 +16,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from Analysis.pandas_price_analysis import  calc_percentage_diff_driver
+from email_sender import send_email_with_report
 
 def main():
 
@@ -50,14 +51,17 @@ def main():
            
 
             print('begin batch price analysis')
+
             try:
-                calc_percentage_diff_driver(recd_products)
+                report_file_path = calc_percentage_diff_driver(recd_products)
+                print(chalk.green("report generated"))
             except Exception as e:
                 print(e)
 
             
             try:
-                send_email_with_report()
+                send_email_with_report('balmanzar883@gmail.com',report_file_path,'Prada bags')
+                print(chalk.green("email sent"))
             except Exception as e:
                 print(e)
 
