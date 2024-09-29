@@ -26,32 +26,62 @@ temp_data = [{'product_id': '14558494-14390803', 'curr_price': 2554.0, 'curr_scr
              {'product_id': '14602957-14435266', 'curr_price': 2091.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2091.0, 'prev_scrape_date': '2024-09-25'},
              {'product_id': '14602956-14435265', 'curr_price': 3361.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3361.0, 'prev_scrape_date': '2024-09-25'}]
 
-def get_all_messages(product_msg_list):
 
+# Function to get all product messages
+def get_all_messages(product_msg_list):
     return product_msg_list
 
-def calc_price_percentage(recd_products):
-    # Get all product messages
-    products = get_all_messages(recd_products)
-
-    # Create DataFrame
-    df = pd.DataFrame(products)
-
-    # Calculate the percentage change between previous and current price
+# Function to calculate percentage change and drop price_change_percent after creating signed version
+def calculate_price_change(df):
+    # Calculate percentage change
     df['price_change_percent'] = ((df['curr_price'] - df['prev_price']) / df['prev_price']) * 100
+    
+    # Add a '+' or '-' sign based on the percentage change
+    df['price_change_percent_signed'] = df['price_change_percent'].apply(
+        lambda x: f"+{x:.2f}%" if x >= 0 else f"{x:.2f}%"
+    )
+    
+    
+    return df
 
-    # Filter for changes of 10% or more
-    ten_percent_changes = df[abs(df['price_change_percent']) >= 10]
+# Function to filter out rows with percent changes less than 5%
+def filter_percent_changes(df, threshold=5):
+    return df[abs(df['price_change_percent_signed'].str.rstrip('%').astype(float)) >= threshold]
 
-    # Filter for changes between 5% and 10%
-    five_percent_changes = df[(abs(df['price_change_percent']) >= 5) & (abs(df['price_change_percent']) < 10)]
+# Function to reorder columns
+def reorder_columns(df):
+     # Drop the original price_change_percent column
+    df = df.drop(columns=['price_change_percent'])
+    cols = ['price_change_percent_signed'] + [col for col in df.columns if col != 'price_change_percent_signed']
+    return df[cols]
 
-    # Print results
-    print("\nProducts with price changes >= 10%:")
-    print(ten_percent_changes[['product_id', 'curr_price', 'prev_price', 'price_change_percent']])
+# Function to save DataFrame to CSV
+def save_to_csv(df, filename):
+    df.to_csv(filename, index=False)
+    print(f"Filtered DataFrame saved to '{filename}'")
 
-    print("\nProducts with price changes >= 5% and < 10%:")
-    print(five_percent_changes[['product_id', 'curr_price', 'prev_price', 'price_change_percent']])
+# Main function to run the process
+def process_price_changes(product_data):
+    # Step 1: Get the data
+    products = get_all_messages(product_data)
+    
+    # Step 2: Create DataFrame
+    df = pd.DataFrame(products)
+    
+    # Step 3: Calculate the price change and drop the original percentage column
+    df = calculate_price_change(df)
+    
+    # Step 4: Reorder columns
+    df = reorder_columns(df)
+    
+    # Step 5: Filter out changes less than 5%
+    df_filtered = filter_percent_changes(df, threshold=5)
+    
+    # Step 6: Save the filtered DataFrame to CSV
+    save_to_csv(df_filtered, 'filtered_products.csv')
+    
+    return df_filtered
 
 if __name__ == "__main__":
-    calc_price_percentage(temp_data)
+    
+    print(process_price_changes(temp_data))
