@@ -180,7 +180,7 @@ def extract_listing_data(listing):
 
     price = get_numeric_only(price)
 
-    return product_id, brand, product_name, price
+    return product_id, brand, product_name, price, listing_url
 
 def build_output_file_name(brand,query):
     """Generates a default output file name based on the current date."""
@@ -219,15 +219,15 @@ def italist_scrape_2(url,brand,query,output_file=None):
             current_date = datetime.now().strftime('%Y-%d-%m')
             file.write(f"Scraped: {current_date} \n")
             file.write(f"Query: {brand}-{query} \n")
-            writer.writerow(['product_id','brand','product_name','curr_price'])
+            writer.writerow(['product_id','brand','product_name','curr_price','listing_url'])
             file.write('---------------------- \n')
 
             #process listings and write to file
             for listing in all_listings[:num_listings]:
-                product_id, brand, product_name, price= extract_listing_data(listing)
+                product_id, brand, product_name, price, listing_url= extract_listing_data(listing)
               
-                writer.writerow([product_id,brand,product_name,price])
-                print(f"Written: {product_id},{brand}, {product_name}, {price}")
+                writer.writerow([product_id,brand,product_name,price,listing_url])
+                print(f"Written: {product_id},{brand}, {product_name}, {price},{listing_url}")
         
         #create copy of file, store in LTR storage
         # copy_file(output_file)

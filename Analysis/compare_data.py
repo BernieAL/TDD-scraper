@@ -140,7 +140,17 @@ with open(test_input_file,mode='r') as file:
                    updated_products.append(temp)
                 
                    #publish product to queue for analysis
-                   publish_to_queue(temp)
+                   #temporary workaround  to include product_name in obj for brevity
+                   temp2_w_product_name = {
+                        'product_name':row['product_name'],
+                        'product_id':row['product_id'],               
+                        'curr_price':float(row['curr_price']),
+                        'curr_scrape_date': scrape_date,
+                        'prev_price': existing_product_id_prices_dict[row['product_id']]['prev_price'],
+                        'prev_scrape_date': existing_product_id_prices_dict[row['product_id']]['prev_scrape_date'],
+                        'listing_url':row['listing_url']
+                    }
+                   publish_to_queue(temp2_w_product_name)
 
             #if no change in prices - only update the dates
             else:

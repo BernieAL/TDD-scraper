@@ -38,7 +38,7 @@ def calculate_price_change(df):
     
     # Add a '+' or '-' sign based on the percentage change
     df['price_change_percent_signed'] = df['price_change_percent'].apply(
-        lambda x: f"+{x:.2f}%" if x >= 0 else f"{x:.2f}%"
+        lambda x: f"+{x:.2f}%" if x >= 0 else f"-{x:.2f}%"
     )
     
     
@@ -64,6 +64,7 @@ def reorder_columns(df):
 def calc_percentage_diff_driver(product_data):
     # Step 1: Get the data
     products = get_all_messages(product_data)
+    print(chalk.green(products))
     
     # Step 2: Create DataFrame
     df = pd.DataFrame(products)

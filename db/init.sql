@@ -15,7 +15,8 @@ CREATE TABLE products (
     prev_price DECIMAL(10, 2),
     prev_scrape_date DATE,
     sold_date DATE,
-    sold BOOLEAN
+    sold BOOLEAN,
+    listing_url VARCHAR(255)
 );
 
 

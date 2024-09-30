@@ -63,9 +63,10 @@ with open(sample_seed_data_path,'r') as file:
         sold_date = None
         sold = False
         
+        listing_url = row[4]
 
         
-        print(f"{product_id},{brand},{product_name},{curr_price},{curr_scrape_date},{prev_price},{prev_scrape_date},{sold_date},{sold}")
+        print(f"{product_id},{brand},{product_name},{curr_price},{curr_scrape_date},{prev_price},{prev_scrape_date},{sold_date},{sold},{listing_url}")
 
         cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,
                                                             brand,
@@ -75,7 +76,8 @@ with open(sample_seed_data_path,'r') as file:
                                                             prev_price,
                                                             prev_scrape_date,
                                                             sold_date,
-                                                            sold))
+                                                            sold,
+                                                            listing_url))
         conn.commit()
         #insert into db
         
