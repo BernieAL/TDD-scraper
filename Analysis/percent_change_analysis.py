@@ -1,11 +1,10 @@
 import pandas as pd 
 from simple_chalk import chalk
+import os,sys
 
 
 """
 define function to receive price difference products - should be incoming as list
-
-
 """
 
 temp_data = [
@@ -44,6 +43,38 @@ temp_data = [
 
 
 
+"""
+create output dir if it doesnt exist 
+
+each output analysis file will be put in output dir
+
+each output file will be structured similar to -> italist_2024-25-09_prada_bags.csv
+   -> PRICE_CHANGE_<source site>_<date>_<brand>_<query>.csv
+"""
+
+def make_output_dir():
+
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    root_dir = os.path.abspath(os.path.join(current_dir,".."))
+
+    output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    return output_dir
+
+def make_output_filename(output_dir,source_filename):
+    """
+    creates output file name for output data 
+    recieves scraped filename currently being from comparison
+
+    append price_change to filename
+    """
+    output_file_name = f"PRICE_CHANGE_{source_filename}"
+    output_file_path = os.path.join(output_dir,output_file_name)
+    return output_file_path
+
 # Function to get all product messages
 def get_all_messages(product_msg_list):
     return product_msg_list
@@ -78,7 +109,14 @@ def reorder_columns(df):
 #     print(f"Filtered DataFrame saved to '{filename}'")
 
 # Main function to run the process
-def calc_percentage_diff_driver(product_data):
+def calc_percentage_diff_driver(source_file,product_data):
+    
+    #create output dir doesnt exist
+    output_dir = make_output_dir()
+
+    #make output file path
+    output_file = make_output_filename(output_dir,source_file)
+    
     # Step 1: Get the data
     products = get_all_messages(product_data)
     print(chalk.green(products))
@@ -96,7 +134,7 @@ def calc_percentage_diff_driver(product_data):
     df_filtered = filter_percent_changes(df, threshold=5)
     
     # Step 6: Save the filtered DataFrame to CSV
-    report_file_path = 'filtered_products.csv'
+    report_file_path = output_file
     df_filtered.to_csv(report_file_path,index=False)
     
     print(f"Filtered DataFrame saved to '{report_file_path}'")
@@ -104,5 +142,11 @@ def calc_percentage_diff_driver(product_data):
     return report_file_path
 
 if __name__ == "__main__":
-    
-    print( calc_percentage_diff_driver(temp_data))
+    calc_percentage_diff_driver('italist_2024-25-09_prada_bags.csv',temp_data)
+    # # print( calc_percentage_diff_driver(temp_data))
+    # make_output_dir()
+    # print(make_output_filename('italist_2024-25-09_prada_bags.csv'))
+
+
+
+

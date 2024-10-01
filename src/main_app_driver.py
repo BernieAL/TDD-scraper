@@ -1,3 +1,11 @@
+"""
+whole app process originates here 
+
+this driver will orchestrate reading input data - which is brands and categories to target and generate reports for
+"""
+
+
+
 import requests,os,csv
 from datetime import datetime
 
@@ -43,23 +51,50 @@ def run_scrapers(brand,query,local):
             if not row:
                 print("skipping row ")
 
-            
+            #if row length is 2, row only has brand and query provided
             if len(row) == 2:
                 brand,query = row
                 print(brand)
                 print(query)
                 italist_driver(brand,query,local)
+                #other website drivers
 
             elif len(row) == 3:
                 brand,query,specific = row
                 #italist_driver not set up for specific item yet
                 # italist_driver(brand,query,specific,local)  
             
+def run_comparisons():
+    """
+    Function to trigger comparison logic for all scraped data.
+    """
+    # Logic to run the comparison across multiple CSV files
+    print("Running comparison on all scraped data...")
+    comparison_script()
+
+
+def driver_function():
+    """
+    Main function to orchestrate the whole process.
+    """
+    brand = "prada"
+    query = "bags"
+    local = True
+
+    # Step 1: Run all scrapers
+    run_scrapers(brand, query, local)
+    
+    # Step 2: Run comparison on scraped data
+    run_comparisons()
+
 
 
 if __name__ == "__main__":
     
-    brand = "prada"
-    query = "bags"
-    local = True
-    run_scrapers(brand,query,local)
+    # brand = "prada"
+    # query = "bags"
+    # local = True
+    # run_scrapers(brand,query,local)
+
+
+    driver_function()

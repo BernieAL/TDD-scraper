@@ -23,7 +23,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 file_output_dir = os.path.join(curr_dir,'..','src','file_output')
 print(os.path.isdir(file_output_dir))
 
-test_input_file = os.path.join(file_output_dir,'italist_2024-26-09_prada_bags.csv')
+input_file = os.path.join(file_output_dir,'italist_2024-26-09_prada_bags.csv')
 
 
 
@@ -78,7 +78,7 @@ new_products = []
 
 
 scraped_data = []
-with open(test_input_file,mode='r') as file:
+with open(input_file,mode='r') as file:
     
     #standard csv reader to skip first lines (meta data) which is csv scrape data and query info
     csv_reader = csv.reader(file)
