@@ -49,21 +49,22 @@ def main():
 
         elif msg.get('type') == 'BATCH_COMPLETE':   
            
-
+            source_file = msg.get('source_file')  # Get the source file name
+            print(chalk.red(source_file))
             print('begin batch price analysis')
 
             try:
-                report_file_path = calc_percentage_diff_driver(recd_products)
+                report_file_path = calc_percentage_diff_driver(recd_products,source_file)
                 print(chalk.green("report generated"))
             except Exception as e:
                 print(e)
 
             
-            try:
-                send_email_with_report('balmanzar883@gmail.com',report_file_path,'Prada bags')
-                print(chalk.green("email sent"))
-            except Exception as e:
-                print(e)
+            # try:
+            #     send_email_with_report('balmanzar883@gmail.com',report_file_path,'Prada bags')
+            #     print(chalk.green("email sent"))
+            # except Exception as e:
+            #     print(e)
 
             #clear list after processing
             recd_products.clear()

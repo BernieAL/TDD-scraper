@@ -71,9 +71,16 @@ def make_output_filename(output_dir,source_filename):
 
     append price_change to filename
     """
-    output_file_name = f"PRICE_CHANGE_{source_filename}"
+    source_filename_extracted = source_filename.split('/')[-1]
+    # print(source_filename)
+    output_file_name = f"PRICE_CHANGE_{source_filename_extracted}"
     output_file_path = os.path.join(output_dir,output_file_name)
     return output_file_path
+
+# output_dir = make_output_dir()
+# t = make_output_filename(output_dir,"/home/ubuntu/Documents/Projects/TDD-scraper/Analysis/../src/file_output/italist_2024-26-09_prada_bags.csv")
+# print(t)
+
 
 # Function to get all product messages
 def get_all_messages(product_msg_list):
@@ -109,13 +116,14 @@ def reorder_columns(df):
 #     print(f"Filtered DataFrame saved to '{filename}'")
 
 # Main function to run the process
-def calc_percentage_diff_driver(source_file,product_data):
+def calc_percentage_diff_driver(product_data,source_file):
     
     #create output dir doesnt exist
     output_dir = make_output_dir()
 
     #make output file path
     output_file = make_output_filename(output_dir,source_file)
+   
     
     # Step 1: Get the data
     products = get_all_messages(product_data)
@@ -141,11 +149,14 @@ def calc_percentage_diff_driver(source_file,product_data):
     
     return report_file_path
 
-if __name__ == "__main__":
-    calc_percentage_diff_driver('italist_2024-25-09_prada_bags.csv',temp_data)
-    # # print( calc_percentage_diff_driver(temp_data))
-    # make_output_dir()
-    # print(make_output_filename('italist_2024-25-09_prada_bags.csv'))
+# if __name__ == "__main__":
+    
+#     input_file = "/home/ubuntu/Documents/Projects/TDD-scraper/Analysis/../src/file_output/italist_2024-26-09_prada_bags.csv"
+#     calc_percentage_diff_driver(temp_data,'italist_2024-25-09_prada_bags.csv')
+#     # # print( calc_percentage_diff_driver(temp_data))
+#     # make_output_dir()
+#     # print(make_output_filename('italist_2024-25-09_prada_bags.csv'))
+    
 
 
 

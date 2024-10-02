@@ -92,7 +92,7 @@ def fetch_product_ids_and_prices(brand):
     except Exception as e:
         print(f"(fetch_products_ids_and_prices) Error: {Exception}")
 
-def fetch_product_ids_prices_dates(brand):
+def DB_fetch_product_ids_prices_dates(brand):
     conn = get_db_connection()
     try:
         cur = conn.cursor()
@@ -120,7 +120,7 @@ def fetch_product_ids_prices_dates(brand):
         print(f"(fetch_products_ids_and_prices) Error: {Exception}")
 
   
-def bulk_update_existing(update_products):
+def DB_bulk_update_existing(update_products):
     """
     Recieves list of dicts containing products to be updated in the db
     Will be dict containing most recent price and date of scrape
@@ -168,7 +168,7 @@ def bulk_update_existing(update_products):
     print(f"Bulk update successful. {cur.rowcount} rows updated.")
 
 
-def bulk_update_sold(sold_products):
+def DB_bulk_update_sold(sold_products):
 
     """sold_products is exisint_product_id_prices_dict rec'd from compare_data.py
         
@@ -266,5 +266,5 @@ def bulk_insert_new(new_products):
 if __name__ == "__main__":
     # print(fetch_product_ids('Prada'))
     # print(fetch_product_ids_and_prices('Prada'))
-    print(fetch_product_ids_prices_dates('Prada'))
+    print(DB_fetch_product_ids_prices_dates('Prada'))
        
