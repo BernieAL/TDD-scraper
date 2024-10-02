@@ -63,12 +63,12 @@ def main():
         print(f"Message received: {msg}")
       
         
-
-        if msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE':
+        #check that msg is product to be added and not end signal
+        if msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE' and msg.get('type') != 'PROCESSED ALL SCRAPED FILES FOR QUERY':
             print('product added to queue')
             recd_products.append(msg) 
 
-
+        #check if msg is end signal for single file
         elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE': 
 
             source_file = msg.get('source_file')  # Get the source file name
@@ -84,10 +84,12 @@ def main():
             # Clear product list after batch processing
             recd_products.clear()
 
+        #check if msg is end signal for all files
         elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':   
            
             
             try:
+                print("end signal rec'd - moving to craft email and attach reports")
                 send_email_with_report('balmanzar883@gmail.com',output_dir,'Prada bags')
                 print(chalk.green("email sent"))
             except Exception as e:
@@ -95,7 +97,7 @@ def main():
 
         # Acknowledge the message only after processing it 
         ch.basic_ack(delivery_tag = method.delivery_tag)
-        
+
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='price_change_queue',on_message_callback=callback)
 

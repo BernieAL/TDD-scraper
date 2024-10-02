@@ -58,7 +58,11 @@ def send_email_with_report(receiver_email, output_dir, query):
 
 if __name__ == "__main__":
     # Example usage
-    report_path = 'path_to_report.csv'
-    recipient_email = 'user@example.com'
+
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    root_dir = os.path.abspath(os.path.join(current_dir,".."))
+
+    output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
+    recipient_email = 'balmanzar883@gmail.com'
     query_name = 'Prada Bags'
-    send_email_with_report(recipient_email, report_path, query_name)
+    send_email_with_report(recipient_email,output_dir,query_name)

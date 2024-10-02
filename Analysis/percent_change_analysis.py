@@ -127,7 +127,7 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
     
     # Step 1: Get the data
     products = get_all_messages(product_data)
-    print(chalk.green(products))
+    # print(chalk.green(products))
     
     # Step 2: Create DataFrame
     df = pd.DataFrame(products)
@@ -147,7 +147,6 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
     
     print(f"Filtered DataFrame saved to '{report_file_path}'")
     
-    return report_file_path
 
 # if __name__ == "__main__":
     
