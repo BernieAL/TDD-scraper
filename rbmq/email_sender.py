@@ -16,7 +16,7 @@ app_password = os.getenv("GOOGLE_APP_PW")
 sender_email = os.getenv("GOOGLE_SENDER_EMAIL")  # Your email
 subject = "Daily Price Change Report"
 
-def send_email_with_report(receiver_email, report_file_path, query):
+def send_email_with_report(receiver_email, output_dir, query):
     # Create a secure SSL context
     context = ssl.create_default_context()
 
@@ -32,15 +32,20 @@ def send_email_with_report(receiver_email, report_file_path, query):
 
     # Attach the report
     try:
-        with open(report_file_path, 'rb') as attachment:
-            part = MIMEBase('application', 'octet-stream')
-            part.set_payload(attachment.read())
-            encoders.encode_base64(part)
-            part.add_header(
-                'Content-Disposition',
-                f'attachment; filename={os.path.basename(report_file_path)}'
-            )
-            message.attach(part)
+        for dirpath,subdir,files in os.walk(output_dir):
+            for report_file in files:
+                
+                file_path = os.path.join(dirpath,report_file)
+
+                with open(file_path, 'rb') as attachment:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment.read())
+                    encoders.encode_base64(part)
+                    part.add_header(
+                        'Content-Disposition',
+                        f'attachment; filename={os.path.basename(report_file)}'
+                    )
+                    message.attach(part)
 
         # Send the email with the report attached
         with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:

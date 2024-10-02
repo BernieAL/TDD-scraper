@@ -18,6 +18,20 @@ if parent_dir not in sys.path:
 from Analysis.percent_change_analysis import  calc_percentage_diff_driver
 from email_sender import send_email_with_report
 
+
+
+def make_output_dir():
+
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    root_dir = os.path.abspath(os.path.join(current_dir,".."))
+
+    output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    return output_dir
+
 def main():
 
     # Set up the connection parameters (use correct RabbitMQ host and credentials)
@@ -37,44 +51,51 @@ def main():
     #list to hold recieved messages
     recd_products = []
 
+    # Create the output directory when the worker starts
+    #dir will be used by percent_change_analysis and email script
+    output_dir = make_output_dir()
+   
+
+
     def callback(ch,method,properties,body):
 
         msg = json.loads(body)
-        ch.basic_ack(delivery_tag = method.delivery_tag)
         print(f"Message received: {msg}")
+      
+        
 
         if msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE':
             print('product added to queue')
             recd_products.append(msg) 
 
-        elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':   
-           
-            # source_file = msg.get('source_file')  # Get the source file name
-            # print(chalk.red(source_file))
+
+        elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE': 
+
+            source_file = msg.get('source_file')  # Get the source file name
+            print(chalk.red(f"Processing source file: {source_file}"))
             print('begin batch price analysis')
 
-            # try:
-            #     report_file_path = calc_percentage_diff_driver(recd_products,source_file)
-            #     print(chalk.green("report generated"))
-            # except Exception as e:
-            #     print(e)
+            try:
+                calc_percentage_diff_driver(output_dir,recd_products,source_file)
+                print(chalk.green("report generated - stored in output dir"))
+            except Exception as e:
+                print(e)
 
+            # Clear product list after batch processing
+            recd_products.clear()
+
+        elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':   
+           
             
-            # try:
-            #     send_email_with_report('balmanzar883@gmail.com',report_file_path,'Prada bags')
-            #     print(chalk.green("email sent"))
-            # except Exception as e:
-            #     print(e)
+            try:
+                send_email_with_report('balmanzar883@gmail.com',output_dir,'Prada bags')
+                print(chalk.green("email sent"))
+            except Exception as e:
+                print(e)
 
-            #clear list after processing
-            # recd_products.clear()
-
-        # res = perform_url_scrape(url)
-        # if res == True:
-        #     print("scrape successful")
-        # if res == False:
-        #     print("scrape unsuccessful")
-
+        # Acknowledge the message only after processing it 
+        ch.basic_ack(delivery_tag = method.delivery_tag)
+        
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='price_change_queue',on_message_callback=callback)
 

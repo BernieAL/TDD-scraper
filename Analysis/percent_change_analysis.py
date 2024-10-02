@@ -52,17 +52,17 @@ each output file will be structured similar to -> italist_2024-25-09_prada_bags.
    -> PRICE_CHANGE_<source site>_<date>_<brand>_<query>.csv
 """
 
-def make_output_dir():
+# def make_output_dir():
 
-    current_dir = os.path.abspath(os.path.dirname(__file__))
-    root_dir = os.path.abspath(os.path.join(current_dir,".."))
+#     current_dir = os.path.abspath(os.path.dirname(__file__))
+#     root_dir = os.path.abspath(os.path.join(current_dir,".."))
 
-    output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
+#     output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+#     if not os.path.exists(output_dir):
+#         os.makedirs(output_dir)
 
-    return output_dir
+#     return output_dir
 
 def make_output_filename(output_dir,source_filename):
     """
@@ -116,10 +116,10 @@ def reorder_columns(df):
 #     print(f"Filtered DataFrame saved to '{filename}'")
 
 # Main function to run the process
-def calc_percentage_diff_driver(product_data,source_file):
+def calc_percentage_diff_driver(output_dir,product_data,source_file):
     
-    #create output dir doesnt exist
-    output_dir = make_output_dir()
+    # #create output dir doesnt exist
+    # output_dir = make_output_dir()
 
     #make output file path
     output_file = make_output_filename(output_dir,source_file)
