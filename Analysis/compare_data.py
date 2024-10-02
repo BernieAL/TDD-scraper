@@ -23,7 +23,7 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 file_output_dir = os.path.join(curr_dir,'..','src','file_output')
 print(os.path.isdir(file_output_dir))
 
-input_file = os.path.join(file_output_dir,'italist_2024-26-09_prada_bags.csv')
+# input_file = os.path.join(file_output_dir,'italist_2024-26-09_prada_bags.csv')
 
 
 
@@ -89,7 +89,7 @@ def db_data_to_dictionary(existing_db_data_list):
     return existing_db_data_dict 
 
 #2 - read in scraped data and compare these to db product_ids to scraped product_ids
-def compare_scraped_data_to_db(existing_product_data_dict):
+def compare_scraped_data_to_db(input_file,existing_product_data_dict):
     updated_products = []
     new_products = []
     scraped_data = []
@@ -222,11 +222,11 @@ def compare_scraped_data_to_db(existing_product_data_dict):
     # DB_bulk_update_sold(existing_product_data_dict)
 
     #after processing all products - send completing signal to queue
-    publish_to_queue({"type": "BATCH_COMPLETE", "source_file": input_file})
+    publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file})
         
 
 
-def compare_driver(input_file_path):
+def compare_driver(scraped_data_file_path):
 
     """
     pass indiv file path?
@@ -235,7 +235,7 @@ def compare_driver(input_file_path):
 
 
     existing_product_ids_prices_dict = db_data_to_dictionary(existing_product_ids_prices_dates_list)
-    compare_scraped_data_to_db(existing_product_ids_prices_dict)
+    compare_scraped_data_to_db(scraped_data_file_path,existing_product_ids_prices_dict)
 
 if __name__ == "__main__":
     

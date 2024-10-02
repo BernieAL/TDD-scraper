@@ -43,21 +43,21 @@ def main():
         ch.basic_ack(delivery_tag = method.delivery_tag)
         print(f"Message received: {msg}")
 
-        if msg.get('type') != 'BATCH_COMPLETE':
+        if msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE':
             print('product added to queue')
             recd_products.append(msg) 
 
-        elif msg.get('type') == 'BATCH_COMPLETE':   
+        elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':   
            
-            source_file = msg.get('source_file')  # Get the source file name
-            print(chalk.red(source_file))
+            # source_file = msg.get('source_file')  # Get the source file name
+            # print(chalk.red(source_file))
             print('begin batch price analysis')
 
-            try:
-                report_file_path = calc_percentage_diff_driver(recd_products,source_file)
-                print(chalk.green("report generated"))
-            except Exception as e:
-                print(e)
+            # try:
+            #     report_file_path = calc_percentage_diff_driver(recd_products,source_file)
+            #     print(chalk.green("report generated"))
+            # except Exception as e:
+            #     print(e)
 
             
             # try:
@@ -67,7 +67,7 @@ def main():
             #     print(e)
 
             #clear list after processing
-            recd_products.clear()
+            # recd_products.clear()
 
         # res = perform_url_scrape(url)
         # if res == True:
