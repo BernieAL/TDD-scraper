@@ -13,7 +13,7 @@ import time
 import random
 import pytest
 import pandas as pd
-
+from simple_chalk import chalk
 
 # from scrapers.italist_scraper import italist_driver
 
@@ -41,6 +41,38 @@ from rbmq.price_change_producer import publish_to_queue
 recipient_email = "balmanzar883@gmail.com"
 
 
+
+
+def make_filtered_sub_dir(source,date,query):
+
+    """
+    after specific filtering takes place 
+    fitlered csv will be stored in new filtered subdir inside of file_output
+    this function creates the new sub dir to store the csv in
+    """
+    name = f"FILTERED_{source}_{date}_{query}"
+    new_sub_dir = os.path.join(scraped_data_dir,name)
+    if not os.path.exists(new_sub_dir):
+        os.makedirs(new_sub_dir)
+
+    return new_sub_dir
+
+def parse_file_name(file):
+
+    file_path_tokens = file.split('/')[-1]
+    file_name_tokens = file_path_tokens.split('_')
+    source = file_name_tokens[0]
+    date = file_name_tokens[1]
+    query = f"{file_name_tokens[2]}_{file_name_tokens[3].split('.')[0]}"
+    print(query)
+
+    return source,date,query
+
+# dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
+# print(os.path.isfile(dummy_scrape_data_file_path))
+# parse_file_name(dummy_scrape_data_file_path)
+
+
 def filter_specific(scraped_data_file,specific_item):
 
     try:
@@ -52,10 +84,24 @@ def filter_specific(scraped_data_file,specific_item):
         print(fitlered_df)
     except Exception as e:
         print(f"file not found {e}")
+    print(scraped_data_file)
+    try:
+       
+        #create subdir to store filtered files
+        source,date,query = parse_file_name(scraped_data_file)
+        new_filtered_filename = f"FILTERED_{source}_{date}_{query}"
+        new_subdir = make_filtered_sub_dir(source,scraped_data_file)
+        
+       
+        # df.csv(os.path.join(new_subdir,new_filtered_filename))
+    except Exception as e:
+        pass
 
-dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
-print(os.path.isfile(dummy_scrape_data_file_path))
-filter_specific(dummy_scrape_data_file_path,'Brown Suede Prada Buckle Large Handbag') 
+
+
+# dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
+# print(os.path.isfile(dummy_scrape_data_file_path))
+# filter_specific(dummy_scrape_data_file_path,'Brown Suede Prada Buckle Large Handbag') 
 
 def read_user_input_data(user_query_data_file):
     """
@@ -107,6 +153,8 @@ def run_scrapers_with_data(parsed_data):
 
     :param parsed_data: List of tuples containing (brand, query, specific_item).
     """
+
+    
     for entry in parsed_data:
         brand, query, specific_item = entry
         
@@ -122,7 +170,7 @@ def run_scrapers_with_data(parsed_data):
             print(os.path.isfile(dummy_scrape_data_file_path))
 
             #then pass file for specific filtering - store in filtered dir
-            filtered_dir = filter_specific(dummy_scrape_data_file_path)
+            filtered_dir = filter_specific(source,dummy_scrape_data_file_path)
                 #create filtered dir for this date and query 
 
             #return filtered_dir to be used in comparison
