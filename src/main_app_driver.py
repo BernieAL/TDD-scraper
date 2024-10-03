@@ -12,7 +12,7 @@ from datetime import datetime
 import time
 import random
 import pytest
-
+import pandas as pd
 
 
 # from scrapers.italist_scraper import italist_driver
@@ -34,40 +34,106 @@ user_query_data_file = os.path.join(curr_dir,'input_data','search_criteria.csv')
 scraped_data_dir = os.path.join(curr_dir,'file_output')
 # print(scraped_data_dir)
 
-from Analysis.compare_data import compare_driver
+# from Analysis.compare_data import compare_driver
 from rbmq.price_change_producer import publish_to_queue
 
 
+recipient_email = "balmanzar883@gmail.com"
 
-def run_scrapers(brand,query,local):
 
+def filter_specific(scraped_data_file,specific_item):
+
+    try:
+        df = pd.read_csv(scraped_data_file,skiprows=2)
+        df = df.dropna()
+        print(df.head())
+
+        fitlered_df = df[df['product_name'] == specific_item]
+        print(fitlered_df)
+    except Exception as e:
+        print(f"file not found {e}")
+
+dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
+print(os.path.isfile(dummy_scrape_data_file_path))
+filter_specific(dummy_scrape_data_file_path,'Brown Suede Prada Buckle Large Handbag') 
+
+def read_user_input_data(user_query_data_file):
     """
-        this is the driver script for all website scrapers
+    Reads and parses user input data from a CSV file. The data can have 2 or 3 parts 
+    (brand and query, or brand, query, and specific item).
+
+    :param user_query_data_file: Path to the CSV file containing user queries.
+    :return: List of tuples where each tuple is (brand, query, specific_item).
+             specific_item is None if not provided.
     """
-    with open(user_query_data_file,'r',newline='',encoding='utf-8') as file:
-        csv_reader = csv.reader(file)
-        
-        header = next(csv_reader) #skip header row
-        for row in csv_reader:
-            # print(row)
-            if not row:
-                print("skipping row ")
-
-            #if row length is 2, row only has brand and query provided
-            if len(row) == 2:
-                brand,query = row
-                print(brand)
-                print(query)
-                print(f"2 part query -- {brand}-{query}")
-                # italist_driver(brand,query,local)
-                #other website drivers
-
-            elif len(row) == 3:
-                brand,query,specific = row
-                print(f"3 part query -- {brand}-{query}-{specific}")
-                #italist_driver not set up for specific item yet
-                # italist_driver(brand,query,specific,local)  
+    parsed_data = []
+    
+    try:
+        with open(user_query_data_file, 'r', newline='', encoding='utf-8') as file:
+            csv_reader = csv.reader(file)
             
+            header = next(csv_reader)  # Skip the header row
+            for row in csv_reader:
+                if not row or all(field.strip() == '' for field in row):
+                    print("Skipping empty row.")
+                    continue  # Skip empty or whitespace-only rows
+                
+                # Handle 2-part and 3-part input
+                if len(row) == 2:
+                    brand, query = row
+                    specific_item = None
+                elif len(row) == 3:
+                    brand, query, specific_item = row
+                else:
+                    print(f"Invalid row format: {row}")
+                    continue
+                
+                # Validate input fields
+                if not brand.strip() or not query.strip():
+                    print(f"Invalid brand or query: {brand}, {query}")
+                    continue
+
+                parsed_data.append((brand.strip(), query.strip(), specific_item.strip() if specific_item else None))
+
+        return parsed_data
+
+    except Exception as e:
+        print(f"Error reading user input data: {e}")
+        return []  # Return an empty list if an error occurs
+
+def run_scrapers_with_data(parsed_data):
+    """
+    Receives parsed data and runs the scraper functions accordingly.
+
+    :param parsed_data: List of tuples containing (brand, query, specific_item).
+    """
+    for entry in parsed_data:
+        brand, query, specific_item = entry
+        
+        print(f"Running scrapers for: {brand}, {query}, {specific_item}")
+        
+        # Call scraper functions based on the parsed input
+        if specific_item:
+            # If specific item is provided (3-part query)
+
+            #perform scrape
+            # italist_driver(brand, query, specific_item, local)
+            dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
+            print(os.path.isfile(dummy_scrape_data_file_path))
+
+            #then pass file for specific filtering - store in filtered dir
+            filtered_dir = filter_specific(dummy_scrape_data_file_path)
+                #create filtered dir for this date and query 
+
+            #return filtered_dir to be used in comparison
+            return filtered_dir
+           
+        else:
+            # If only brand and query are provided (2-part query)
+            # italist_driver(brand, query, local)
+            pass  # Replace with actual function call
+        
+   
 def run_comparisons(scraped_data_dir):
     """
     Function to trigger comparison logic for all scraped data.
@@ -82,7 +148,7 @@ def run_comparisons(scraped_data_dir):
 
     #once all scraped files processed - send signal to attach price diff reports to email and send
     #signal sent directly to queue worker
-    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY"})
+    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":recipient_email})
 
 def driver_function():
     """
@@ -93,12 +159,14 @@ def driver_function():
     local = True
 
 
+    input_data = read_user_input_data(user_query_data_file)
+
 
     # # Step 1: Run all scrapers
-    # run_scrapers(brand, query, local)
+    run_scrapers_with_data(input_data)
     
-    # Step 2: Run comparison on scraped data
-    run_comparisons(scraped_data_dir)
+    # # Step 2: Run comparison on scraped data
+    # run_comparisons(scraped_data_dir)
 
 
 
@@ -109,5 +177,5 @@ if __name__ == "__main__":
     # local = True
     # run_scrapers(brand,query,local)
 
-
-    driver_function()
+    pass
+    # driver_function()

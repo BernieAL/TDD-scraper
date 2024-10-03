@@ -13,7 +13,7 @@ define function to receive price difference products - should be incoming as lis
 #     root_dir = os.path.abspath(os.path.join(current_dir,".."))
 
 #     output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
-s
+
 #     if not os.path.exists(output_dir):
 #         os.makedirs(output_dir)
 
@@ -155,7 +155,7 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
         df_filtered.to_csv(report_file_path,index=False)
         
         print(f"Filtered DataFrame saved to '{report_file_path}'")
-    except:
+    except Exception as e:
         print(chalk.red(f"Error in the price difference calculation process: {e}"))
        
 
