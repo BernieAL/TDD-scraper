@@ -64,9 +64,6 @@ def make_filtered_sub_dir(source,date,query):
     # print(new_sub_dir)
     return new_sub_dir
 
-
-
-
 def parse_file_name(file):
 
     file_path_tokens = file.split('/')[-1]
@@ -78,16 +75,16 @@ def parse_file_name(file):
 
     return source,date,query
 
-
-
 def filter_specific(scraped_data_file,specific_item):
 
     try:
         df = pd.read_csv(scraped_data_file,skiprows=2)
         df = df.dropna()
+        print(df)
         # print(df.head())
 
         fitlered_df = df[df['product_name'] == specific_item]
+        
         # print(fitlered_df)
     except Exception as e:
         print(f"file not found {e}")
@@ -97,7 +94,7 @@ def filter_specific(scraped_data_file,specific_item):
         
         source,date,query = parse_file_name(scraped_data_file)
         hash = generate_hash(query,date)
-        new_filtered_filename = f"FILTERED_{source}_{date}_{query}_{hash}"
+        new_filtered_filename = f"FILTERED_{source}_{date}_{query}_{hash}.csv"
         print(f"new filtered_filename {new_filtered_filename}")
 
         #create subdir to store filtered files
@@ -105,15 +102,17 @@ def filter_specific(scraped_data_file,specific_item):
         print(f"new filtered subdir {new_subdir}")
         
         print(os.path.join(new_subdir,new_filtered_filename))
-        fitlered_df.to_csv(os.path.join(new_subdir,new_filtered_filename))
+        fitlered_df.to_csv(os.path.join(new_subdir,new_filtered_filename),index=False)
+
+        return new_subdir
     except Exception as e:
         pass
 
 
 
-dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
-print(os.path.isfile(dummy_scrape_data_file_path))
-filter_specific(dummy_scrape_data_file_path,'Brown Suede Prada Buckle Large Handbag') 
+# dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
+# print(os.path.isfile(dummy_scrape_data_file_path))
+# filter_specific(dummy_scrape_data_file_path,'Brown Suede Prada Buckle Large Handbag') 
 
 def read_user_input_data(user_query_data_file):
     """
@@ -159,41 +158,57 @@ def read_user_input_data(user_query_data_file):
         print(f"Error reading user input data: {e}")
         return []  # Return an empty list if an error occurs
 
-def run_scrapers_with_data(parsed_input_data):
+
+# --------------------------------------------------------
+def run_scrapers(parsed_input_data):
     """
     Receives parsed data and runs the scraper functions accordingly.
 
     :param parsed_data: List of tuples containing (brand, query, specific_item).
     """
-
     
-    for entry in parsed_input_data:
-        brand, query, specific_item = entry
+    try:
+        # Generate a hash based on query and date
+        query_hash = generate_hash(query, date)
+    
+        # Create the directory name for the raw scraped data
+        dir_name = f"RAW_SCRAPE_{date}_{query}_{query_hash}"
+        new_sub_dir = os.path.join(scraped_data_dir, dir_name)
         
-        print(f"Running scrapers for: {brand}, {query}, {specific_item}")
+        # Create the sub-directory if it doesn't exist
+        if not os.path.exists(new_sub_dir):
+            os.makedirs(new_sub_dir)
+    
+    except Exception as e:
+        print(f"Error while creating sub-directory for raw scrape: {e}")
+        return None  # If the directory creation fails, return None
+    
+    # Running scrapers for different sites
+    try:
+        italist(new_sub_dir, query)
+    except Exception as e:
+        print(f"Error while running italist scraper: {e}")
+    
+    try:
+        site_a(new_sub_dir, query)
+    except Exception as e:
+        print(f"Error while running site_a scraper: {e}")
+    
+    try:
+        site_b(new_sub_dir, query)
+    except Exception as e:
+        print(f"Error while running site_b scraper: {e}")
+    
+    try:
+        site_c(new_sub_dir, query)
+    except Exception as e:
+        print(f"Error while running site_c scraper: {e}")
+    
+    # Return the subdirectory where the scraped files are stored
+    return new_sub_dir
+
         
-        # Call scraper functions based on the parsed input
-        if specific_item:
-            # If specific item is provided (3-part query)
-
-            #perform scrape
-            # italist_driver(brand, query, specific_item, local)
-            dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
-            print(os.path.isfile(dummy_scrape_data_file_path))
-
-            #then pass file for specific filtering - store in filtered dir
-            filtered_dir = filter_specific(source,dummy_scrape_data_file_path)
-                #create filtered dir for this date and query 
-
-            #return filtered_dir to be used in comparison
-            return filtered_dir
-           
-        else:
-            # If only brand and query are provided (2-part query)
-            # italist_driver(brand, query, local)
-            pass  # Replace with actual function call
         
-   
 def run_comparisons(scraped_data_dir):
     """
     Function to trigger comparison logic for all scraped data.
@@ -214,20 +229,46 @@ def driver_function():
     """
     Main function to orchestrate the whole process.
     """
-    brand = "prada"
-    query = "bags"
-    local = True
-
-
-    input_data = read_user_input_data(user_query_data_file)
-
-
-    # # Step 1: Run all scrapers
-    run_scrapers_with_data(input_data)
+    specific_flag = False
     
-    # # Step 2: Run comparison on scraped data
-    # run_comparisons(scraped_data_dir)
+    with open(user_query_data_file, 'r', newline='', encoding='utf-8') as file:
+        csv_reader = csv.reader(file)
+        
+        header = next(csv_reader)  # Skip the header row
+        for row in csv_reader:
+            if not row or all(field.strip() == '' for field in row):
+                print("Skipping empty row.")
+                continue  # Skip empty or whitespace-only rows
+            
+            # Handle 2-part and 3-part input
+            specific_flag = False  # Reset flag for each iteration
+            if len(row) == 2:
+                brand, query = row
+                specific_item = None
+            elif len(row) == 3:
+                brand, query, specific_item = row
+                specific_flag = True
 
+            # Step 1: Run scrapers
+            try: 
+                scraped_subdir = run_scrapers(brand, query, specific_item)
+            except Exception as e:
+                print(f"Error running scraper for {brand}-{query}: {e}")
+                continue  # Move to the next row if error occurs
+
+            # Step 2: Run comparisons or filtering based on specific_flag
+            if not specific_flag:    
+                try:
+                    run_comparisons(scraped_subdir)
+                except Exception as e:
+                    print(f"Error during comparison for {brand}-{query}: {e}")
+            else:
+                try:
+                    # Ensure you pass necessary arguments to make_filtered_sub_dir
+                    filtered_subdir = make_filtered_sub_dir('source', 'date', query)
+                    run_comparisons(filtered_subdir)
+                except Exception as e:
+                    print(f"Error during filtering/comparison for {brand}-{query}-{specific_item}: {e}")
 
 
 if __name__ == "__main__":
@@ -238,4 +279,4 @@ if __name__ == "__main__":
     # run_scrapers(brand,query,local)
 
     pass
-    # driver_function()
+    driver_function()
