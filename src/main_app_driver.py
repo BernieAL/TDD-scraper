@@ -8,10 +8,7 @@ this driver will orchestrate reading input data - which is brands and categories
 
 import requests,os,csv,sys
 from datetime import datetime
-
-import time
-import random
-import pytest
+import time,random, pytest,hashlib
 import pandas as pd
 from simple_chalk import chalk
 
@@ -41,21 +38,34 @@ from rbmq.price_change_producer import publish_to_queue
 recipient_email = "balmanzar883@gmail.com"
 
 
+def generate_hash(query,date):
 
+    #combine query and date to create a hash string
+    combined_str = f"{query}_{date}"
+    return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
 
 def make_filtered_sub_dir(source,date,query):
 
     """
+
     after specific filtering takes place 
     fitlered csv will be stored in new filtered subdir inside of file_output
     this function creates the new sub dir to store the csv in
     """
-    name = f"FILTERED_{source}_{date}_{query}"
-    new_sub_dir = os.path.join(scraped_data_dir,name)
+
+    query_hash = generate_hash(query,date)
+    
+    #FILTERED_2024-24-09_prada_bags_<item_query_hash>
+    dir_name = f"FILTERED_{date}_{query}_{query_hash}"
+    new_sub_dir = os.path.join(scraped_data_dir,dir_name)
     if not os.path.exists(new_sub_dir):
         os.makedirs(new_sub_dir)
 
+    # print(new_sub_dir)
     return new_sub_dir
+
+
+
 
 def parse_file_name(file):
 
@@ -64,13 +74,10 @@ def parse_file_name(file):
     source = file_name_tokens[0]
     date = file_name_tokens[1]
     query = f"{file_name_tokens[2]}_{file_name_tokens[3].split('.')[0]}"
-    print(query)
+    print(f"query {query}")
 
     return source,date,query
 
-# dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
-# print(os.path.isfile(dummy_scrape_data_file_path))
-# parse_file_name(dummy_scrape_data_file_path)
 
 
 def filter_specific(scraped_data_file,specific_item):
@@ -78,30 +85,35 @@ def filter_specific(scraped_data_file,specific_item):
     try:
         df = pd.read_csv(scraped_data_file,skiprows=2)
         df = df.dropna()
-        print(df.head())
+        # print(df.head())
 
         fitlered_df = df[df['product_name'] == specific_item]
-        print(fitlered_df)
+        # print(fitlered_df)
     except Exception as e:
         print(f"file not found {e}")
-    print(scraped_data_file)
+    # print(scraped_data_file)
     try:
        
-        #create subdir to store filtered files
-        source,date,query = parse_file_name(scraped_data_file)
-        new_filtered_filename = f"FILTERED_{source}_{date}_{query}"
-        new_subdir = make_filtered_sub_dir(source,scraped_data_file)
         
-       
-        # df.csv(os.path.join(new_subdir,new_filtered_filename))
+        source,date,query = parse_file_name(scraped_data_file)
+        hash = generate_hash(query,date)
+        new_filtered_filename = f"FILTERED_{source}_{date}_{query}_{hash}"
+        print(f"new filtered_filename {new_filtered_filename}")
+
+        #create subdir to store filtered files
+        new_subdir = make_filtered_sub_dir(source,date,query)
+        print(f"new filtered subdir {new_subdir}")
+        
+        print(os.path.join(new_subdir,new_filtered_filename))
+        fitlered_df.to_csv(os.path.join(new_subdir,new_filtered_filename))
     except Exception as e:
         pass
 
 
 
-# dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
-# print(os.path.isfile(dummy_scrape_data_file_path))
-# filter_specific(dummy_scrape_data_file_path,'Brown Suede Prada Buckle Large Handbag') 
+dummy_scrape_data_file_path = os.path.join(scraped_data_dir,'italist_2024-24-09_prada_bags.csv')
+print(os.path.isfile(dummy_scrape_data_file_path))
+filter_specific(dummy_scrape_data_file_path,'Brown Suede Prada Buckle Large Handbag') 
 
 def read_user_input_data(user_query_data_file):
     """
@@ -147,7 +159,7 @@ def read_user_input_data(user_query_data_file):
         print(f"Error reading user input data: {e}")
         return []  # Return an empty list if an error occurs
 
-def run_scrapers_with_data(parsed_data):
+def run_scrapers_with_data(parsed_input_data):
     """
     Receives parsed data and runs the scraper functions accordingly.
 
@@ -155,7 +167,7 @@ def run_scrapers_with_data(parsed_data):
     """
 
     
-    for entry in parsed_data:
+    for entry in parsed_input_data:
         brand, query, specific_item = entry
         
         print(f"Running scrapers for: {brand}, {query}, {specific_item}")
