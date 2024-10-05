@@ -23,7 +23,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 
-curr_dir= os.path.dirname(os.path.abspath(__file__))
+curr_dir = os.path.dirname(os.path.abspath(__file__))
 # print(curr_dir)
 user_query_data_file = os.path.join(curr_dir,'input_data','search_criteria.csv')
 # print(os.path.isfile(user_query_data_file))
@@ -31,7 +31,7 @@ user_query_data_file = os.path.join(curr_dir,'input_data','search_criteria.csv')
 scraped_data_dir = os.path.join(curr_dir,'file_output')
 # print(scraped_data_dir)
 
-# from Analysis.compare_data import compare_driver
+from Analysis.compare_data import compare_driver
 from rbmq.price_change_producer import publish_to_queue
 
 
@@ -160,7 +160,7 @@ def read_user_input_data(user_query_data_file):
 
 
 # --------------------------------------------------------
-def run_scrapers(parsed_input_data):
+def run_scrapers(brand,query,specific_item):
     """
     Receives parsed data and runs the scraper functions accordingly.
 
@@ -228,14 +228,19 @@ def run_comparisons(scraped_data_dir):
 def driver_function():
     """
     Main function to orchestrate the whole process.
+    
     """
+
+    #flag to indicate if current query contains specific item
     specific_flag = False
     
+    #open user provided file
     with open(user_query_data_file, 'r', newline='', encoding='utf-8') as file:
         csv_reader = csv.reader(file)
         
         header = next(csv_reader)  # Skip the header row
         for row in csv_reader:
+            #if row is empty or all fields in row are empty whitespace
             if not row or all(field.strip() == '' for field in row):
                 print("Skipping empty row.")
                 continue  # Skip empty or whitespace-only rows
@@ -271,6 +276,14 @@ def driver_function():
                     print(f"Error during filtering/comparison for {brand}-{query}-{specific_item}: {e}")
 
 
+
+#-----------------------------------------------
+
+
+
+
+
+
 if __name__ == "__main__":
     
     # brand = "prada"
@@ -278,5 +291,5 @@ if __name__ == "__main__":
     # local = True
     # run_scrapers(brand,query,local)
 
-    pass
+    
     driver_function()
