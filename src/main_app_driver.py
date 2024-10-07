@@ -12,7 +12,7 @@ user_query_data_file = os.path.join(curr_dir, 'input_data', 'search_criteria.csv
 scraped_data_dir = os.path.join(curr_dir, 'file_output')
 
 # Import the ScraperUtils class from utils
-from utils.scraper_utils import ScraperUtils
+from utils.ScraperUtils import ScraperUtils
 
 # Import the scraper logic
 from src.scrapers.italist_scraper import italist_driver
@@ -21,6 +21,9 @@ recipient_email = "example@gmail.com"
 
 # Initialize the ScraperUtils instance
 utils = ScraperUtils(scraped_data_dir)
+
+
+
 
 def run_scrapers(output_subdir, brand, query, specific_item):
     try:
@@ -33,7 +36,24 @@ def run_scrapers(output_subdir, brand, query, specific_item):
 def driver_function():
     with open(user_query_data_file, 'r', newline='', encoding='utf-8') as file:
         for row in file:
-            # Processing logic here...
+
+            if not row:
+                continue
+
+            tokens = row.split(',')
+            
+            if len(tokens) == 2:
+                brand,query = tokens
+                specific_item = None
+            elif len(tokens) == 3:
+                brand,query,specific_item = tokens   
+
+
+            new_scraped_subdir = ScraperUtils.make_scraped_sub_dir(brand,query,specific_item)
+
+
+
+
             pass
 
 # Example usage in your code
