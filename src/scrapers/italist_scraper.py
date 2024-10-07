@@ -182,13 +182,14 @@ def extract_listing_data(listing):
 
     return product_id, brand, product_name, price, listing_url
 
-def build_output_file_name(brand,query):
+def build_output_file_name(output_dir,brand,query):
     """Generates a default output file name based on the current date."""
     current_date = datetime.now().strftime('%Y-%d-%m')
-    italist_output_file = f"src/file_output/italist_{current_date}_{brand}_{query}.csv"
+    italist_output_file = f"{output_dir}/italist_{current_date}_{brand}_{query}.csv"
     return os.path.abspath(italist_output_file)
 
-def italist_scrape_2(url,brand,query,output_file=None):
+def italist_scrape_2(output_dir,brand,query,specific_item,url,output_file=None):
+   
     """
     Scrapes the specified Italist URL and writes the results (Brand, Product Name, Price) to a CSV file.
 
@@ -212,7 +213,7 @@ def italist_scrape_2(url,brand,query,output_file=None):
         
         #set default output file if none provided
         if output_file is None:
-            output_file = build_output_file_name(brand,query)
+            output_file = build_output_file_name(output_dir,brand,query)
         
         with open(output_file,mode='w',newline='',encoding='utf-8') as file:
             writer = csv.writer(file)
@@ -239,29 +240,30 @@ def italist_scrape_2(url,brand,query,output_file=None):
         driver.quit()
 
 
+
 #testing italist extraction using local file as url
 # file_path = os.path.abspath('src/local_websites/Prada Bags for Women ALWAYS LIKE A SALE.html')
 # url = 'file:///' + file_path.replace('\\','/')
 # italist_scrape_2(url)
 
 
-def italist_driver(brand,query,local):
+def italist_driver(output_dir,brand,query,specific_item,local=True):
 
     """
     local means we are testing with locally saved copy of website 
     to limit requests to live site 
     """
     try:
-        match (query,local):
+        match (query,specific_item,local):
             
-            # case ("bags",False):   
-            #     italist_branded_bags_url = f"https://www.italist.com/us/brands/{brand}/110/women/?categories%5B%5D=76"
-            #     #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
-            #     italist_scrape_2(italist_branded_bags_url,brand,query)
-            # case ("all",False):
-            #     italist_general_param_url = f"https://www.italist.com/us/brands/{brand}/110/women/"
-            #     # next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=1&categories%5B%5D=437&skip=60
-            #     italist_scrape_2(italist_general_param_url)
+            case ("bags",False):   
+                italist_branded_bags_url = f"https://www.italist.com/us/brands/{brand}/110/women/?categories%5B%5D=76"
+                #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
+                italist_scrape_2(italist_branded_bags_url,brand,query)
+            case ("all",False):
+                italist_general_param_url = f"https://www.italist.com/us/brands/{brand}/110/women/"
+                # next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=1&categories%5B%5D=437&skip=60
+                italist_scrape_2(italist_general_param_url)
             
             case ("bags",True):   
                 #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
@@ -269,6 +271,11 @@ def italist_driver(brand,query,local):
             case ("all",True):
                 #next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
                 italist_scrape_2(local_url,brand,query)
+            case ("bags",specific_item,True):
+                italist_general_param_url = f"https://www.italist.com/us/brands/{brand}/110/women/"
+                # next page https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=1&categories%5B%5D=437&skip=60
+                italist_scrape_2(output_dir,brand,query,specific_item,local_url)
+            
             case _:
                 print("No matching case found.")
 
@@ -280,217 +287,14 @@ def italist_driver(brand,query,local):
         import traceback
         traceback.print_exc()
 
-italist_driver("prada","bags",True)
-# italist_driver("prada","general")
-
-# ---------------------------------------------------------
-
-
-#for each url in urls, nav to and search for target purse
-#the process of this could be different for each depending on site layout. 
-# Define a function to fetch the page content
-def fetch_page(url):
-    response = requests.get(url)
-    response.raise_for_status()  # Ensure we get a valid response
-    return response.text
-
-#parse url name to use as filename
-def parse_url(url):
-
-    url_tokens = url.split("//")
-    url_tokens = url_tokens[1].split(".com")
-    name = url_tokens = url_tokens[0]
-    return name
-
-"""
-Creates file in file_output dir using name
-"""
-def create_file(name):
-    #get cwd - src dir
-    src_dir = os.getcwd()
-
-    #build path to src/file_output dir
-    file_output_dir = os.path.join(src_dir,"file_output")
-
-    #if dir doesnt exist, make it
-    if not os.path.exists(file_output_dir):
-        os.makedirs(file_output_dir)
-    # print(file_output_dir)
-    
-    #build file path to create 
-    file_to_create = os.path.join(file_output_dir,name)
-    print(file_to_create)
-
-    if not os.path.exists(file_to_create):
-        #open file and write to it
-        with open(file_to_create,'w') as file:
-            file.write(" ")
-
-    return file_to_create
-
-def extract_html_url(url):
-
-    response = requests.get(url)
-    html = response.text
-    return html
-
-def write_file(file_path,html):
-
-    #open file by name, write html content to it
-    # file_path = f'{name}.txt'
-    file_path = file_path
-    with open(file_path,'w',encoding='utf-8') as file:
-        file.write(html)
-
-def italist_scrape(url):
-    
-    #build output file name with current date - this file will be used to write scraped data to
-    current_date = datetime.now()
-    formatted_date = current_date.strftime('%Y-%d-%m')
-    italist_output_file = f"src/file_output/italist_{formatted_date}"
-    date_italist_output_file = os.path.abspath(italist_output_file)
-    
-
-    """
-        for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76
-        second page for specific brand -> https://www.italist.com/us/brands/prada/110/women/?categories%5B%5D=76&skip=60
-
-        first page for all brands -> https://www.italist.com/us/women/bags/76/?on_sale=1
-        second page for all brands -> https://www.italist.com/us/women/bags/76/?skip=60&on_sale=1
-
-        pagination using url - "skip=60" puts you at 2nd page. "skip=120" puts you at 3rd page
-
-        element targeting:
-            jsx-680171959 product-grid-container - this is parent container of all listings
-                jsx-4016361043 brand - card element brand name
-                jsx-4016361043 productName - card element product name
-                jsx-3297103580 price - card element price 
-
-
-        approach:
-            get all elements in parent container
-                for each element
-                    extract brand, productName,price
-
-    """
-    driver = get_driver() 
-    driver.get(url)
-
-    # time.sleep(5)
-    num_listings = driver.find_element(By.XPATH,"//span[contains(@class, 'result-count')]").text
-
-    """
-    all listings is supposed to grab 'a' tag elements inside product-grid-container, 
-    but it may include 'a' elements from outside of product-grid-container
-    to combat this, we use the number of results displayed on the web page to filter all_listings
-    - so we dont bother checking 'a' tag elements that are outside of product-grid-container
-    Ex. if theres 171 results on the page, we slice all_listings to [:171]
-    """
-    all_listings = driver.find_elements(By.XPATH, "//div[contains(@class, 'product-grid-container')]//a")
-
-    
-    #open output file to be written to
-    with open(date_italist_output_file,mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        writer.writerow(['Brand','Product Name','Price'])
-
-
-        for listing in all_listings[:num_listings]:
-        
-            #LOCATING BRAND NAME
-            try:
-                # brand = listing.find_element(By.XPATH,".//div[contains(@class, 'brand')]")
-                brand = listing.find_element(By.CSS_SELECTOR,"div.brand").text
-                print(brand)
-                # print(brand.get_attribute('innerText'))
-            except NoSuchElementException:
-                print("no brand found - skipping to next iteration")
-                continue
-
-
-            #LOCATION PRODUCT NAME
-            try:
-                productName = listing.find_element(By.XPATH,".//div[contains(@class, 'productName')]").text
-                print(productName)
-                # print(productName.get_attribute('innerText'))
-
-            except NoSuchElementException:
-                print("no product name found")
-
-            #LOCATING PRICE
-            #a listing card will either have sale price or regular price. 
-            #attempt to find sale price first, if thats not found, return price
-            try:
-                salePrice = listing.find_element(By.XPATH,".//span[contains(@class, 'sales-price')]")
-                price_result = salePrice.text
-                print("Found price:", price_result)
-                print("-------")
-            except NoSuchElementException:
-                try:
-                    price = listing.find_element(By.XPATH,".//span[contains(@class, 'price')]")
-                    price_result = price.text
-                    print("Found price:", price_result)
-                    print("--------")
-                except NoSuchElementException:
-                    price_result = None
-                    print("Neither 'sales-price' nor 'price' could be found.")
-                    print("--------")
-
-            listing_line = f"{brand},{productName},{price_result} \n"
-            file.write(listing_line)
-
-        time.sleep(5)
-        driver.close()
-#testing italist extraction using local file as url
-# file_path = os.path.abspath('src/Prada Bags for Women ALWAYS LIKE A SALE.html')
-# url = 'file:///' + file_path.replace('\\','/')
-# italist_scrape(url)
-
-# -----------------------------------------------------------------------------------------------------
-def test_parse_url():
-
-    url = "https://us.vestiairecollective.com/"
-    url_tokens = url.split("//")
-    url_tokens = url_tokens[1].split(".com")
-    name = url_tokens = url_tokens[0]
-    print(name)
-    assert name == 'us.vestiairecollective'
-
-
-@pytest.fixture
-#fixture to handle file creation
-def create_file():
-    #get cwd - src dir
-    src_dir = os.getcwd()
-
-    #build path to src/file_output dir
-    file_output_dir = os.path.join(src_dir,"file_output")
-
-    #if dir doesnt exist, make it
-    if not os.path.exists(file_output_dir):
-        os.makedirs(file_output_dir)
-    # print(file_output_dir)
-    
-    #build file path to create 
-    file_to_create = os.path.join(file_output_dir,'us.vestiairecollective.txt')
-    print(file_to_create)
-
-    #open file and write to it
-    with open(file_to_create,'w') as file:
-        file.write("test")
-
-    return file_to_create
-
-# Test to check if the file was created
-def test_file_creation(create_file):
-    assert os.path.exists(create_file),f"File '{create_file}' was not created."
-   
-def test_file_content(create_file):
-    with open(create_file,'r') as file:
-        contents = file.read().strip()
-
-    assert contents == "test",f"File content is '{contents}, but expected 'test'."
-
 
 if __name__ == "__main__":
-    print(get_numeric_only("USD 4088"))
+    
+    specific_item = False
+    output_dir = os.path.join(os.path.dirname(__file__),'..','file_output','RAW_SCRAPE_2024-05-10_bags_a7b5c73d')
+    # print(os.path.isdir(output_dir))
+    italist_driver(output_dir,"prada","bags",specific_item,True)
+    # italist_driver("prada","general")
+
+
+
