@@ -9,6 +9,7 @@ class TestScraperUtils(unittest.TestCase):
 
     def setUp(self):
         scraped_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src', 'file_output'))
+        #pass dir to class constructor - to be held in mem for this instance
         self.utils = ScraperUtils(scraped_data_dir)
 
     def test_generate_hash(self):
@@ -17,16 +18,17 @@ class TestScraperUtils(unittest.TestCase):
         result = self.utils.generate_hash(query, date)
         self.assertIsInstance(result, str)
 
-    # def test_make_scraped_sub_dir(self):
-    #     brand = 'Prada'
-    #     query = 'Bags'
-    #     current_date = datetime.now().strftime('%Y-%d-%m')
-    #     result = self.utils.make_scraped_sub_dir(brand, query)
-    #     self.assertTrue(os.path.isdir(result))
+    def test_make_scraped_sub_dir(self):
+        brand = 'Prada'
+        query = 'Bags'
+        current_date = datetime.now().strftime('%Y-%d-%m')
         
-    #     query_hash = self.utils.generate_hash(query,current_date)
-    #     expected_dir_path = os.path.join(self.utils.scraped_data_dir,f"RAW_SCRAPE_{brand}_{current_date}_{query}_{query_hash}")
-    #     self.assertEqual(result,expected_dir_path)
+        result = self.utils.make_scraped_sub_dir(brand, query)
+        self.assertTrue(os.path.isdir(result))
+        
+        query_hash = self.utils.generate_hash(query,current_date)
+        expected_dir_path = os.path.join(self.utils.scraped_data_dir,f"RAW_SCRAPE_{brand}_{current_date}_{query}_{query_hash}")
+        self.assertEqual(result,expected_dir_path)
 
     
     

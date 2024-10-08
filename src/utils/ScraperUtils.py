@@ -5,6 +5,7 @@ import hashlib
 from datetime import datetime
 
 class ScraperUtils:
+    
     def __init__(self, scraped_data_dir):
         self.scraped_data_dir = scraped_data_dir
 
@@ -28,7 +29,7 @@ class ScraperUtils:
             return None
 
 
-    def make_filtered_sub_dir(self, brand,query):
+    def make_filtered_sub_dir(self, brand, query):
 
         current_date = datetime.now().strftime('%Y-%d-%m') 
         
