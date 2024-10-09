@@ -74,7 +74,7 @@ class BaseScraper():
             
             file.write(f"Scraped: {current_date} \n")
             file.write(f"Query: {self.brand}-{self.query} \n")
-            writer.writerow(['product_id','brand','product_name','curr_price','listing_url'])
+            writer.writerow(['product_id','brand','product_namfe','curr_price','listing_url'])
             file.write('---------------------- \n')
             for row in data:
                 writer.writerow(row)

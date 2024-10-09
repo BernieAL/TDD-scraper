@@ -42,7 +42,7 @@ local_saved_file_path = os.path.abspath('src/local_websites/Prada Bags for Women
 local_url = 'file:///' + local_saved_file_path.replace('\\','/')
 
 
-from base_scraper import BaseScraper
+from src.scrapers.base_scraper import BaseScraper
 from utils.ScraperUtils import ScraperUtils
 
 
@@ -93,8 +93,8 @@ class ItalistScraper(BaseScraper):
         """Scrapes Italist website and writes results to a CSV."""
 
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
             
         if self.local:
             url = local_url

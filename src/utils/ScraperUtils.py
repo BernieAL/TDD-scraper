@@ -6,19 +6,20 @@ from datetime import datetime
 
 class ScraperUtils:
     
-    def __init__(self, scraped_data_dir):
-        self.scraped_data_dir = scraped_data_dir
+    def __init__(self, scraped_data_dir_raw):
+        self.scraped_data_dir_raw = scraped_data_dir_raw
 
     def generate_hash(self, query, date):
         combined_str = f"{query}_{date}"
         return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
 
-    def make_scraped_sub_dir(self, brand, query):
+    #make subdir in file_output/raw for current search query
+    def make_scraped_sub_dir_raw(self, brand, query):
         current_date = datetime.now().strftime('%Y-%d-%m')
         try:
             query_hash = self.generate_hash(query, current_date)
             dir_name = f"RAW_SCRAPE_{brand}_{current_date}_{query}_{query_hash}"
-            new_sub_dir = os.path.join(self.scraped_data_dir, dir_name)
+            new_sub_dir = os.path.join(self.scraped_data_dir_raw, dir_name)
             
             if not os.path.exists(new_sub_dir):
                 os.makedirs(new_sub_dir)
