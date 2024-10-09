@@ -111,7 +111,8 @@ class ItalistScraper(BaseScraper):
             for listing in listings:
                 data.append(self.extract_listing_data(listing))
             
-            self.save_to_file(data,self.source,self.output_dir)
+            scraped_file = self.save_to_file(data,self.source,self.output_dir)
+            return scraped_file
         finally:
             driver.quit()
 

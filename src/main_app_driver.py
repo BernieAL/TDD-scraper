@@ -20,7 +20,7 @@ from src.scrapers.italist_scraper import ItalistScraper
 
 
 # Initialize the ScraperUtils instance
-utils = ScraperUtils(scraped_data_dir_raw)
+utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
 
 
 
@@ -51,12 +51,17 @@ def driver_function():
             #if row doesnt have specific item, set spec item as None
             specific_item = tokens[2] if len(tokens) > 2 else None
 
-    
-
             output_dir = utils.make_scraped_sub_dir_raw(brand, query)
-            print(output_dir)
+            # print(output_dir)
             italist_scraper = ItalistScraper(brand,query,output_dir,True)
-            italist_scraper.run()
+            scraped_file = italist_scraper.run()
+            print(scraped_file)
+
+            
+            if specific_item != None:
+                fitlered_sub_dir = utils.make_filtered_sub_dir(brand,query,specific_item)
+                print(utils.filter_specific(scraped_file,specific_item,fitlered_sub_dir))
+                
 
 # Example usage in your code
 if __name__ == "__main__":
