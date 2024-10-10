@@ -108,7 +108,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
         with open(input_file, mode='r') as file:
             csv_reader = csv.reader(file)
 
-            # Get scrape date
+            # Get scrape date from file header
             scrape_date_line = next(csv_reader)
             scrape_date = scrape_date_line[0].split(':')[1].strip()
             scrape_date = datetime.strptime(scrape_date, '%Y-%d-%m').date()

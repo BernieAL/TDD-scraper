@@ -92,7 +92,7 @@ class ItalistScraper(BaseScraper):
     def run(self):
         """Scrapes Italist website and writes results to a CSV."""
 
-
+       
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
             
