@@ -7,17 +7,17 @@ import os,sys
 define function to receive price difference products - should be incoming as list
 """
 
-# def make_output_dir():
+def make_output_dir():
 
-#     current_dir = os.path.abspath(os.path.dirname(__file__))
-#     root_dir = os.path.abspath(os.path.join(current_dir,".."))
+    current_dir = os.path.abspath(os.path.dirname(__file__))
+    root_dir = os.path.abspath(os.path.join(current_dir,".."))
 
-#     output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
+    output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
 
-#     if not os.path.exists(output_dir):
-#         os.makedirs(output_dir)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-#     return output_dir
+    return output_dir
 
 def make_output_filename(output_dir,source_filename):
     """
@@ -161,39 +161,39 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
 
 # if __name__ == "__main__":
 
-# temp_data = [
-#     {'product_id': '14699240-14531549', 'curr_price': 438.9, 'curr_scrape_date': '2024-09-26', 'prev_price': 418.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14696885-14529194', 'curr_price': 3560.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3955.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14696866-14529175', 'curr_price': 3899.7, 'curr_scrape_date': '2024-09-26', 'prev_price': 3714.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14696865-14529174', 'curr_price': 4212.9, 'curr_scrape_date': '2024-09-26', 'prev_price': 4681.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14687555-14519864', 'curr_price': 4508.7, 'curr_scrape_date': '2024-09-26', 'prev_price': 4294.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14687437-14519746', 'curr_price': 1056.6, 'curr_scrape_date': '2024-09-26', 'prev_price': 1174.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14679027-14511336', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14679026-14511335', 'curr_price': 3134.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3134.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14670757-14503066', 'curr_price': 1749.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 1749.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14664354-14496663', 'curr_price': 1877.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 1877.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14664353-14496662', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14664352-14496661', 'curr_price': 3134.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3134.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14650505-14482814', 'curr_price': 3361.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3361.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14650492-14482801', 'curr_price': 2189.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2189.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14645226-14477535', 'curr_price': 2537.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2537.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14628287-14460596', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14625136-14457445', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14625132-14457441', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14625131-14457440', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14625130-14457439', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14625129-14457438', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14597352-14429661', 'curr_price': 4198.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 4198.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14573761-14406070', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14572513-14404822', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14568709-14401018', 'curr_price': 3955.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3955.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14568707-14401016', 'curr_price': 4986.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 4986.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14565352-14397661', 'curr_price': 3424.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3424.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14565351-14397660', 'curr_price': 3811.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3811.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14565350-14397659', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14565349-14397658', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14565340-14397649', 'curr_price': 2941.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2941.0, 'prev_scrape_date': '2024-09-25'},
-#     {'product_id': '14565339-14397648', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'}]
+#     temp_data = [
+#         {'product_id': '14699240-14531549', 'curr_price': 438.9, 'curr_scrape_date': '2024-09-26', 'prev_price': 418.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14696885-14529194', 'curr_price': 3560.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3955.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14696866-14529175', 'curr_price': 3899.7, 'curr_scrape_date': '2024-09-26', 'prev_price': 3714.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14696865-14529174', 'curr_price': 4212.9, 'curr_scrape_date': '2024-09-26', 'prev_price': 4681.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14687555-14519864', 'curr_price': 4508.7, 'curr_scrape_date': '2024-09-26', 'prev_price': 4294.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14687437-14519746', 'curr_price': 1056.6, 'curr_scrape_date': '2024-09-26', 'prev_price': 1174.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14679027-14511336', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14679026-14511335', 'curr_price': 3134.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3134.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14670757-14503066', 'curr_price': 1749.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 1749.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14664354-14496663', 'curr_price': 1877.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 1877.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14664353-14496662', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14664352-14496661', 'curr_price': 3134.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3134.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14650505-14482814', 'curr_price': 3361.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3361.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14650492-14482801', 'curr_price': 2189.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2189.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14645226-14477535', 'curr_price': 2537.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2537.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14628287-14460596', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14625136-14457445', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14625132-14457441', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14625131-14457440', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14625130-14457439', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14625129-14457438', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14597352-14429661', 'curr_price': 4198.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 4198.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14573761-14406070', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14572513-14404822', 'curr_price': 2167.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2167.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14568709-14401018', 'curr_price': 3955.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3955.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14568707-14401016', 'curr_price': 4986.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 4986.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14565352-14397661', 'curr_price': 3424.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3424.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14565351-14397660', 'curr_price': 3811.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 3811.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14565350-14397659', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14565349-14397658', 'curr_price': 2071.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2071.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14565340-14397649', 'curr_price': 2941.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2941.0, 'prev_scrape_date': '2024-09-25'},
+#         {'product_id': '14565339-14397648', 'curr_price': 2747.0, 'curr_scrape_date': '2024-09-26', 'prev_price': 2747.0, 'prev_scrape_date': '2024-09-25'}]
 
     
 #     input_file = "/home/ubuntu/Documents/Projects/TDD-scraper/Analysis/../src/file_output/italist_2024-26-09_prada_bags.csv"
@@ -205,4 +205,30 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
 
 
 
+# if __name__ == "__main__":
 
+#     #test input filtered file
+
+#     #get path to proj root dir
+#     # proj_root =os.path.join('..',os.path.dirname(__file__))
+#     # /home/ubuntu/Documents/Projects/TDD-scraper/Analysis
+    
+#     curr_dir = os.getcwd()
+#     filtered_root = os.path.join(curr_dir,'src','file_output','filtered')
+#     # print(os.path.isdir(filtered_root))
+
+#     test_filtered_subdir = os.path.join(filtered_root,'FILTERED_prada_2024-11-10_bags_562f8f10')
+#     test_filtered_file = os.path.join(test_filtered_subdir,'FILTERED_italist_prada_2024-11-10_bags_171f20b5.csv')
+
+#     data = []
+#     output_dir = make_output_dir()
+
+#     with open(test_filtered_file,'r',encoding='utf-8') as file:
+        
+       
+#         for row in file:
+#             data.append(row.strip())
+#     print(data)
+#     calc_percentage_diff_driver(output_dir,data,test_filtered_file)
+
+    

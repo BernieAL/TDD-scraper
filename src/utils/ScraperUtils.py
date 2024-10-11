@@ -34,11 +34,11 @@ class ScraperUtils:
         with open(output_file_name, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             # Write metadata
-            file.write(f"Scraped: {current_date} \n")
-            file.write(f"Query: {brand}-{query} \n")
+            file.write(f"Scraped: {current_date}\n")
+            file.write(f"Query: {brand}-{query}\n")
             # Write headers
             writer.writerow(['product_id', 'brand', 'product_name', 'curr_price', 'listing_url'])
-            file.write('---------------------- \n')
+            file.write('----------------------\n')
             # Write data rows
             for row in data:
                 writer.writerow(row)
@@ -153,7 +153,7 @@ class ScraperUtils:
                 #build filename we are about to create
                 new_filtered_filename = f"FILTERED_{source}_{date}_{query}_{hash}.csv"
                 print(f"new filtered_filename: {new_filtered_filename}")
-        
+
                 #build filepath
                 new_filtered_filepath = os.path.join(filtered_subdir,new_filtered_filename)
 

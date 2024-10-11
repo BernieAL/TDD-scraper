@@ -63,11 +63,11 @@ def driver_function():
             if specific_item != None:
                 fitlered_sub_dir = utils.make_filtered_sub_dir(brand,query,specific_item)
                 fitlered_file = (utils.filter_specific(scraped_file,specific_item,fitlered_sub_dir))
-                compare_driver(fitlered_file)
+                # compare_driver(fitlered_file)
             else:
                 compare_driver(scraped_file)
 
-
+          publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":recipient_email})
 # Example usage in your code
 if __name__ == "__main__":
     brand = 'Prada'

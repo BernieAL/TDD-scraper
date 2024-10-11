@@ -25,6 +25,17 @@ def publish_to_queue(product_msg):
     publishes rec'd messages to queue
 
     :param: product obj as dictionary to be added to queue
+
+        temp = {
+            'product_id': row['product_id'],
+            'curr_price': product_data['curr_price'],
+            'curr_scrape_date': scrape_date,
+            'prev_price': product_data['prev_price'],
+            'prev_scrape_date': product_data['prev_scrape_date']
+            'product_name': row['product_name']
+            'listing_url': row['listing_url']
+        }
+        
     """
     try:
         # Set up the connection parameters (use correct RabbitMQ host and credentials)

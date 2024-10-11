@@ -91,7 +91,7 @@ def main():
         print(chalk.red(f"Worker cannot proceed without output directory: {e}"))
         return  # Exit if directory creation fails
 
-    def callback(ch,method,properties,body):
+    def callback2(ch,method,properties,body):
 
         try:
             msg = json.loads(body)
@@ -146,6 +146,51 @@ def main():
             # Acknowledge the message only after processing it 
             ch.basic_ack(delivery_tag=method.delivery_tag)
      
+    def callback(ch, method, properties, body):
+        try:
+            msg = json.loads(body)
+            print(f"Message received: {msg}")
+
+            if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY']:
+                print('Product added to queue')
+                recd_products.append(msg)
+                print(f"Current product count in queue: {len(recd_products)}")
+
+            elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
+                source_file = msg.get('source_file')  # Get the source file name
+                print(f"Received source file for processing: {source_file}")
+
+                if len(recd_products) == 0:
+                    print("No products received; adding to no_change_sources list")
+                    source, date, query = parse_file_name(source_file)
+                    no_change_sources.append(f"{source}_{query}")
+                    print(f"No change sources updated: {no_change_sources}")
+
+                else:
+                    print(f"Processing received products for source file: {source_file}")
+                    try:
+                        calc_percentage_diff_driver(output_dir, recd_products, source_file)
+                        print(chalk.green("Report generated and stored in output directory"))
+                    except Exception as e:
+                        print(chalk.red(f"Error in calc_percentage_diff_driver: {e}"))
+
+                recd_products.clear()
+                print("Cleared received products list after processing.")
+
+            elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
+                print("All files processed, sending email.")
+                try:
+                    send_email_with_report('balmanzar883@gmail.com', output_dir, 'Prada bags', no_change_sources)
+                    print(chalk.green("Email sent successfully"))
+                    no_change_sources.clear()
+                    print("Cleared no_change_sources list after sending email.")
+                except Exception as e:
+                    print(chalk.red(f"Error during email sending: {e}"))
+        except Exception as e:
+            print(chalk.red(f"Error processing message: {e}"))
+        finally:
+            # Acknowledge the message only after processing it 
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='price_change_queue',on_message_callback=callback)
