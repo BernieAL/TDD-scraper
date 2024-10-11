@@ -21,6 +21,10 @@ from src.scrapers.italist_scraper import ItalistScraper
 #import comparision function
 from Analysis.compare_data import compare_driver
 
+
+from rbmq.price_change_producer import publish_to_queue
+
+
 # Initialize the ScraperUtils instance
 utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
 
@@ -63,15 +67,17 @@ def driver_function():
             if specific_item != None:
                 fitlered_sub_dir = utils.make_filtered_sub_dir(brand,query,specific_item)
                 fitlered_file = (utils.filter_specific(scraped_file,specific_item,fitlered_sub_dir))
-                # compare_driver(fitlered_file)
+                compare_driver(fitlered_file)
             else:
                 compare_driver(scraped_file)
 
-          publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":recipient_email})
+        publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com"})
+        
 # Example usage in your code
 if __name__ == "__main__":
-    brand = 'Prada'
-    query = 'Bags'
+    # brand = 'Prada'
+    
+    # query = 'Bags'
     # output_dir = utils.make_scraped_sub_dir(brand, query)  # Call the method from ScraperUtils
     driver_function()
     # run_scrapers(output_dir, brand, query, None)
