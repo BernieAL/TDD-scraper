@@ -16,7 +16,7 @@ app_password = os.getenv("GOOGLE_APP_PW")
 sender_email = os.getenv("GOOGLE_SENDER_EMAIL")  # Your email
 subject = "Daily Price Change Report"
 
-def send_email_with_report(receiver_email, output_dir, query):
+def send_email_with_report(receiver_email, output_dir, query,no_price_change_sources):
     # Create a secure SSL context
     context = ssl.create_default_context()
 
@@ -27,7 +27,14 @@ def send_email_with_report(receiver_email, output_dir, query):
     message['Subject'] = subject
 
     # Email body
-    body = f"Hi there,\n\nPlease find attached the daily price change report for {query}."
+    body = f"Hi there,\n\nPlease find attached the daily price change report for {query}. \n"
+   
+    #add details about sources with no prices changes to message body
+    if len(no_price_change_sources) > 0:
+        body += "\n The following sources had no price changes: :\n"
+        for source in no_price_change_sources:
+           body += f"{source}\n"
+
     message.attach(MIMEText(body, 'plain'))
 
     # Attach the report
@@ -45,7 +52,8 @@ def send_email_with_report(receiver_email, output_dir, query):
                         'Content-Disposition',
                         f'attachment; filename={os.path.basename(report_file)}'
                     )
-                    message.attach(part)
+                    message.attach
+                   
 
         # Send the email with the report attached
         with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:

@@ -39,6 +39,22 @@ def make_report_output_dir():
     
     except Exception as e:
         print(chalk.red(f"Error creating output directory: {e}"))
+
+def parse_file_name(file):
+
+    file_path_tokens = file.split('/')[-1]
+    file_name_tokens = file_path_tokens.split('_')
+    print(file_name_tokens)
+
+    source = file_name_tokens[1]
+
+    date = file_name_tokens[3]
+    query = f"{file_name_tokens[2]}_{file_name_tokens[4].split('.')[0]}"
+    print(f"query {query}")
+    
+
+    return source,date,query
+
         
 def main():
 
@@ -61,8 +77,11 @@ def main():
         print(chalk.red(f"Error connecting to RabbitMQ or declaring queue: {e}"))
         return  # Exit if we cannot connect to RabbitMQ
    
-    #list to hold recieved messages
+    #list to hold recieved product messages
     recd_products = []
+
+    #list to hold website sources that have no price changes
+    no_change_sources = []
 
     #Create the output directory when the worker starts
     #dir will be used by percent_change_analysis and email script
@@ -86,16 +105,26 @@ def main():
 
             #check if msg is end signal for single file
             elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE': 
+                
 
                 source_file = msg.get('source_file')  # Get the source file name
-                print(chalk.red(f"Processing source file: {source_file}"))
-                print('begin batch price analysis')
+                if len(recd_products) == 0:
+                    
+                    source,date,query = parse_file_name(source_file)
+                    print(f"{source}_{date}_{query}")
+                    no_change_sources.append(f"{source}_{query}")
+                    print(no_change_sources)
 
-                try:
-                    calc_percentage_diff_driver(output_dir,recd_products,source_file)
-                    print(chalk.green("report generated - stored in output dir"))
-                except Exception as e:
-                    print(e)
+                else:
+                    
+                    print(chalk.red(f"Processing source file: {source_file}"))
+                    print('begin batch price analysis')
+
+                    try:
+                        calc_percentage_diff_driver(output_dir,recd_products,source_file)
+                        print(chalk.green("report generated - stored in output dir"))
+                    except Exception as e:
+                        print(e)
 
                 # Clear product list after batch processing
                 recd_products.clear()
@@ -106,8 +135,9 @@ def main():
                 
                 try:
                     print(chalk.green("end signal rec'd - moving to craft email and attach reports"))
-                    send_email_with_report('rosier101@gmail.com',output_dir,'Prada bags')
+                    send_email_with_report('balmanzar883@gmail.com',output_dir,'Prada bags',no_change_sources)
                     print(chalk.green("email sent"))
+                    no_change_sources.clear()
                 except Exception as e:
                     print(e)
         except Exception as e:

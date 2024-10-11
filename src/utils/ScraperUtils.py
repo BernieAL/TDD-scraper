@@ -167,7 +167,7 @@ class ScraperUtils:
                 df_list = filtered_df.values.tolist()
 
                 self.save_to_file(df_list,'prada','bags',new_filtered_filepath)
-                
+                return new_filtered_filepath
 
             except Exception as e:
                   print(chalk.red(f"FAILED: converting file to df + filtering{e}"))
