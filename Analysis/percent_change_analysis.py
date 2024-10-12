@@ -1,3 +1,4 @@
+import hashlib
 import pandas as pd 
 from simple_chalk import chalk
 import os,sys
@@ -6,6 +7,10 @@ import os,sys
 """
 define function to receive price difference products - should be incoming as list
 """
+
+def generate_hash(self, query, date):
+        combined_str = f"{query}_{date}"
+        return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
 
 def make_output_dir():
 

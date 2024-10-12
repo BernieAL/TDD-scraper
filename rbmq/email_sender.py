@@ -52,7 +52,7 @@ def send_email_with_report(receiver_email, output_dir, query,no_price_change_sou
                         'Content-Disposition',
                         f'attachment; filename={os.path.basename(report_file)}'
                     )
-                    message.attach
+                    message.attach(part)
                    
 
         # Send the email with the report attached

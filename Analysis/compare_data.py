@@ -235,7 +235,9 @@ if __name__ == "__main__":
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     scrape_output_dir = os.path.join('src','file_output')
-    input_file_path = os.path.join(curr_dir,'..',scrape_output_dir,'italist_2024-26-09_prada_bags.csv')
+    input_file_path = os.path.join(curr_dir,'..',scrape_output_dir,'raw','RAW_SCRAPE_prada_2024-09-10_bags_5f920003','italist_prada_2024-09-10_bags_scrape.csv')
     # input_file_path = os.path.join(curr_dir,'..','src','file_output','italist_2024-30-09_prada_bags.csv')
     # print(os.path.isfile(input_file_path))
     compare_driver(input_file_path)
+
+    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com"})
