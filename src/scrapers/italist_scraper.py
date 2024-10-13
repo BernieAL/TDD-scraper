@@ -50,11 +50,12 @@ from utils.ScraperUtils import ScraperUtils
 class ItalistScraper(BaseScraper):
 
 
-    def __init__(self, brand, query,output_dir,local):
+    def __init__(self, brand, query,output_dir,query_hash,local):
         super().__init__(brand, query)
         self.local = local
         self.output_dir = output_dir
         self.source = "italist"
+        self.query_hash = query_hash
         
 
     def get_listings(self, driver):
@@ -113,7 +114,7 @@ class ItalistScraper(BaseScraper):
                 data.append(self.extract_listing_data(listing))
             
             scraper_util = ScraperUtils(self.output_dir)
-            scraped_file = scraper_util.save_to_file(data,self.brand,self.query,self.source,self.output_dir)
+            scraped_file = scraper_util.save_to_file(data,self.brand,self.query,self.source,self.output_dir,self.query_hash)
             return scraped_file
         
         finally:
@@ -125,12 +126,14 @@ class ItalistScraper(BaseScraper):
 if __name__ == "__main__":
 
     brand = 'prada'
-    query = 'bags'
+    category = 'bags'
+    query = f"{brand}_{category}"
 
     scraped_data_root_dir = output_dir = os.path.join(os.path.dirname(__file__), '..', 'file_output')
     scraper_util = ScraperUtils(scraped_data_root_dir)
     output_dir = scraper_util.make_scraped_sub_dir(brand,query)
+    query_hash = scraper_util.generate_hash(query)
 
-    scraper = ItalistScraper(brand, query, output_dir, local=True)
+    scraper = ItalistScraper(brand, query, output_dir,query_hash,local=True)
     scraper.run()
 

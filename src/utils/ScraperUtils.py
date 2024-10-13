@@ -22,25 +22,31 @@ class ScraperUtils:
         self.scraped_data_root_dir = scraped_data_root_dir
         self.filtered_data_root_dir = filtered_data_root_dir
 
-    def generate_hash(self, query, date):
-        combined_str = f"{query}_{date}"
+    def generate_hash(self, category,specific_item,date):
+        """
+        
+        gen hash that will be used across any function that makes dirs or files
+        single hash generated for single category
+        specific_item may be none - Ex if category = prada bags
+        """
+        combined_str = f"{category}_{specific_item}_{date}"
         return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
 
 
-    def save_to_file(self, data,brand,query,source,output_dir):
+    def save_to_file(self, data,brand,category,source,output_dir,query_hash):
         """Save the scraped data to a CSV file in the given directory."""
         current_date = datetime.now().strftime('%Y-%d-%m')
 
-        file_hash = self.generate_hash(query,current_date)
+        # file_hash = self.generate_hash(category,current_date)
 
-        output_file = os.path.join(output_dir, f"{source}_{brand}_{current_date}_{query}_scrape_{file_hash}.csv")
+        output_file = os.path.join(output_dir, f"{source}_{brand}_{current_date}_{category}_scrape_{query_hash}.csv")
        
 
         with open(output_file, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
                 
                 file.write(f"Scraped: {current_date} \n")
-                file.write(f"Query: {brand}-{query} \n")
+                file.write(f"category: {brand}-{category} \n")
                 writer.writerow(['product_id','brand','product_name','curr_price','listing_url'])
                 file.write('---------------------- \n')
                 for row in data:
@@ -50,20 +56,20 @@ class ScraperUtils:
         return output_file
 
 
-    #make subdir in file_output/raw for current search query
-    def make_scraped_sub_dir_raw(self, brand, query):
+    #make subdir in file_output/raw for current search category
+    def make_scraped_sub_dir_raw(self, brand, category,query_hash):
         """
         Makes a new subdir in file_output/raw root for this specific item
 
         :param: brand 
-        :param: query
+        :param: category
         :param: filtered_data_root_dir is subdir in file_output/filtered
         
         """
         current_date = datetime.now().strftime('%Y-%d-%m')
         try:
-            query_hash = self.generate_hash(query, current_date)
-            dir_name = f"RAW_SCRAPE_{brand}_{current_date}_{query}_{query_hash}"
+            # category_hash = self.generate_hash(category, current_date)
+            dir_name = f"RAW_SCRAPE_{brand}_{current_date}_{category}_{query_hash}"
             new_sub_dir = os.path.join(self.scraped_data_root_dir, dir_name)
             
             if not os.path.exists(new_sub_dir):
@@ -75,20 +81,20 @@ class ScraperUtils:
             return None
 
 
-    def make_filtered_sub_dir(self, brand, query,filtered_data_root_dir):
+    def make_filtered_sub_dir(self, brand, category,filtered_data_root_dir,query_hash):
         """
         Makes a new subdir in file_output/filtered root for this specific item
     
         :param: brand 
-        :param: query
+        :param: category
         :param: filtered_data_root_dir is subdir in file_output/filtered
         
         """
         current_date = datetime.now().strftime('%Y-%d-%m') 
         
         try:
-            query_hash = self.generate_hash(query, current_date)
-            dir_name = f"FILTERED_{brand}_{current_date}_{query}_{query_hash}"
+            # category_hash = self.generate_hash(category, current_date)
+            dir_name = f"FILTERED_{brand}_{current_date}_{category}_{query_hash}"
             new_sub_dir = os.path.join(self.filtered_data_root_dir,dir_name)
 
             if not os.path.exists(new_sub_dir):
@@ -104,12 +110,12 @@ class ScraperUtils:
         file_name_tokens = file_path_tokens.split('_')
         source = file_name_tokens[0]
         date = file_name_tokens[1]
-        query = f"{file_name_tokens[2]}_{file_name_tokens[3].split('.')[0]}"
-        print(f"query {query}")
+        category = f"{file_name_tokens[2]}_{file_name_tokens[3].split('.')[0]}"
+        print(f"category {category}")
 
-        return source,date,query
+        return source,date,category
 
-    def filter_specific(self,scraped_data_file,specific_item,filtered_subdir):
+    def filter_specific(self,scraped_data_file,specific_item,filtered_subdir,query_hash):
         
         #read metadata from input file, store, and use metadata again when creating filtered file
         try:
@@ -121,10 +127,10 @@ class ScraperUtils:
             scrape_date = datetime.strptime(scrape_date, '%Y-%d-%m').date()
             print(f"Scrape Date: {scrape_date}")
 
-            # Get query info
-            query_line = next(csv_reader)
-            query = query_line[0].split(':')[1].strip()
-            print(f"Query: {query}")
+            # Get category info
+            category_line = next(csv_reader)
+            category = category_line[0].split(':')[1].strip()
+            print(f"category: {category}")
             
             
 
@@ -147,14 +153,14 @@ class ScraperUtils:
             
             #if df filtering didnt fail, continue with file creation
             try:
-                #get source,date,query from input file name
-                source,date,query = self.parse_file_name(scraped_data_file)
+                #get source,date,category from input file name
+                source,date,category = self.parse_file_name(scraped_data_file)
                 
-                #create unique hash for this data + query combination
-                hash = self.generate_hash(query,date)
+                # #create unique hash for this date + category combination
+                # hash = self.generate_hash(category,date)
                 
                 #build filename we are about to create
-                new_filtered_filename = f"FILTERED_{source}_{date}_{query}_{hash}.csv"
+                new_filtered_filename = f"FILTERED_{source}_{date}_{category}_{hash}.csv"
                 print(f"new filtered_filename: {new_filtered_filename}")
 
                 #build filepath
