@@ -9,8 +9,8 @@ sys.path.append(parent_dir)
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 user_category_data_file = os.path.join(curr_dir, 'input_data', 'search_criteria.csv')
-scraped_data_dir_raw = os.path.join(curr_dir, 'file_output','raw')
-scraped_data_dir_filtered = os.path.join(curr_dir, 'file_output','filtered')
+scraped_data_dir_raw = os.path.join(curr_dir, 'scrape_file_output','raw')
+scraped_data_dir_filtered = os.path.join(curr_dir, 'scrape_file_output','filtered')
 
 # Import the ScraperUtils class from utils
 from utils.ScraperUtils import ScraperUtils
@@ -67,9 +67,9 @@ def driver_function():
 
                 output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
                 print(output_dir)
-                # italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
-                # scraped_file = italist_scraper.run()
-                # print(scraped_file)
+                italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
+                scraped_file = italist_scraper.run()
+                print(scraped_file)
 
                 
                 # if specific_item != None:

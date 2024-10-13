@@ -15,21 +15,21 @@ class ScraperUtils:
     
 
 
-    #scraped_data_root_dir is file_output/raw root 
-    #filtered_data_dir is file_output/filtered root 
+    #scraped_data_root_dir is scrape_file_output/raw root 
+    #filtered_data_dir is scrape_file_output/filtered root 
 
     def __init__(self, scraped_data_root_dir,filtered_data_root_dir=None):
         self.scraped_data_root_dir = scraped_data_root_dir
         self.filtered_data_root_dir = filtered_data_root_dir
 
-    def generate_hash(self, category,specific_item,date):
+    def generate_hash(self,query,specific_item,date):
         """
         
         gen hash that will be used across any function that makes dirs or files
         single hash generated for single category
         specific_item may be none - Ex if category = prada bags
         """
-        combined_str = f"{category}_{specific_item}_{date}"
+        combined_str = f"{query}_{specific_item}_{date}"
         return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
 
 
@@ -56,14 +56,14 @@ class ScraperUtils:
         return output_file
 
 
-    #make subdir in file_output/raw for current search category
-    def make_scraped_sub_dir_raw(self, brand, category,query_hash):
+    #make subdir in scrape_file_output/raw for current search category
+    def make_scraped_sub_dir_raw_old(self, brand,category,query_hash):
         """
-        Makes a new subdir in file_output/raw root for this specific item
+        Makes a new subdir in scrape_file_output/raw root for this specific item
 
         :param: brand 
         :param: category
-        :param: filtered_data_root_dir is subdir in file_output/filtered
+        :param: filtered_data_root_dir is subdir in scrape_file_output/filtered
         
         """
         current_date = datetime.now().strftime('%Y-%d-%m')
@@ -80,14 +80,44 @@ class ScraperUtils:
             print(f"Error while creating sub-directory for raw scrape: {e}")
             return None
 
+    def make_scraped_sub_dir_raw(self, brand, category, query_hash):
+        """
+        Creates a new subdir in scrape_file_output/raw root for this specific item.
+
+        :param brand: Brand name (e.g., Prada)
+        :param category: Category of the product (e.g., Bags)
+        :param query_hash: A hash for the query
+        :return: The path of the created directory
+        """
+        current_date = datetime.now().strftime('%Y-%d-%m')
+        try:
+            # Build the directory name using the brand, query, and hash
+            dir_name = f"RAW_SCRAPE_{brand}_{current_date}_{category}_{query_hash}"
+            new_sub_dir = os.path.join(self.scraped_data_root_dir, dir_name)
+            
+            print(f"Attempting to create directory: {new_sub_dir}")
+            
+            # Check if the directory already exists; if not, create it
+            if not os.path.exists(new_sub_dir):
+                os.makedirs(new_sub_dir)
+                print(f"Directory created: {new_sub_dir}")
+            else:
+                print(f"Directory already exists: {new_sub_dir}")
+            
+            return new_sub_dir
+        
+        except Exception as e:
+            print(f"Error while creating sub-directory for raw scrape: {e}")
+            return None
+
 
     def make_filtered_sub_dir(self, brand, category,filtered_data_root_dir,query_hash):
         """
-        Makes a new subdir in file_output/filtered root for this specific item
+        Makes a new subdir in scrape_file_output/filtered root for this specific item
     
         :param: brand 
         :param: category
-        :param: filtered_data_root_dir is subdir in file_output/filtered
+        :param: filtered_data_root_dir is subdir in scrape_file_output/filtered
         
         """
         current_date = datetime.now().strftime('%Y-%d-%m') 
@@ -205,9 +235,9 @@ if __name__ == "__main__":
 
 
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    scraped_data_dir_raw = os.path.join(curr_dir,'..','file_output','raw')
+    scraped_data_dir_raw = os.path.join(curr_dir,'..','scrape_file_output','raw')
     # print(os.path.isdir(scraped_data_dir_raw))
-    scraped_data_dir_filtered = os.path.join(curr_dir,'..','file_output','filtered')
+    scraped_data_dir_filtered = os.path.join(curr_dir,'..','scrape_file_output','filtered')
     # print(os.path.isdir(scraped_data_dir_filtered))
 
 
@@ -219,5 +249,13 @@ if __name__ == "__main__":
     # print(os.path.isdir(filtered_subdir))
     spec_item = 'Shoulder Bag'
     utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
+    
+    current_date = datetime.now().strftime('%Y-%d-%m')
 
-    utils.filter_specific(input_file_path,spec_item,filtered_subdir)
+    brand = 'Prada'
+    category = 'bags'
+    query = f"{brand}_{category}" #Prada_bags , Gucci_shirts
+    query_hash = utils.generate_hash(query,None,current_date)
+
+    utils.make_scraped_sub_dir_raw(brand,category,query_hash)
+    # utils.filter_specific(input_file_path,spec_item,filtered_subdir)
