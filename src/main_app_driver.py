@@ -61,15 +61,15 @@ def driver_function():
             # print(output_dir)
             italist_scraper = ItalistScraper(brand,query,output_dir,True)
             scraped_file = italist_scraper.run()
-            # print(scraped_file)
+            print(scraped_file)
 
             
-            if specific_item != None:
-                fitlered_sub_dir = utils.make_filtered_sub_dir(brand,query,specific_item)
-                fitlered_file = (utils.filter_specific(scraped_file,specific_item,fitlered_sub_dir))
-                compare_driver(fitlered_file)
-            else:
-                compare_driver(scraped_file)
+            # if specific_item != None:
+            #     fitlered_sub_dir = utils.make_filtered_sub_dir(brand,query,specific_item)
+            #     fitlered_file = (utils.filter_specific(scraped_file,specific_item,fitlered_sub_dir))
+            #     compare_driver(fitlered_file)
+            # else:
+            #     compare_driver(scraped_file)
 
         publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com"})
         

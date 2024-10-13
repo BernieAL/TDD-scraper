@@ -18,7 +18,7 @@ class ScraperUtils:
     #scraped_data_root_dir is file_output/raw root 
     #filtered_data_dir is file_output/filtered root 
 
-    def __init__(self, scraped_data_root_dir,filtered_data_root_dir):
+    def __init__(self, scraped_data_root_dir,filtered_data_root_dir=None):
         self.scraped_data_root_dir = scraped_data_root_dir
         self.filtered_data_root_dir = filtered_data_root_dir
 
@@ -27,24 +27,27 @@ class ScraperUtils:
         return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
 
 
-    def save_to_file(self, data,brand,query,output_file_name):
+    def save_to_file(self, data,brand,query,source,output_dir):
         """Save the scraped data to a CSV file in the given directory."""
         current_date = datetime.now().strftime('%Y-%d-%m')
-        
-        with open(output_file_name, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            # Write metadata
-            file.write(f"Scraped: {current_date}\n")
-            file.write(f"Query: {brand}-{query}\n")
-            # Write headers
-            writer.writerow(['product_id', 'brand', 'product_name', 'curr_price', 'listing_url'])
-            file.write('----------------------\n')
-            # Write data rows
-            for row in data:
-                writer.writerow(row)
 
-        print(f"Data successfully saved to {output_file_name}")
-        return output_file_name
+        file_hash = self.generate_hash(query,current_date)
+
+        output_file = os.path.join(output_dir, f"{source}_{brand}_{current_date}_{query}_scrape_{file_hash}.csv")
+       
+
+        with open(output_file, mode='w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                
+                file.write(f"Scraped: {current_date} \n")
+                file.write(f"Query: {brand}-{query} \n")
+                writer.writerow(['product_id','brand','product_name','curr_price','listing_url'])
+                file.write('---------------------- \n')
+                for row in data:
+                    writer.writerow(row)
+
+        print(f"Data successfully saved to {output_file}")
+        return output_file
 
 
     #make subdir in file_output/raw for current search query
