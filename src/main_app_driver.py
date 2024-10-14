@@ -72,12 +72,12 @@ def driver_function():
                 print(scraped_file)
 
                 
-                # if specific_item != None:
-                #     fitlered_sub_dir = utils.make_filtered_sub_dir(brand,category,specific_item,query_hash)
-                #     fitlered_file = (utils.filter_specific(scraped_file,specific_item,fitlered_sub_dir))
-                #     compare_driver(fitlered_file)
-                # else:
-                #     compare_driver(scraped_file)
+                if specific_item != None:
+                    filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
+                    filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
+                    compare_driver(filtered_file)
+                else:
+                    compare_driver(scraped_file)
             except Exception as e:
                 print(f"main_app_driver failure {e}")
         # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR category","email":"balmanzar883@gmail.com"})

@@ -114,7 +114,7 @@ class ItalistScraper(BaseScraper):
                 data.append(self.extract_listing_data(listing))
             
             scraper_util = ScraperUtils(self.output_dir)
-            scraped_file = scraper_util.save_to_file(data,self.brand,self.query,self.source,self.output_dir,self.query_hash)
+            scraped_file = scraper_util.save_to_file(data,self.brand,self.query,self.source,self.output_dir,self.query_hash,0)
             return scraped_file
         
         finally:

@@ -33,13 +33,18 @@ class ScraperUtils:
         return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
 
 
-    def save_to_file(self, data,brand,category,source,output_dir,query_hash):
+    def save_to_file(self, data,brand,category,source,output_dir,query_hash,data_type):
         """Save the scraped data to a CSV file in the given directory."""
         current_date = datetime.now().strftime('%Y-%d-%m')
 
         # file_hash = self.generate_hash(category,current_date)
 
-        output_file = os.path.join(output_dir, f"{source}_{brand}_{current_date}_{category}_scrape_{query_hash}.csv")
+        #if data_type = 1 - data is filtered data, prepend 'fitlered' to file name
+        if data_type == 1:
+            output_file = os.path.join(output_dir, f"FILTERED_{source}_{brand}_{current_date}_{category}_{query_hash}.csv")
+        #if data_type == 0, data is raw data, dont prepend anything to file name
+        else:
+            output_file = os.path.join(output_dir, f"{source}_{brand}_{current_date}_{category}_scrape_{query_hash}.csv")
        
 
         with open(output_file, mode='w', newline='', encoding='utf-8') as file:
@@ -145,7 +150,7 @@ class ScraperUtils:
 
         return source,date,category
 
-    def filter_specific(self,scraped_data_file,specific_item,filtered_subdir,query_hash):
+    def filter_specific2(self,scraped_data_file,specific_item,filtered_subdir,query_hash):
         
         #read metadata from input file, store, and use metadata again when creating filtered file
         try:
@@ -185,12 +190,13 @@ class ScraperUtils:
             try:
                 #get source,date,category from input file name
                 source,date,category = self.parse_file_name(scraped_data_file)
+                print(chalk.red(f"FILTER SPECIFIC - {source}_{date}_{category}"))
                 
                 # #create unique hash for this date + category combination
                 # hash = self.generate_hash(category,date)
                 
                 #build filename we are about to create
-                new_filtered_filename = f"FILTERED_{source}_{date}_{category}_{hash}.csv"
+                new_filtered_filename = f"FILTERED_{source}_{date}_{category}_{query_hash}.csv"
                 print(f"new filtered_filename: {new_filtered_filename}")
 
                 #build filepath
@@ -205,7 +211,7 @@ class ScraperUtils:
                 #convert df to list 
                 df_list = filtered_df.values.tolist()
 
-                self.save_to_file(df_list,'prada','bags',new_filtered_filepath)
+                self.save_to_file(df_list,'prada','bags',new_filtered_filename,filtered_subdir,query_hash,1)
                 return new_filtered_filepath
 
             except Exception as e:
@@ -229,6 +235,66 @@ class ScraperUtils:
 
         except Exception as e:
             print(chalk.red(f"FAILED: converting file to df + filtering{e}"))
+
+    def filter_specific(self, scraped_data_file, specific_item, filtered_subdir, query_hash):
+        try:
+            csv_reader = csv.reader(scraped_data_file)
+
+            # Get scrape date from file header
+            scrape_date_line = next(csv_reader)
+            scrape_date = scrape_date_line[0].split(':')[1].strip()
+            scrape_date = datetime.strptime(scrape_date, '%Y-%d-%m').date()
+            print(f"Scrape Date: {scrape_date}")
+
+            # Get category info
+            category_line = next(csv_reader)
+            category = category_line[0].split(':')[1].strip()
+            print(f"Category: {category}")
+
+            # Process CSV headers and rows
+            headers = next(csv_reader)
+
+        except Exception as e:
+            print(f"Header parsing error: {e}")   
+
+        # Convert file to DataFrame
+        try:
+            df = pd.read_csv(scraped_data_file, skiprows=2)
+            df = df.dropna()
+
+            # Filter DataFrame based on specific item
+            filtered_df = df[df['product_name'] == specific_item]
+            print(filtered_df)
+
+            # If filtering succeeds, continue with file creation
+            try:
+                # Parse file name to get source, date, category
+                source, date, category = self.parse_file_name(scraped_data_file)
+                print(chalk.red(f"FILTER SPECIFIC - {source}_{date}_{category}"))
+
+                # Build file name
+                new_filtered_filename = f"FILTERED_{source}_{date}_{category}_{query_hash}.csv"
+                print(f"New filtered file name: {new_filtered_filename}")
+
+                # Build complete path for the filtered file
+                new_filtered_filepath = os.path.join(filtered_subdir, new_filtered_filename)
+
+            except Exception as e:
+                print(chalk.red(f"FAILED: output file creation {e}"))
+
+            try:
+                # Convert DataFrame to list
+                df_list = filtered_df.values.tolist()
+
+                # Pass only the directory to `save_to_file`, not the full path
+                self.save_to_file(df_list, 'prada', 'bags', source, filtered_subdir, query_hash,1)
+                return new_filtered_filepath
+
+            except Exception as e:
+                print(chalk.red(f"FAILED: converting file to df + filtering {e}"))
+
+        except Exception as e:
+            print(chalk.red(f"FAILED: converting file to df + filtering {e}"))
 
         
 if __name__ == "__main__":
@@ -259,3 +325,4 @@ if __name__ == "__main__":
 
     utils.make_scraped_sub_dir_raw(brand,category,query_hash)
     # utils.filter_specific(input_file_path,spec_item,filtered_subdir)
+
