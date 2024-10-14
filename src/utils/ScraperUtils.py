@@ -44,7 +44,7 @@ class ScraperUtils:
             output_file = os.path.join(output_dir, f"FILTERED_{source}_{brand}_{current_date}_{category}_{query_hash}.csv")
         #if data_type == 0, data is raw data, dont prepend anything to file name
         else:
-            output_file = os.path.join(output_dir, f"{source}_{brand}_{current_date}_{category}_scrape_{query_hash}.csv")
+            output_file = os.path.join(output_dir, f"RAW_{source}_{brand}_{current_date}_{category}_{query_hash}.csv")
        
 
         with open(output_file, mode='w', newline='', encoding='utf-8') as file:
@@ -140,15 +140,28 @@ class ScraperUtils:
              return None
         
     def parse_file_name(self,file):
-
+        
+        """
+        filenames recieved are in the same format.
+        possible filenames recieved:
+            FILTERED_italist_prada_2024-14-10_bags_c4672843.csv
+            RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv
+        """
         file_path_tokens = file.split('/')[-1]
         file_name_tokens = file_path_tokens.split('_')
-        source = file_name_tokens[0]
-        date = file_name_tokens[1]
-        category = f"{file_name_tokens[2]}_{file_name_tokens[3].split('.')[0]}"
-        print(f"category {category}")
+        source = file_name_tokens[1]
+        brand = file_name_tokens[2]
+        date = file_name_tokens[3]
+        category = file_name_tokens[4]
+        print(file)
+        print(source)
+        print(date)
+        print(brand)
+        print(category)
 
-        return source,date,category
+        query_hash = file_name_tokens[5]
+
+        return source,date,brand,category
 
     def filter_specific2(self,scraped_data_file,specific_item,filtered_subdir,query_hash):
         
@@ -269,12 +282,12 @@ class ScraperUtils:
             # If filtering succeeds, continue with file creation
             try:
                 # Parse file name to get source, date, category
-                source, date, category = self.parse_file_name(scraped_data_file)
+                source,date,brand,category = self.parse_file_name(scraped_data_file)
                 print(chalk.red(f"FILTER SPECIFIC - {source}_{date}_{category}"))
 
                 # Build file name
                 new_filtered_filename = f"FILTERED_{source}_{date}_{category}_{query_hash}.csv"
-                print(f"New filtered file name: {new_filtered_filename}")
+                print(chalk.red(f"New filtered file name: {new_filtered_filename}"))
 
                 # Build complete path for the filtered file
                 new_filtered_filepath = os.path.join(filtered_subdir, new_filtered_filename)
@@ -287,7 +300,7 @@ class ScraperUtils:
                 df_list = filtered_df.values.tolist()
 
                 # Pass only the directory to `save_to_file`, not the full path
-                self.save_to_file(df_list, 'prada', 'bags', source, filtered_subdir, query_hash,1)
+                self.save_to_file(df_list, brand, category, source, filtered_subdir, query_hash,1)
                 return new_filtered_filepath
 
             except Exception as e:
@@ -307,11 +320,11 @@ if __name__ == "__main__":
     # print(os.path.isdir(scraped_data_dir_filtered))
 
 
-    input_file = f"RAW_SCRAPE_prada_2024-10-10_bags_626a76c4/italist_prada_2024-10-10_bags_scrape.csv"
+    input_file = f"RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8/RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv"
     input_file_path = os.path.join(scraped_data_dir_raw,input_file)
     # print(os.path.isfile(input_file_path))
 
-    filtered_subdir = os.path.join(scraped_data_dir_filtered,"FILTERED_prada_2024-10-10_bags_626a76c4")
+    filtered_subdir = os.path.join(scraped_data_dir_filtered,"FILTERED_prada_2024-14-10_bags_f3f28ac8")
     # print(os.path.isdir(filtered_subdir))
     spec_item = 'Shoulder Bag'
     utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
@@ -324,5 +337,8 @@ if __name__ == "__main__":
     query_hash = utils.generate_hash(query,None,current_date)
 
     utils.make_scraped_sub_dir_raw(brand,category,query_hash)
-    # utils.filter_specific(input_file_path,spec_item,filtered_subdir)
+
+    print(utils.parse_file_name(input_file_path))
+
+    utils.filter_specific(input_file_path,spec_item,filtered_subdir,query_hash)
 
