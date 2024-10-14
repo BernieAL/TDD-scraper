@@ -41,7 +41,7 @@ def make_price_report_root_dir():
     except Exception as e:
         print(chalk.red(f"Error creating output directory: {e}"))
 
-def make_price_report_subdir(price_report_root_dir,brand, category, query_hash):
+def make_price_report_subdir(price_report_root_dir,brand,category,query_hash):
         """
         Creates a new subdir in price_report output root for this specific query.
         Will return subdir path
@@ -75,26 +75,31 @@ def make_price_report_subdir(price_report_root_dir,brand, category, query_hash):
 
 def parse_file_name(file):
 
-    """
-    recieves filenames such as 
         
-    
+        
     """
-
-    
+    filenames recieved are in the same format.
+    possible filenames recieved:
+        FILTERED_italist_prada_2024-14-10_bags_c4672843.csv
+        RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv
+    """
     file_path_tokens = file.split('/')[-1]
-
     file_name_tokens = file_path_tokens.split('_')
-    print(file_name_tokens)
-
     source = file_name_tokens[1]
-
+    brand = file_name_tokens[2]
     date = file_name_tokens[3]
-    query = f"{file_name_tokens[2]}_{file_name_tokens[4].split('.')[0]}"
-    print(f"query {query}")
+    category = file_name_tokens[4]
+    query_hash = file_name_tokens[5]
+
+    # print(file)
+    # print(source)
+    # print(date)
+    # print(brand)
+    # print(category)
+
     
 
-    return source,date,query
+    return source,date,brand,category,query_hash
 
         
 def main():
@@ -154,14 +159,14 @@ def main():
                
                 try:
                     #parse source data file name to get values - source site (italist etc), brand,date,query,query_hash
-                    source, date, query = parse_file_name(source_file)
+                    source,date,brand,category,query_hash = parse_file_name(source_file)
                 except Exception as e:
                     print(chalk.red(f"subdir creation failed cannot proceed : {e}"))
                 
 
                 #create subdir to hold price report for specific query
                 try:
-                    price_report_subdir = make_price_report_subdir(price_report_root_dir,query,query_hash)
+                    price_report_subdir = make_price_report_subdir(price_report_root_dir,brand,category,query_hash)
                 except Exception as e:
                     print(chalk.red(f"subdir creation failed cannot proceed : {e}"))
                     return  # Exit if directory creation fails
@@ -170,6 +175,7 @@ def main():
                 if len(recd_products) == 0:
                     print("No products received; adding to no_change_sources list")
                     # source, date, query = parse_file_name(source_file)
+                    query = f"{brand}-{category}"
                     no_change_sources.append(f"{source}_{query}")
                     print(f"No change sources updated: {no_change_sources}")
 

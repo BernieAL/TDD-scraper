@@ -283,15 +283,7 @@ class ScraperUtils:
             try:
                 # Parse file name to get source, date, category
                 source,date,brand,category = self.parse_file_name(scraped_data_file)
-                print(chalk.red(f"FILTER SPECIFIC - {source}_{date}_{category}"))
-
-                # Build file name
-                new_filtered_filename = f"FILTERED_{source}_{date}_{category}_{query_hash}.csv"
-                print(chalk.red(f"New filtered file name: {new_filtered_filename}"))
-
-                # Build complete path for the filtered file
-                new_filtered_filepath = os.path.join(filtered_subdir, new_filtered_filename)
-
+        
             except Exception as e:
                 print(chalk.red(f"FAILED: output file creation {e}"))
 
@@ -299,9 +291,11 @@ class ScraperUtils:
                 # Convert DataFrame to list
                 df_list = filtered_df.values.tolist()
 
-                # Pass only the directory to `save_to_file`, not the full path
-                self.save_to_file(df_list, brand, category, source, filtered_subdir, query_hash,1)
-                return new_filtered_filepath
+                # Pass only  target dir to `save_to_file`, not the full path
+                output_file_path = self.save_to_file(df_list, brand, category, source, filtered_subdir, query_hash,1)
+                # return new_filtered_filepath  
+                return output_file_path
+
 
             except Exception as e:
                 print(chalk.red(f"FAILED: converting file to df + filtering {e}"))
