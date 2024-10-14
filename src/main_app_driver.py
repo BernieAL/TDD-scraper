@@ -76,11 +76,18 @@ def driver_function():
                     filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
                     filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
                     compare_driver(filtered_file)
+
+                    # #manual testing price change
+                    # compare_driver(os.path.join(scraped_data_dir_filtered,'FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
                 else:
+                   
                     compare_driver(scraped_file)
+                    
+                    # #manual testing price change
+                    # compare_driver(os.path.join(scraped_data_dir_raw,'RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
             except Exception as e:
                 print(f"main_app_driver failure {e}")
-        # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR category","email":"balmanzar883@gmail.com"})
+        publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com"})
         
 # Example usage in your code
 if __name__ == "__main__":

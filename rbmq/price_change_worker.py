@@ -84,18 +84,20 @@ def parse_file_name(file):
         RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv
     """
     file_path_tokens = file.split('/')[-1]
+    print(chalk.green(file_path_tokens))
     file_name_tokens = file_path_tokens.split('_')
     source = file_name_tokens[1]
     brand = file_name_tokens[2]
     date = file_name_tokens[3]
     category = file_name_tokens[4]
-    query_hash = file_name_tokens[5]
+    query_hash = file_name_tokens[5].split('.')[0]
 
-    # print(file)
-    # print(source)
-    # print(date)
-    # print(brand)
-    # print(category)
+    print(file)
+    print(source)
+    print(date)
+    print(brand)
+    print(category)
+    print(query_hash)
 
     
 
@@ -144,15 +146,15 @@ def main():
             msg = json.loads(body)
             print(f"Message received: {msg}")
 
+            price_report_subdir = None  # Initialize subdir var so its accessible in both elif blocks
+
             if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY']:
                 print('Product added to queue')
                 recd_products.append(msg)
                 print(f"Current product count in queue: {len(recd_products)}")
 
             elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
-                
-
-
+            
                 source_file = msg.get('source_file')  # Get the source file name
                 print(f"Received source file for processing: {source_file}")
 
@@ -161,9 +163,8 @@ def main():
                     #parse source data file name to get values - source site (italist etc), brand,date,query,query_hash
                     source,date,brand,category,query_hash = parse_file_name(source_file)
                 except Exception as e:
-                    print(chalk.red(f"subdir creation failed cannot proceed : {e}"))
+                    print(chalk.red(f"parse filename failed : {e}"))
                 
-
                 #create subdir to hold price report for specific query
                 try:
                     price_report_subdir = make_price_report_subdir(price_report_root_dir,brand,category,query_hash)
@@ -171,15 +172,16 @@ def main():
                     print(chalk.red(f"subdir creation failed cannot proceed : {e}"))
                     return  # Exit if directory creation fails
                 
+                #only create subdir if there are products recieved
+                #recd products would be 0 is there was no price changes for this source file
+                if len(recd_products) > 0:
+                    try:
+                        price_report_subdir = make_price_report_subdir(price_report_root_dir,brand,category,query_hash)
+                    except Exception as e:
+                        print(chalk.red(f"subdir creation failed cannot proceed : {e}"))
+                        return  # Exit if directory creation fails
 
-                if len(recd_products) == 0:
-                    print("No products received; adding to no_change_sources list")
-                    # source, date, query = parse_file_name(source_file)
-                    query = f"{brand}-{category}"
-                    no_change_sources.append(f"{source}_{query}")
-                    print(f"No change sources updated: {no_change_sources}")
-
-                else:
+                    #process recieved products
                     print(f"Processing received products for source file: {source_file}")
                     try:
                         #price report stored in price_report_subdir
@@ -188,11 +190,24 @@ def main():
                     except Exception as e:
                         print(chalk.red(f"Error in calc_percentage_diff_driver: {e}"))
 
+                #else no subdir creation - note source had no changes, add to no changes list 
+                else:
+                    print("No products received; adding to no_change_sources list")
+                    # source, date, query = parse_file_name(source_file)
+                    query = f"{brand}-{category}"
+                    no_change_sources.append(f"{source}_{query}")
+                    print(f"No change sources updated: {no_change_sources}")
+
+                
+                   
+
                 recd_products.clear()
                 print("Cleared received products list after processing.")
 
             elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
                 print("All files processed, sending email.")
+                
+                
                 try:
                     send_email_with_report('balmanzar883@gmail.com', price_report_subdir, 'Prada bags', no_change_sources)
                     print(chalk.green("Email sent successfully"))
@@ -210,58 +225,58 @@ def main():
      #dont use
     # def callback2(ch,method,properties,body):
 
-        try:
-            msg = json.loads(body)
-            print(f"Message received: {msg}")
+        # try:
+        #     msg = json.loads(body)
+        #     print(f"Message received: {msg}")
         
             
-            #check that msg is product to be added and not end signal
-            if msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE' and msg.get('type') != 'PROCESSED ALL SCRAPED FILES FOR QUERY':
-                print('product added to queue')
-                recd_products.append(msg) 
+        #     #check that msg is product to be added and not end signal
+        #     if msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE' and msg.get('type') != 'PROCESSED ALL SCRAPED FILES FOR QUERY':
+        #         print('product added to queue')
+        #         recd_products.append(msg) 
 
-            #check if msg is end signal for single file
-            elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE': 
+        #     #check if msg is end signal for single file
+        #     elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE': 
                 
 
-                source_file = msg.get('source_file')  # Get the source file name
-                if len(recd_products) == 0:
+        #         source_file = msg.get('source_file')  # Get the source file name
+        #         if len(recd_products) == 0:
                     
-                    source,date,query = parse_file_name(source_file)
-                    print(f"{source}_{date}_{query}")
-                    no_change_sources.append(f"{source}_{query}")
-                    print(no_change_sources)
+        #             source,date,brand,category,query_hash = parse_file_name(source_file)
+        #             print(f"{source}_{date}_{query}")
+        #             no_change_sources.append(f"{source}_{query}")
+        #             print(no_change_sources)
 
-                else:
+        #         else:
                     
-                    print(chalk.red(f"Processing source file: {source_file}"))
-                    print('begin batch price analysis')
+        #             print(chalk.red(f"Processing source file: {source_file}"))
+        #             print('begin batch price analysis')
 
-                    try:
-                        calc_percentage_diff_driver(output_dir,recd_products,source_file)
-                        print(chalk.green("report generated - stored in output dir"))
-                    except Exception as e:
-                        print(e)
+        #             try:
+        #                 calc_percentage_diff_driver(output_dir,recd_products,source_file)
+        #                 print(chalk.green("report generated - stored in output dir"))
+        #             except Exception as e:
+        #                 print(e)
 
-                # Clear product list after batch processing
-                recd_products.clear()
+        #         # Clear product list after batch processing
+        #         recd_products.clear()
 
-            #check if msg is end signal for all files
-            elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':   
+        #     #check if msg is end signal for all files
+        #     elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':   
             
                 
-                try:
-                    print(chalk.green("end signal rec'd - moving to craft email and attach reports"))
-                    send_email_with_report('balmanzar883@gmail.com',price_report_subdir,'Prada bags',no_change_sources)
-                    print(chalk.green("email sent"))
-                    no_change_sources.clear()
-                except Exception as e:
-                    print(e)
-        except Exception as e:
-             print(chalk.red(f"Error processing message: {e}"))
-        finally:
-            # Acknowledge the message only after processing it 
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+        #         try:
+        #             print(chalk.green("end signal rec'd - moving to craft email and attach reports"))
+        #             send_email_with_report('balmanzar883@gmail.com',price_report_subdir,'Prada bags',no_change_sources)
+        #             print(chalk.green("email sent"))
+        #             no_change_sources.clear()
+        #         except Exception as e:
+        #             print(e)
+        # except Exception as e:
+        #      print(chalk.red(f"Error processing message: {e}"))
+        # finally:
+        #     # Acknowledge the message only after processing it 
+        #     ch.basic_ack(delivery_tag=method.delivery_tag)
      
     channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue='price_change_queue',on_message_callback=callback)

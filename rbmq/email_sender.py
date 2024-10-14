@@ -16,7 +16,7 @@ app_password = os.getenv("GOOGLE_APP_PW")
 sender_email = os.getenv("GOOGLE_SENDER_EMAIL")  # Your email
 subject = "Daily Price Change Report"
 
-def send_email_with_report(receiver_email, output_dir, query,no_price_change_sources):
+def send_email_with_report(receiver_email, price_report_subdir, query,no_price_change_sources):
     # Create a secure SSL context
     context = ssl.create_default_context()
 
@@ -37,24 +37,30 @@ def send_email_with_report(receiver_email, output_dir, query,no_price_change_sou
 
     message.attach(MIMEText(body, 'plain'))
 
-    # Attach the report
+    # if price_report_dir not empty - traverse dir and attach all reports to email
+    if price_report_subdir is not None:
+
+        try:
+            for dirpath,subdir,files in os.walk(price_report_subdir):
+                for report_file in files:
+                    
+                    file_path = os.path.join(dirpath,report_file)
+
+                    with open(file_path, 'rb') as attachment:
+                        part = MIMEBase('application', 'octet-stream')
+                        part.set_payload(attachment.read())
+                        encoders.encode_base64(part)
+                        part.add_header(
+                            'Content-Disposition',
+                            f'attachment; filename={os.path.basename(report_file)}'
+                        )
+                        message.attach(part)
+        
+        except Exception as e:
+            print(chalk.red(f"Email Attachment error - There was an error sending the email: {e}"))
+
+    #email gets sent whether theres generate price reports or not     
     try:
-        for dirpath,subdir,files in os.walk(output_dir):
-            for report_file in files:
-                
-                file_path = os.path.join(dirpath,report_file)
-
-                with open(file_path, 'rb') as attachment:
-                    part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(attachment.read())
-                    encoders.encode_base64(part)
-                    part.add_header(
-                        'Content-Disposition',
-                        f'attachment; filename={os.path.basename(report_file)}'
-                    )
-                    message.attach(part)
-                   
-
         # Send the email with the report attached
         with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
             server.login(sender_email, app_password)
