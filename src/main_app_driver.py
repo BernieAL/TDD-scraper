@@ -48,13 +48,14 @@ def driver_function():
         #skip first line oh headers
         next(file)
         for row in file:
-
-            if not row:
+            
+            #if row empty after stripping white space, continue
+            if not row.strip():
                 continue
             try:
 
-                tokens = row.split(',')
-
+                tokens = row.strip().split(',') #strip newline char + whitespace before splitting
+                print(tokens)
                 brand = tokens[0]
                 category = tokens[1] #bags, shirts, etc
                 
@@ -66,25 +67,25 @@ def driver_function():
                 query_hash = utils.generate_hash(query,specific_item,current_date)
 
                 output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
-                print(output_dir)
-                italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
-                scraped_file = italist_scraper.run()
-                print(scraped_file)
+                # print(output_dir)
+                # italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
+                # scraped_file = italist_scraper.run()
+                # print(scraped_file)
 
                 
                 if specific_item != None:
-                    filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
-                    filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
-                    compare_driver(filtered_file)
+                    # filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
+                    # filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
+                    # compare_driver(filtered_file)
 
                     # #manual testing price change
-                    # compare_driver(os.path.join(scraped_data_dir_filtered,'FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
+                    compare_driver(os.path.join(scraped_data_dir_filtered,'FILTERED_prada_2024-14-10_bags_f3f28ac8','FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
                 else:
                    
-                    compare_driver(scraped_file)
+                    # compare_driver(scraped_file)
                     
                     # #manual testing price change
-                    # compare_driver(os.path.join(scraped_data_dir_raw,'RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
+                    compare_driver(os.path.join(scraped_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
             except Exception as e:
                 print(f"main_app_driver failure {e}")
         publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com"})

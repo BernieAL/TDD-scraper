@@ -1,12 +1,17 @@
 import smtplib
 import ssl
-import os
+import os,sys
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from dotenv import load_dotenv, find_dotenv
 from simple_chalk import chalk
+
+# Ensure the project root is accessible
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+
 
 load_dotenv(find_dotenv())
 
@@ -38,11 +43,12 @@ def send_email_with_report(receiver_email, price_report_subdir, query,no_price_c
     message.attach(MIMEText(body, 'plain'))
 
     # if price_report_dir not empty - traverse dir and attach all reports to email
-    if price_report_subdir is not None:
+    if price_report_subdir and os.path.exists(price_report_subdir):
 
         try:
             for dirpath,subdir,files in os.walk(price_report_subdir):
                 for report_file in files:
+                    print(report_file)
                     
                     file_path = os.path.join(dirpath,report_file)
 
@@ -58,6 +64,9 @@ def send_email_with_report(receiver_email, price_report_subdir, query,no_price_c
         
         except Exception as e:
             print(chalk.red(f"Email Attachment error - There was an error sending the email: {e}"))
+    else:
+         print(chalk.yellow(f"No price report directory provided or it does not exist: {price_report_subdir}"))
+
 
     #email gets sent whether theres generate price reports or not     
     try:
@@ -75,8 +84,11 @@ if __name__ == "__main__":
 
     current_dir = os.path.abspath(os.path.dirname(__file__))
     root_dir = os.path.abspath(os.path.join(current_dir,".."))
+    print(chalk.red(root_dir))
 
-    output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
+    output_dir = os.path.join(root_dir,'price_report_output','PRICE_REPORT_prada_2024-14-10_bags_f3f28ac8')
+    
+    print(os.path.isdir(output_dir))
     recipient_email = 'balmanzar883@gmail.com'
     query_name = 'Prada Bags'
-    send_email_with_report(recipient_email,output_dir,query_name)
+    send_email_with_report(recipient_email,output_dir,query_name,[])

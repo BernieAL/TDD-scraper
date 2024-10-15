@@ -234,8 +234,8 @@ if __name__ == "__main__":
     
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    scrape_output_dir = os.path.join('src','file_output')
-    input_file_path = os.path.join(curr_dir,'..',scrape_output_dir,'raw','RAW_SCRAPE_prada_2024-09-10_bags_5f920003','italist_prada_2024-09-10_bags_scrape.csv')
+    scrape_data_dir_raw = os.path.join('src','scrape_file_output','raw')
+    input_file_path = os.path.join(curr_dir,'..',scrape_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv')
     # input_file_path = os.path.join(curr_dir,'..','src','file_output','italist_2024-30-09_prada_bags.csv')
     # print(os.path.isfile(input_file_path))
     compare_driver(input_file_path)
