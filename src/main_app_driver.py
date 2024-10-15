@@ -78,7 +78,7 @@ def scrape_process(file_row):
             # test_file = os.path.join(scraped_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv')
             # compare_driver(test_file)
 
-
+        return filtered_file if not scraped_file else scraped_file
 def driver_function():
     
     
