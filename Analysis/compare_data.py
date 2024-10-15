@@ -130,7 +130,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
 
                 # Compare against existing product data from DB
                 if row['product_id'] in existing_product_data_dict:
-                    process_existing_product(row, existing_product_data_dict, updated_products, scrape_date)
+                    process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file)
                 else:
                     process_new_product(row, scrape_date, new_products)
 
@@ -147,7 +147,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
         raise
 
 
-def process_existing_product(row, existing_product_data_dict, updated_products, scrape_date):
+def process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file):
     """
     Processes an existing product by checking for price changes and updating the necessary fields.
 
@@ -174,7 +174,7 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
         updated_products.append(temp)
         # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
         #this is like spread operator in js
-        publish_to_queue({**temp, 'product_name': row['product_name'], 'listing_url': row['listing_url']})
+        publish_to_queue({**temp, 'product_name': row['product_name'], 'listing_url': row['listing_url'],"source_file": input_file})
     else:
         # Update scrape dates if price has not changed
         product_data['prev_scrape_date'] = product_data['curr_scrape_date']
@@ -240,4 +240,4 @@ if __name__ == "__main__":
     # print(os.path.isfile(input_file_path))
     compare_driver(input_file_path)
 
-    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com"})
+    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": input_file_path})

@@ -40,7 +40,7 @@ def make_output_filename(output_dir,source_filename):
         source_filename_extracted = source_filename.split('/')[-1]
         # print(source_filename)
         
-        output_file_name = f"PRICE_CHANGE_{source_filename_extracted}"
+        output_file_name = source_filename_extracted.replace('RAW','PRICE_CHANGE')
         output_file_path = os.path.join(output_dir,output_file_name)
         return output_file_path
     except Exception as e:

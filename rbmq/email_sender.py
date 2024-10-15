@@ -22,6 +22,9 @@ sender_email = os.getenv("GOOGLE_SENDER_EMAIL")  # Your email
 subject = "Daily Price Change Report"
 
 def send_email_with_report(receiver_email, price_report_subdir, query,no_price_change_sources):
+    
+    print(chalk.red(f"(EMAIL SENDER) subdir valid path: {os.path.isdir(price_report_subdir)}"))
+    
     # Create a secure SSL context
     context = ssl.create_default_context()
 
@@ -42,8 +45,8 @@ def send_email_with_report(receiver_email, price_report_subdir, query,no_price_c
 
     message.attach(MIMEText(body, 'plain'))
 
-    # if price_report_dir not empty - traverse dir and attach all reports to email
-    if price_report_subdir and os.path.exists(price_report_subdir):
+    # if price_report_dir  for query exists - traverse dir and attach all reports to email
+    if os.path.exists(price_report_subdir):
 
         try:
             for dirpath,subdir,files in os.walk(price_report_subdir):
