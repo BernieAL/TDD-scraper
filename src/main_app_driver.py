@@ -39,57 +39,70 @@ utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
 #     except Exception as e:
 #         print(f"Error while running italist scraper: {e}")
 
+
+def scrape_process(file_row):
+        
+        current_date = datetime.now().strftime('%Y-%d-%m')
+        tokens = file_row.strip().split(',') #strip newline char + whitespace before splitting
+        print(tokens)
+        brand = tokens[0]
+        category = tokens[1] #bags, shirts, etc
+        
+        query = f"{brand}_{category}" #Prada_bags , Gucci_shirts
+    
+        #if file_row doesnt have specific item, set spec item as None
+        specific_item = tokens[2] if len(tokens) > 2 else None
+
+        query_hash = utils.generate_hash(query,specific_item,current_date)
+
+        output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
+        print(output_dir)
+        italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
+        scraped_file = italist_scraper.run()
+        print(scraped_file)
+
+        
+        if specific_item != None:
+            filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
+            filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
+            compare_driver(filtered_file)
+
+            # # #manual testing price change
+            # test_file = os.path.join(scraped_data_dir_filtered,'FILTERED_prada_2024-14-10_bags_f3f28ac8','FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv')
+            # compare_driver(test_file)
+        else:
+            
+            compare_driver(scraped_file)
+            
+            # #manual testing price change
+            # test_file = os.path.join(scraped_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv')
+            # compare_driver(test_file)
+
+
 def driver_function():
     
-    current_date = datetime.now().strftime('%Y-%d-%m')
-
-
+    
     with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
-        #skip first line oh headers
-        next(file)
-        for row in file:
-            
-            #if row empty after stripping white space, continue
-            if not row.strip():
-                continue
-            try:
-
-                tokens = row.strip().split(',') #strip newline char + whitespace before splitting
-                print(tokens)
-                brand = tokens[0]
-                category = tokens[1] #bags, shirts, etc
-                
-                query = f"{brand}_{category}" #Prada_bags , Gucci_shirts
-            
-                #if row doesnt have specific item, set spec item as None
-                specific_item = tokens[2] if len(tokens) > 2 else None
-
-                query_hash = utils.generate_hash(query,specific_item,current_date)
-
-                output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
-                # print(output_dir)
-                # italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
-                # scraped_file = italist_scraper.run()
-                # print(scraped_file)
-
-                
-                if specific_item != None:
-                    # filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
-                    # filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
-                    # compare_driver(filtered_file)
-
-                    # #manual testing price change
-                    compare_driver(os.path.join(scraped_data_dir_filtered,'FILTERED_prada_2024-14-10_bags_f3f28ac8','FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
-                else:
-                   
-                    # compare_driver(scraped_file)
-                    
-                    # #manual testing price change
-                    compare_driver(os.path.join(scraped_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv'))
-            except Exception as e:
-                print(f"main_app_driver failure {e}")
-        publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com"})
         
+        #skip first line - file headers
+        next(file)
+        
+        for file_row in file:
+            
+            #if file_row empty after stripping white space, continue
+            if not file_row.strip():
+                continue
+            
+            try:
+                output_file = scrape_process(file_row)
+                #if filtered file use that, if not use scraped file as source file - queue MUST recieve a source file to parse from and build price report subdir
+                publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file":output_file})
+           
+            except Exception as e:
+                print(f"scrape_process failure {e}")
+
+        
+        print("processed all rows in input file")
 # Example usage in your code
 if __name__ == "__main__":
     # brand = 'Prada'
