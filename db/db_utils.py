@@ -263,6 +263,7 @@ def bulk_insert_new(new_products):
     print(f"Bulk insert successful. {cur.rowcount} rows inserted.")
 
 
+
 if __name__ == "__main__":
     # print(fetch_product_ids('Prada'))
     # print(fetch_product_ids_and_prices('Prada'))

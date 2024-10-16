@@ -128,7 +128,7 @@ def main():
                     print(f"No change sources updated: {no_change_sources}")
 
             elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
-
+                
                 if brand and category and query_hash:
                     try:
                         print(chalk.green(f"Sending email with report from subdir: {price_report_subdir}"))
@@ -139,6 +139,11 @@ def main():
                         print(chalk.red(f"Error during email sending: {e}"))
                 else:
                     print(chalk.red("Email not sent due to missing brand, category, or query_hash values"))
+
+                # Clear the queue **after** email is sent and processing is done
+                #MUST clear queue to remove prev query published messages
+                channel.queue_purge(queue='price_change_queue')
+                print(chalk.green("Queue cleared and ready for the next query"))
 
         except Exception as e:
             print(chalk.red(f"Error processing message: {e}"))
@@ -155,6 +160,9 @@ def main():
         # Start consuming messages
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='price_change_queue', on_message_callback=callback)
+        
+        print(chalk.green("Clearing queue"))
+        channel.queue_purge(queue='price_change_queue')
 
         print(chalk.blue('[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()

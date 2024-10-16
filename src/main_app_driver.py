@@ -57,28 +57,32 @@ def scrape_process(file_row):
 
         output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
         print(output_dir)
-        italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
-        scraped_file = italist_scraper.run()
-        print(scraped_file)
+        # italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
+        # scraped_file = italist_scraper.run()
+        # print(scraped_file)
 
+         # Initialize the variables
+        scraped_file = None
+        filtered_file = None
         
         if specific_item != None:
-            filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
-            filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
-            compare_driver(filtered_file)
+            # filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
+            # filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
+            # compare_driver(filtered_file)
 
-            # # #manual testing price change
-            # test_file = os.path.join(scraped_data_dir_filtered,'FILTERED_prada_2024-14-10_bags_f3f28ac8','FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv')
-            # compare_driver(test_file)
+            # #manual testing price change
+            filtered_file = os.path.join(scraped_data_dir_filtered,'FILTERED_prada_2024-14-10_bags_f3f28ac8','FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv')
+            compare_driver(filtered_file)
         else:
             
-            compare_driver(scraped_file)
+            # compare_driver(scraped_file)
             
-            # #manual testing price change
-            # test_file = os.path.join(scraped_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv')
-            # compare_driver(test_file)
+            #manual testing price change
+            scraped_file = os.path.join(scraped_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv')
+            compare_driver(scraped_file)
 
         return filtered_file if not scraped_file else scraped_file
+
 def driver_function():
     
     

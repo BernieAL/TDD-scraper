@@ -1,0 +1,2 @@
+price_change_percent_signed,product_id,curr_price,curr_scrape_date,prev_price,prev_scrape_date,product_name,listing_url,source_file
++13456.05%,14696865-14529174,950008.0,2024-10-14,7008.0,2024-10-14,Brown Suede Prada Buckle Large Handbag,https://www.italist.com/us/women/bags/totes/brown-suede-prada-buckle-large-handbag/14529174/14696865/prada/,/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_prada_2024-14-10_bags_f3f28ac8/FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv
