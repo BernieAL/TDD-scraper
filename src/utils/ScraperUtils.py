@@ -28,6 +28,8 @@ class ScraperUtils:
         gen hash that will be used across any function that makes dirs or files
         single hash generated for single category
         specific_item may be none - Ex if category = prada bags
+
+        query recieved in format of "{brand}_{category}"
         """
         combined_str = f"{query}_{specific_item}_{date}"
         return hashlib.sha256(combined_str.encode()).hexdigest()[:8]
@@ -52,7 +54,7 @@ class ScraperUtils:
                 
                 file.write(f"Scraped: {current_date} \n")
                 file.write(f"category: {brand}-{category} \n")
-                writer.writerow(['product_id','brand','product_name','curr_price','listing_url'])
+                writer.writerow(['product_id','brand','product_name','curr_price','listing_url','source'])
                 file.write('---------------------- \n')
                 for row in data:
                     writer.writerow(row)

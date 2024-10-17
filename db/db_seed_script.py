@@ -25,13 +25,16 @@ cur = conn.cursor()
 
 #path to current file
 curr_dir = os.path.dirname(os.path.abspath(__file__))
+print(curr_dir)
 
 #go up one dir 
-file_output_dir = os.path.join(curr_dir,'..','src','file_output')
-# print(os.path.isdir(file_output_dir))
+file_output_dir_root = os.path.join(curr_dir,'..','src','scrape_file_output')
+
+raw_root_dir = os.path.join(file_output_dir_root,'raw')
+print(raw_root_dir)
 
 
-sample_seed_data_path = os.path.join(file_output_dir,'italist_2024-25-09_prada_bags.csv')
+sample_seed_data_path = os.path.join(raw_root_dir,'RAW_SCRAPE_prada_2024-17-10_prada_bags_831244f0','RAW_ITALIST_prada_2024-17-10_prada_bags_831244f0.csv')
 
 with open(sample_seed_data_path,'r') as file:
     csv_reader = csv.reader(file)
@@ -49,7 +52,7 @@ with open(sample_seed_data_path,'r') as file:
     
 
     for row in csv_reader:
-        """csv row structure -> product_id,brand,product_name,curr_price"""
+        """csv row structure -> product_id,brand,product_name,curr_price,listing_url,source"""
         product_id = row[0]
         brand = row[1]
         product_name = row[2]
@@ -65,8 +68,9 @@ with open(sample_seed_data_path,'r') as file:
         
         listing_url = row[4]
 
+        source = row[5]
         
-        print(f"{product_id},{brand},{product_name},{curr_price},{curr_scrape_date},{prev_price},{prev_scrape_date},{sold_date},{sold},{listing_url}")
+        print(f"{product_id},{brand},{product_name},{curr_price},{curr_scrape_date},{prev_price},{prev_scrape_date},{sold_date},{sold},{listing_url}.{source}")
 
         cur.execute(insertion_queries.PRODUCT_INSERT_QUERY,(product_id,
                                                             brand,
@@ -77,7 +81,8 @@ with open(sample_seed_data_path,'r') as file:
                                                             prev_scrape_date,
                                                             sold_date,
                                                             sold,
-                                                            listing_url))
+                                                            listing_url,
+                                                            source))
         conn.commit()
         #insert into db
         

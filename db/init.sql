@@ -16,7 +16,8 @@ CREATE TABLE products (
     prev_scrape_date DATE,
     sold_date DATE,
     sold BOOLEAN,
-    listing_url VARCHAR(255)
+    listing_url VARCHAR(255),
+    source VARCHAR(50)
 );
 
 

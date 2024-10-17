@@ -298,14 +298,15 @@ def DB_get_sold():
             'prev_scrape_date': row[6] if isinstance(row[6], date) else 'N/A',
             'sold_date': row[7] if isinstance(row[7], date) else 'N/A',
             'sold': 'True' if row[8] else 'False',
-            'url': row[9]
+            'url': row[9],
+            'source':row[10]
         }
         for row in result
     ]
     
     # Serialize and pretty print the result with the custom JSON serializer
     print(json.dumps(sold_items, indent=2, default=decimal_default))
-    
+
     return sold_items
 
 if __name__ == "__main__":

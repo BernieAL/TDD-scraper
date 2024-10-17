@@ -42,10 +42,11 @@ local_saved_file_path = os.path.abspath('src/local_websites/Prada Bags for Women
 local_url = 'file:///' + local_saved_file_path.replace('\\','/')
 
 
-from src.scrapers.base_scraper import BaseScraper
+# from src.scrapers.base_scraper import BaseScraper
 from utils.ScraperUtils import ScraperUtils
 
 
+from scrapers.base_scraper import BaseScraper
 
 class ItalistScraper(BaseScraper):
 
@@ -54,7 +55,7 @@ class ItalistScraper(BaseScraper):
         super().__init__(brand, query)
         self.local = local
         self.output_dir = output_dir
-        self.source = "italist"
+        self.source = "ITALIST"
         self.query_hash = query_hash
         
 
@@ -75,7 +76,8 @@ class ItalistScraper(BaseScraper):
             product_name = listing.find_element(By.XPATH, ".//div[contains(@class, 'productName')]").text or "No product name"
             price = listing.find_element(By.XPATH, ".//span[contains(@class, 'price')]").text or "No price"
             price = self.get_numeric_only(price)
-            return product_id, brand, product_name, price, listing_url
+            source = self.source
+            return product_id, brand, product_name, price, listing_url, source
         except NoSuchElementException:
             print("Error extracting data.")
             return None, None, None, None, None
@@ -129,10 +131,18 @@ if __name__ == "__main__":
     category = 'bags'
     query = f"{brand}_{category}"
 
-    scraped_data_root_dir = output_dir = os.path.join(os.path.dirname(__file__), '..', 'file_output')
-    scraper_util = ScraperUtils(scraped_data_root_dir)
-    output_dir = scraper_util.make_scraped_sub_dir(brand,query)
-    query_hash = scraper_util.generate_hash(query)
+    current_date = datetime.now().strftime('%Y-%d-%m')
+
+
+    scraped_data_root_dir_raw = output_dir = os.path.join(os.path.dirname(__file__), '..', 'scrape_file_output','raw')
+    
+    filtered_data_root_dir = output_dir = os.path.join(os.path.dirname(__file__), '..', 'scrape_file_output','filtered')
+    
+    scraper_util = ScraperUtils(scraped_data_root_dir_raw,filtered_data_root_dir)
+
+    query_hash = scraper_util.generate_hash(query,None,current_date)
+    output_dir = scraper_util.make_scraped_sub_dir_raw(brand,query,query_hash)
+    
 
     scraper = ItalistScraper(brand, query, output_dir,query_hash,local=True)
     scraper.run()

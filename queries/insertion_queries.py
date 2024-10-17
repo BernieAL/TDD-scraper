@@ -20,6 +20,7 @@ PRODUCT_INSERT_QUERY = """
                          prev_scrape_date,
                          sold_date,
                          sold,
-                         listing_url)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                         listing_url,
+                         source)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
 """
