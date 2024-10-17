@@ -16,7 +16,8 @@ from db.db_utils import (
     DB_fetch_product_ids_prices_dates, 
     DB_bulk_update_existing, 
     bulk_insert_new,
-    DB_bulk_update_sold
+    DB_bulk_update_sold,
+    DB_get_sold
 )
 from rbmq.price_change_producer import publish_to_queue
 
@@ -139,6 +140,11 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
         bulk_insert_new(new_products)
         DB_bulk_update_sold(existing_product_data_dict)
 
+        #get sold items for this src and push to queue
+        sold_items = DB_get_sold()
+
+        
+        
         # After processing all products, send completion signal
         publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file})
 

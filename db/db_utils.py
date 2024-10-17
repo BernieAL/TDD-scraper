@@ -1,6 +1,8 @@
 import psycopg2,sys,os
 from simple_chalk import chalk
-import time
+import time,json
+import decimal
+from datetime import date
 
 #get parent dir  from current script dir - append to sys.path to be searched for modules we import
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -262,10 +264,49 @@ def bulk_insert_new(new_products):
      # Print a success message if no exception occurred
     print(f"Bulk insert successful. {cur.rowcount} rows inserted.")
 
+# Helper function to convert Decimal and Date to JSON-serializable format
+def decimal_default(obj):
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    elif isinstance(obj, date):
+        return obj.isoformat()  # Convert datetime.date to ISO format string
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
+def DB_get_sold():
+
+    conn = psycopg2.connect(
+        host="localhost",
+        port="5433",
+        database="designer_products",
+        user="admin",
+        password="admin!"
+    )
+    cur = conn.cursor()
+
+    sold_query = """SELECT * FROM products WHERE sold = %s"""
+    cur.execute(sold_query, ('t',))
+
+    result = cur.fetchall()
+
+    # Convert result to list of dictionaries
+    sold_items = [
+        {
+            'product_id': row[0], 
+            'curr_price': float(row[3]) if isinstance(row[3], decimal.Decimal) else row[3],
+            'curr_scrape_date': row[4] if isinstance(row[4], date) else 'N/A',
+            'prev_price': float(row[5]) if isinstance(row[5], decimal.Decimal) else row[5],
+            'prev_scrape_date': row[6] if isinstance(row[6], date) else 'N/A',
+            'sold_date': row[7] if isinstance(row[7], date) else 'N/A',
+            'sold': 'True' if row[8] else 'False',
+            'url': row[9]
+        }
+        for row in result
+    ]
+    
+    # Serialize and pretty print the result with the custom JSON serializer
+    print(json.dumps(sold_items, indent=2, default=decimal_default))
+    
+    return sold_items
 
 if __name__ == "__main__":
-    # print(fetch_product_ids('Prada'))
-    # print(fetch_product_ids_and_prices('Prada'))
-    print(DB_fetch_product_ids_prices_dates('Prada'))
-       
+    DB_get_sold()
