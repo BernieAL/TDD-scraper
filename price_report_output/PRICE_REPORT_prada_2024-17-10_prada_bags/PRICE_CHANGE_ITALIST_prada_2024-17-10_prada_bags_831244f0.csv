@@ -1,0 +1,2 @@
+price_change_percent_signed,product_id,curr_price,curr_scrape_date,prev_price,prev_scrape_date,product_name,listing_url,source_file
+-6.05%,14544713-14377022,3849.0,2024-10-16,4097.0,2024-10-16,Buckle Handbag,https://www.italist.com/us/women/bags/totes/buckle-handbag/14377022/14544713/prada/,/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/raw/RAW_SCRAPE_prada_2024-16-10_bags_3a413815/RAW_italist_prada_2024-16-10_bags_3a413815.csv

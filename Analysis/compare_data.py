@@ -136,12 +136,13 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
                     process_new_product(row, scrape_date, new_products)
 
         # Bulk update and insert operations
-        DB_bulk_update_existing(updated_products)
-        bulk_insert_new(new_products)
+        if len(new_products) > 0:
+            bulk_insert_new(new_products)
+        
         DB_bulk_update_sold(existing_product_data_dict)
 
         #get sold items for this src and push to queue
-        sold_items = DB_get_sold()
+        # sold_items = DB_get_sold()
 
         
         
@@ -205,6 +206,8 @@ def process_new_product(row, scrape_date, new_products):
     :param scrape_date: Date of the current scrape.
     :param new_products: List to hold new product data.
     """
+
+    print(chalk.red(row['source']))
     temp = {
         'product_id': row['product_id'],
         'brand': row['brand'],
@@ -214,7 +217,9 @@ def process_new_product(row, scrape_date, new_products):
         'prev_price': float(row['curr_price']),
         'prev_scrape_date': scrape_date,
         'sold_date': None,
-        'sold': False
+        'sold': False,
+        'listing_url':row['listing_url'],
+        'source':row['source']
     }
     new_products.append(temp)
     print(chalk.green(f"New product added: {row['product_id']}"))
@@ -241,9 +246,9 @@ if __name__ == "__main__":
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     scrape_data_dir_raw = os.path.join('src','scrape_file_output','raw')
-    input_file_path = os.path.join(curr_dir,'..',scrape_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv')
+    input_file_path = os.path.join(curr_dir,'..',scrape_data_dir_raw,'RAW_SCRAPE_prada_2024-17-10_prada_bags_831244f0','RAW_ITALIST_prada_2024-17-10_prada_bags_831244f0.csv')
     # input_file_path = os.path.join(curr_dir,'..','src','file_output','italist_2024-30-09_prada_bags.csv')
     # print(os.path.isfile(input_file_path))
     compare_driver(input_file_path)
 
-    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": input_file_path})
+    # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": input_file_path})

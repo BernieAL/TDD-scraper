@@ -234,17 +234,19 @@ def bulk_insert_new(new_products):
         cur = conn.cursor()
 
         new_product_query = """
-                            INSERT into products(
-                                product_id,
+            INSERT INTO products(product_id,
                                 brand,
                                 product_name,
                                 curr_price,
                                 curr_scrape_date,
                                 prev_price,
-                                prev_scrape_date
-                            )
-                            VALUES (%s,%s,%s,%s,%s,%s,%s)
-                            """
+                                prev_scrape_date,
+                                sold_date,
+                                sold,
+                                listing_url,
+                                source)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """
 
         new_products_list_as_tuples =[(product['product_id'],
                                     product['brand'],
@@ -252,7 +254,12 @@ def bulk_insert_new(new_products):
                                     product['curr_price'],
                                     product['curr_scrape_date'],
                                     product['prev_price'],
-                                    product['prev_scrape_date']) 
+                                    product['prev_scrape_date'],
+                                    product['sold_date'],
+                                    product['sold'],
+                                    product['listing_url'],
+                                    product['source']
+                                    ) 
                                     for product in new_products]
 
         cur.executemany(new_product_query,new_products_list_as_tuples)
@@ -288,6 +295,7 @@ def DB_get_sold():
 
     result = cur.fetchall()
 
+    print(result)
     # Convert result to list of dictionaries
     sold_items = [
         {
