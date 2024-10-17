@@ -295,7 +295,7 @@ def DB_get_sold():
 
     result = cur.fetchall()
 
-    print(result)
+    # print(result)
     # Convert result to list of dictionaries
     sold_items = [
         {
@@ -311,9 +311,31 @@ def DB_get_sold():
         }
         for row in result
     ]
+    sold_items = {}
+    for prod in result:
+        product_id=prod[0], 
+        curr_price= float(prod[3]) if isinstance(prod[3], decimal.Decimal) else prod[3]
+        curr_scrape_date=prod[4]
+        prev_price=float(prod[5]) if isinstance(prod[5], decimal.Decimal) else prod[5]
+        prev_scrape_date= prod[6] if isinstance(prod[6], date) else 'N/A'
+        sold_date= prod[7] if isinstance(prod[7], date) else 'N/A'
+        sold= 'True' if prod[8] else 'False'
+        url= prod[9]
+        source=prod[10]
     
-    # Serialize and pretty print the result with the custom JSON serializer
-    print(json.dumps(sold_items, indent=2, default=decimal_default))
+        sold_items[product_id] = { 
+            'curr_price': curr_price,
+            'curr_scrape_date': curr_scrape_date,
+            'prev_price': prev_price,
+            'prev_scrape_date': prev_scrape_date,
+            'sold_date': sold_date,
+            'sold': sold,
+            'url': url,
+            'source':source
+        }
+
+    # # Serialize and pretty print the result with the custom JSON serializer
+    # print(json.dumps(sold_items, indent=2, default=decimal_default))
 
     return sold_items
 

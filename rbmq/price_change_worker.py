@@ -164,8 +164,16 @@ def main():
 
                 # Create sold_report_subdir early, even if no changes are found
                 sold_report_subdir = make_sold_report_subdir(sold_report_root_dir, brand, category, query_hash)
+            
+            if msg.get('type') == 'PROCESSING SOLD ITEMS COMPLETE':
+                sold_items = msg['sold_items']
+                sold_items_file_name = f"SOLD_{source}_{brand}_{date}_{query}_{query_hash}"
+                sold_items_file_path = os.path.join(sold_report_subdir,sold_items_file_name)
 
-
+                with open(sold_items_file_path,'w',encoding='utf-8') as file:
+                    
+                    for item in sold_items:
+                        file.write(item)
 
             # Now process the product messages or the end signal
             if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY']:
@@ -190,9 +198,11 @@ def main():
                 
                 if brand and category and query_hash:
                     try:
-                        print(chalk.green(f"Sending email with report from subdir: {price_report_subdir}"))
-                        send_email_with_report('balmanzar883@gmail.com', price_report_subdir, f"{brand}_{category}", no_change_sources)
-                        print(chalk.green("Email sent successfully"))
+                        print(chalk.green(f"Sending email with price report from subdir: {price_report_subdir}"))
+                        print(chalk.green(f"And with sold report from subdir: {sold_report_subdir}"))
+                        
+                        # send_email_with_report('balmanzar883@gmail.com', price_report_subdir,sold_report_subdir, f"{brand}_{category}", no_change_sources)
+                        # print(chalk.green("Email sent successfully"))
                         no_change_sources.clear()
                     except Exception as e:
                         print(chalk.red(f"Error during email sending: {e}"))

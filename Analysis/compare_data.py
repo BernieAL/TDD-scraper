@@ -145,9 +145,10 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
 
         #get sold items for this src and push to queue
         sold_items = DB_get_sold()
+        print(chalk.green(f"SOLD ITEMS: {sold_items}"))
 
         #push sold_items to queue
-        publish_to_queue({"type":"SOLD_ITEMS","items":sold_items})
+        publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","items":sold_items})
 
 
 
