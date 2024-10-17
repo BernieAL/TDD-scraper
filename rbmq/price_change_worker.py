@@ -61,6 +61,55 @@ def make_price_report_subdir(price_report_root_dir,brand,category,query_hash):
             print(f"Error while creating sub-directory for raw scrape: {e}")
             return None
 
+def make_sold_report_root_dir():
+    """
+    Creates the report output directory if it doesn't exist.
+    """
+    try:
+        current_dir = os.path.abspath(os.path.dirname(__file__))
+        root_dir = os.path.abspath(os.path.join(current_dir, ".."))
+        sold_report_root_dir = os.path.join(root_dir, "sold_report_output")
+
+        if not os.path.exists(sold_report_root_dir):
+            os.makedirs(sold_report_root_dir)
+
+        return sold_report_root_dir
+    except Exception as e:
+        print(chalk.red(f"Error creating output directory: {e}"))
+        return None
+    
+
+def make_sold_report_subdir(sold_report_root_dir,brand,category,query_hash):
+        """
+        Creates a new subdir in sold_report output root for this specific query.
+        Will return subdir path
+
+        :param brand: Brand name (e.g., Prada)
+        :param category: Category of the product (e.g., Bags)
+        :param query_hash: A hash for the query
+        :return: The path of the created directory
+        """
+        current_date = datetime.now().strftime('%Y-%d-%m')
+        try:
+            # Build the directory name using the brand, query, and hash
+            dir_name = f"SOLD_REPORT_{brand}_{current_date}_{category}_{query_hash}"
+            new_sub_dir = os.path.join(sold_report_root_dir, dir_name)
+            
+            print(f"Attempting to create directory: {new_sub_dir}")
+            
+            # Check if the directory already exists; if not, create it
+            if not os.path.exists(new_sub_dir):
+                os.makedirs(new_sub_dir)
+                print(f"Directory created: {new_sub_dir}")
+            else:
+                print(f"Directory already exists: {new_sub_dir}")
+            
+            return new_sub_dir
+        
+        except Exception as e:
+            print(f"Error while creating sub-directory for raw scrape: {e}")
+            return None
+
 def parse_file_name(file):
     """
     filenames recieved are in the same format.
@@ -107,6 +156,16 @@ def main():
 
                 # Create price_report_subdir early, even if no changes are found
                 price_report_subdir = make_price_report_subdir(price_report_root_dir, brand, category, query_hash)
+
+                sold_report_root_dir = make_sold_report_root_dir()
+                if not sold_report_root_dir:
+                    print(chalk.red("Failed to create or access the sold report root directory. Exiting."))
+                    return
+
+                # Create sold_report_subdir early, even if no changes are found
+                sold_report_subdir = make_sold_report_subdir(sold_report_root_dir, brand, category, query_hash)
+
+
 
             # Now process the product messages or the end signal
             if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY']:

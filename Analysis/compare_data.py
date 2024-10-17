@@ -139,13 +139,18 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
         if len(new_products) > 0:
             bulk_insert_new(new_products)
         
-        DB_bulk_update_sold(existing_product_data_dict)
+        #all remaining in dict were not found in todays scrape - meaning they were sold
+        items_not_found = existing_product_data_dict
+        DB_bulk_update_sold(items_not_found)
 
         #get sold items for this src and push to queue
-        # sold_items = DB_get_sold()
+        sold_items = DB_get_sold()
 
-        
-        
+        #push sold_items to queue
+        publish_to_queue({"type":"SOLD_ITEMS","items":sold_items})
+
+
+
         # After processing all products, send completion signal
         publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file})
 

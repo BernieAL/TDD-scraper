@@ -172,7 +172,7 @@ def DB_bulk_update_existing(update_products):
 
 def DB_bulk_update_sold(sold_products):
 
-    """sold_products is exisint_product_id_prices_dict rec'd from compare_data.py
+    """sold_products is existing_product_id_prices_dict rec'd from compare_data.py
         
        Structure is:
         existing_product_id_prices_dict[product_id] = {'curr_price':curr_price,
