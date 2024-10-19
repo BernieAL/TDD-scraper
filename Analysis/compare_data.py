@@ -73,6 +73,7 @@ def db_data_to_dictionary(existing_db_data_list):
     """
     try:
         existing_db_data_dict = {}
+        # print(chalk.red(existing_db_data_list))
 
         for prod in existing_db_data_list:
             product_id = prod['product_id'] 
@@ -149,7 +150,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
 
         #push sold_items to queue
         publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","items":sold_items})
-
+        
 
 
         # After processing all products, send completion signal
@@ -239,6 +240,7 @@ def compare_driver(scraped_data_file_path):
     """
     try:
         existing_product_ids_prices_dict = db_data_to_dictionary(existing_product_ids_prices_dates_list)
+        # print(existing_product_ids_prices_dict)
         compare_scraped_data_to_db(scraped_data_file_path, existing_product_ids_prices_dict)
     except Exception as e:
         print(chalk.red(f"Error in comparison driver: {e}"))

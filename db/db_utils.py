@@ -102,12 +102,8 @@ def DB_fetch_product_ids_prices_dates(brand):
         cur.execute(query,(brand,))
         result = cur.fetchall()
 
-    
-        # for row in result:
-        #    print(row)
-
-        # Convert to list of dictionaries
-        products = [
+        # Convert result from list of tuples to list of dictionaries
+        products_to_list_of_dicts = [
                     {'product_id':row[0], 
                      'curr_price': (row[1]),
                      'curr_scrape_date':(row[2]),
@@ -116,7 +112,8 @@ def DB_fetch_product_ids_prices_dates(brand):
                      } for row in result
                     ]
 
-        return products
+        print(chalk.blue(f"sold_items as dict {products_to_list_of_dicts}"))
+        return products_to_list_of_dicts
         
     except Exception as e:
         print(f"(fetch_products_ids_and_prices) Error: {Exception}")
@@ -294,10 +291,10 @@ def DB_get_sold():
     cur.execute(sold_query, ('t',))
 
     result = cur.fetchall()
-
+    print(chalk.red(f"result directly from db {result}"))
     # print(result)
-    # Convert result to list of dictionaries
-    sold_items = [
+    # Convert result from list of tuples to list of dictionaries
+    sold_items_list_of_dicts = [
         {
             'product_id': row[0], 
             'curr_price': float(row[3]) if isinstance(row[3], decimal.Decimal) else row[3],
@@ -311,19 +308,23 @@ def DB_get_sold():
         }
         for row in result
     ]
-    sold_items = {}
-    for prod in result:
-        product_id=prod[0], 
-        curr_price= float(prod[3]) if isinstance(prod[3], decimal.Decimal) else prod[3]
-        curr_scrape_date=prod[4]
-        prev_price=float(prod[5]) if isinstance(prod[5], decimal.Decimal) else prod[5]
-        prev_scrape_date= prod[6] if isinstance(prod[6], date) else 'N/A'
-        sold_date= prod[7] if isinstance(prod[7], date) else 'N/A'
-        sold= 'True' if prod[8] else 'False'
-        url= prod[9]
-        source=prod[10]
+
+    print(chalk.green(f"result after converting to list of dicts {sold_items_list_of_dicts}"))
+
+    sold_items_to_dict = {}
+
+    for prod in sold_items_list_of_dicts:
+        product_id=prod['product_id']
+        curr_price= float(prod['curr_price']) if isinstance(prod['curr_price'], decimal.Decimal) else prod['curr_price']
+        curr_scrape_date=prod['curr_scrape_date'].strftime('%Y-%m-%d')
+        prev_price=float(prod['prev_price']) if isinstance(prod['prev_price'], decimal.Decimal) else prod['prev_price']
+        prev_scrape_date= prod['curr_scrape_date'].strftime('%Y-%m-%d')
+        sold_date= prod['sold_date'].strftime('%Y-%m-%d')
+        sold= 'True' if prod['sold'] else 'False'
+        url= prod['url']
+        source=prod['source']
     
-        sold_items[product_id] = { 
+        sold_items_to_dict[product_id] = { 
             'curr_price': curr_price,
             'curr_scrape_date': curr_scrape_date,
             'prev_price': prev_price,
@@ -334,10 +335,13 @@ def DB_get_sold():
             'source':source
         }
 
+    print(chalk.blue(f"sold_items as dict {sold_items_to_dict}"))
+
     # # Serialize and pretty print the result with the custom JSON serializer
     # print(json.dumps(sold_items, indent=2, default=decimal_default))
 
-    return sold_items
+    return sold_items_to_dict
 
 if __name__ == "__main__":
     DB_get_sold()
+    # DB_fetch_product_ids_prices_dates('Prada')

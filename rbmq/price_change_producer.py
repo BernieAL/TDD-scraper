@@ -56,17 +56,26 @@ def publish_to_queue(product_msg):
 
     try:
         
+        #if type is sold items, publish list of sold items to queue
+        if product_msg.get('type') == 'PROCESSING SOLD ITEMS COMPLETE':
+            print(product_msg)
+            # publish sold items list to queue
+            channel.basic_publish(exchange='', 
+                                routing_key='price_change_queue', 
+                                body=json.dumps(product_msg),
+                                properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent))
+
         #if not end signal message - convert dates to strings to not throw serialization error cause of datetime format
-        if product_msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE' and product_msg.get('type') != 'PROCESSED ALL SCRAPED FILES FOR QUERY':
+        if product_msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE' and product_msg.get('type') != 'PROCESSED ALL SCRAPED FILES FOR QUERY' and product_msg.get('type') != 'PROCESSING SOLD ITEMS COMPLETE':
             product_msg['curr_scrape_date'] = (product_msg['curr_scrape_date']).strftime('%Y-%m-%d')
             product_msg['prev_scrape_date'] = (product_msg['prev_scrape_date']).strftime('%Y-%m-%d')
 
 
-        # publish product to quueue
-        channel.basic_publish(exchange='', 
-                            routing_key='price_change_queue', 
-                            body=json.dumps(product_msg),
-                            properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent))
+            # publish product to quueue
+            channel.basic_publish(exchange='', 
+                                routing_key='price_change_queue', 
+                                body=json.dumps(product_msg),
+                                properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent))
         
         print(chalk.green(f"Successfully sent task to queue: {product_msg}"))
 
