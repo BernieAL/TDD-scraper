@@ -1,6 +1,4 @@
-import os
-import sys
-import json
+import sys,csv,json,os
 import pika
 from simple_chalk import chalk
 from datetime import datetime
@@ -122,8 +120,15 @@ def parse_file_name(file):
     source = file_name_tokens[1]
     brand = file_name_tokens[2]
     date = file_name_tokens[3]
-    category = file_name_tokens[4]
-    query_hash = file_name_tokens[5].split('.')[0]
+    category = file_name_tokens[5]
+    query_hash = file_name_tokens[-1].split('.')[0]
+
+    print(chalk.blue(f"file_name_tokens {file_name_tokens}"))
+    print(chalk.blue(f"source: {source}"))
+    print(chalk.blue(f"brand {brand}"))
+    print(chalk.blue(f"date: {date}"))
+    print(chalk.blue(f"category {category}"))
+    print(chalk.blue(f"query hash: {query_hash}"))
 
     return source, date, brand, category, query_hash
 
@@ -135,7 +140,7 @@ def main():
     def callback(ch, method, properties, body):
         try:
             msg = json.loads(body)
-            print(f"Message received: {msg}")
+            # print(f"Message received: {msg}")
 
 
             if 'source_file' in msg:
@@ -165,18 +170,34 @@ def main():
                 # Create sold_report_subdir early, even if no changes are found
                 sold_report_subdir = make_sold_report_subdir(sold_report_root_dir, brand, category, query_hash)
             
-            if msg.get('type') == 'PROCESSING SOLD ITEMS COMPLETE':
-                sold_items = msg['sold_items']
-                sold_items_file_name = f"SOLD_{source}_{brand}_{date}_{query}_{query_hash}"
-                sold_items_file_path = os.path.join(sold_report_subdir,sold_items_file_name)
-
-                with open(sold_items_file_path,'w',encoding='utf-8') as file:
+                if msg.get('type') == 'PROCESSING SOLD ITEMS COMPLETE':
+                    sold_items = msg['sold_items']
+                    sold_items_file_name = f"SOLD_{source}_{brand}_{date}_{query_hash}.csv"
+                    sold_items_file_path = os.path.join(sold_report_subdir,sold_items_file_name)
                     
-                    for item in sold_items:
-                        file.write(item)
+                    # print(chalk.red(f"SOLD ITEMS:{sold_items} "))
+
+                    with open(sold_items_file_path,'w',newline='',encoding='utf-8') as file:
+                        
+                        fieldnames = ['product_id', 'curr_price', 'curr_scrape_date', 'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source']
+                        
+                        #csv dictwriter
+                        writer = csv.DictWriter(file,fieldnames=fieldnames)
+
+                        #write headers
+                        writer.writeheader()
+
+                        for product_id,product_data in sold_items.items():
+                            row = {'product_id': product_id}
+                            row.update(product_data)  # Add the rest of the nested dictionary as columns
+                            writer.writerow(row)
+
+
+                
+                    print(f"SOLD ITEMS added to queue.")
 
             # Now process the product messages or the end signal
-            if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY']:
+            if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY', 'PROCESSING SOLD ITEMS COMPLETE']:
                 recd_products.append(msg)
                 print(f"Product added to queue. Current count: {len(recd_products)}")
 

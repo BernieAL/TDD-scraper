@@ -334,6 +334,7 @@ def DB_get_sold():
             'url': url,
             'source':source
         }
+        
 
     print(chalk.blue(f"sold_items as dict {sold_items_to_dict}"))
 
