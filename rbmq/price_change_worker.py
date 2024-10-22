@@ -196,44 +196,45 @@ def main():
                 
                     print(f"SOLD ITEMS added to queue.")
 
-            # Now process the product messages or the end signal
-            if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY', 'PROCESSING SOLD ITEMS COMPLETE']:
-                recd_products.append(msg)
-                print(f"Product added to queue. Current count: {len(recd_products)}")
+                # Now process the product messages or the end signal
+                if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY', 'PROCESSING SOLD ITEMS COMPLETE']:
+                    recd_products.append(msg)
+                    print(f"Product added to queue. Current count: {len(recd_products)}")
 
-            elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
-                if recd_products:
-                    try:
-                        # Process received products and generate the report
-                        calc_percentage_diff_driver(price_report_subdir, recd_products, source_file)
-                        print(chalk.green("Report generated and stored in output directory"))
-                    except Exception as e:
-                        print(chalk.red(f"Error in processing products: {e}"))
-                else:
-                    print("No products received; adding to no_change_sources list")
-                    query = f"{brand}-{category}"
-                    no_change_sources.append(f"{source}_{query}")
-                    print(f"No change sources updated: {no_change_sources}")
+                elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
+                    print(chalk.green("SIGNAL RECD: PROCESSING SCRAPED FILE COMPLETE"))
+                    if recd_products:
+                        try:
+                            # Process received products and generate the report
+                            calc_percentage_diff_driver(price_report_subdir, recd_products, source_file)
+                            print(chalk.green("Report generated and stored in output directory"))
+                        except Exception as e:
+                            print(chalk.red(f"Error in processing products: {e}"))
+                    else:
+                        print(chalk.red("No products received; adding to no_change_sources list"))
+                        query = f"{brand}-{category}"
+                        no_change_sources.append(f"{source}_{query}")
+                        print(f"No change sources updated: {no_change_sources}")
 
-            elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
-                
-                if brand and category and query_hash:
-                    try:
-                        print(chalk.green(f"Sending email with price report from subdir: {price_report_subdir}"))
-                        print(chalk.green(f"And with sold report from subdir: {sold_report_subdir}"))
-                        
-                        # send_email_with_report('balmanzar883@gmail.com', price_report_subdir,sold_report_subdir, f"{brand}_{category}", no_change_sources)
-                        # print(chalk.green("Email sent successfully"))
-                        no_change_sources.clear()
-                    except Exception as e:
-                        print(chalk.red(f"Error during email sending: {e}"))
-                else:
-                    print(chalk.red("Email not sent due to missing brand, category, or query_hash values"))
+                elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
+                    print(chalk.green("SIGNAL RECD: PROCESSED ALL SCRAPED FILES FOR QUERY"))
+                    if brand and category and query_hash:
+                        try:
+                            print(chalk.green(f"Sending email with price report from subdir: {price_report_subdir}"))
+                            # print(chalk.green(f"And with sold report from subdir: {sold_report_subdir}"))
+                            
+                            send_email_with_report('balmanzar883@gmail.com', price_report_subdir,sold_report_subdir, f"{brand}_{category}", no_change_sources)
+                            print(chalk.green("Email sent successfully"))
+                            no_change_sources.clear()
+                        except Exception as e:
+                            print(chalk.red(f"Error during email sending: {e}"))
+                    else:
+                        print(chalk.red("Email not sent due to missing brand, category, or query_hash values"))
 
-                # Clear the queue **after** email is sent and processing is done
-                #MUST clear queue to remove prev query published messages
-                channel.queue_purge(queue='price_change_queue')
-                print(chalk.green("Queue cleared and ready for the next query"))
+                    # Clear the queue **after** email is sent and processing is done
+                    #MUST clear queue to remove prev query published messages
+                    channel.queue_purge(queue='price_change_queue')
+                    print(chalk.green("Queue cleared and ready for the next query"))
 
         except Exception as e:
             print(chalk.red(f"Error processing message: {e}"))
@@ -251,8 +252,8 @@ def main():
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='price_change_queue', on_message_callback=callback)
         
-        print(chalk.green("Clearing queue"))
-        channel.queue_purge(queue='price_change_queue')
+        # print(chalk.green("Clearing queue"))
+        # channel.queue_purge(queue='price_change_queue')
 
         print(chalk.blue('[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()

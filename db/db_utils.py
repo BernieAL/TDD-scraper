@@ -291,7 +291,7 @@ def DB_get_sold():
     cur.execute(sold_query, ('t',))
 
     result = cur.fetchall()
-    print(chalk.red(f"result directly from db {result}"))
+    # print(chalk.red(f"result directly from db {result}"))
     # print(result)
     # Convert result from list of tuples to list of dictionaries
     sold_items_list_of_dicts = [
@@ -309,7 +309,7 @@ def DB_get_sold():
         for row in result
     ]
 
-    print(chalk.green(f"result after converting to list of dicts {sold_items_list_of_dicts}"))
+    # print(chalk.green(f"result after converting to list of dicts {sold_items_list_of_dicts}"))
 
     sold_items_to_dict = {}
 
@@ -336,7 +336,7 @@ def DB_get_sold():
         }
         
 
-    print(chalk.blue(f"sold_items as dict {sold_items_to_dict}"))
+    # print(chalk.blue(f"sold_items as dict {sold_items_to_dict}"))
 
     # # Serialize and pretty print the result with the custom JSON serializer
     # print(json.dumps(sold_items, indent=2, default=decimal_default))

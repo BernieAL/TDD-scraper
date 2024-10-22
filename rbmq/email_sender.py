@@ -21,7 +21,43 @@ app_password = os.getenv("GOOGLE_APP_PW")
 sender_email = os.getenv("GOOGLE_SENDER_EMAIL")  # Your email
 subject = "Daily Price Change Report"
 
-def send_email_with_report(receiver_email, price_report_subdir, query,no_price_change_sources):
+
+
+def attach_file_from_subdir(message,subdir):
+
+    """
+    Will attach files from given subdir to email
+    Subdir can be price_report_subdir or sold_report_subdir.
+    
+    """
+
+    # if price_report_dir for current source query exists - traverse dir and attach all reports to email
+    if os.path.exists(subdir):
+
+        try:
+            for dirpath,subdir,files in os.walk(subdir):
+                for report_file in files:
+                    print(report_file)
+                    
+                    file_path = os.path.join(dirpath,report_file)
+
+                    with open(file_path, 'rb') as attachment:
+                        part = MIMEBase('application', 'octet-stream')
+                        part.set_payload(attachment.read())
+                        encoders.encode_base64(part)
+                        part.add_header(
+                            'Content-Disposition',
+                            f'attachment; filename={os.path.basename(report_file)}'
+                        )
+                        message.attach(part)
+        
+        except Exception as e:
+            print(chalk.red(f"Email Attachment error - There was an error sending the email: {e}"))
+    else:
+         print(chalk.yellow(f"No report directory provided or it does not exist: {subdir}"))
+
+
+def send_email_with_report(receiver_email, price_report_subdir,sold_report_subdir,query,no_price_change_sources):
     
     print(chalk.red(f"(EMAIL SENDER) subdir valid path: {os.path.isdir(price_report_subdir)}"))
     
@@ -45,30 +81,34 @@ def send_email_with_report(receiver_email, price_report_subdir, query,no_price_c
 
     message.attach(MIMEText(body, 'plain'))
 
-    # if price_report_dir  for query exists - traverse dir and attach all reports to email
-    if os.path.exists(price_report_subdir):
+    attach_file_from_subdir(message,price_report_subdir)
+    attach_file_from_subdir(message,sold_report_subdir)
+    # # if price_report_dir for current source query exists - traverse dir and attach all reports to email
+    # if os.path.exists(price_report_subdir):
 
-        try:
-            for dirpath,subdir,files in os.walk(price_report_subdir):
-                for report_file in files:
-                    print(report_file)
+    #     try:
+    #         for dirpath,subdir,files in os.walk(price_report_subdir):
+    #             for report_file in files:
+    #                 print(report_file)
                     
-                    file_path = os.path.join(dirpath,report_file)
+    #                 file_path = os.path.join(dirpath,report_file)
 
-                    with open(file_path, 'rb') as attachment:
-                        part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(attachment.read())
-                        encoders.encode_base64(part)
-                        part.add_header(
-                            'Content-Disposition',
-                            f'attachment; filename={os.path.basename(report_file)}'
-                        )
-                        message.attach(part)
+    #                 with open(file_path, 'rb') as attachment:
+    #                     part = MIMEBase('application', 'octet-stream')
+    #                     part.set_payload(attachment.read())
+    #                     encoders.encode_base64(part)
+    #                     part.add_header(
+    #                         'Content-Disposition',
+    #                         f'attachment; filename={os.path.basename(report_file)}'
+    #                     )
+    #                     message.attach(part)
         
-        except Exception as e:
-            print(chalk.red(f"Email Attachment error - There was an error sending the email: {e}"))
-    else:
-         print(chalk.yellow(f"No price report directory provided or it does not exist: {price_report_subdir}"))
+    #     except Exception as e:
+    #         print(chalk.red(f"Email Attachment error - There was an error sending the email: {e}"))
+    # else:
+    #      print(chalk.yellow(f"No price report directory provided or it does not exist: {price_report_subdir}"))
+
+
 
 
     #email gets sent whether theres generate price reports or not     
@@ -89,9 +129,13 @@ if __name__ == "__main__":
     root_dir = os.path.abspath(os.path.join(current_dir,".."))
     print(chalk.red(root_dir))
 
-    output_dir = os.path.join(root_dir,'price_report_output','PRICE_REPORT_prada_2024-14-10_bags_f3f28ac8')
+    price_report_dir = os.path.join(root_dir,'price_report_output','PRICE_REPORT_prada_2024-14-10_bags_f3f28ac8')
+    sold_report_dir = os.path.join(root_dir, 'sold_report_output','SOLD_REPORT_prada_2024-20-10_bags_831244f0')
+
     
-    print(os.path.isdir(output_dir))
+
+    
     recipient_email = 'balmanzar883@gmail.com'
     query_name = 'Prada Bags'
-    send_email_with_report(recipient_email,output_dir,query_name,[])
+
+    send_email_with_report(recipient_email,price_report_dir,sold_report_dir,query_name,[])

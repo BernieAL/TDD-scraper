@@ -148,8 +148,8 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
         sold_items = DB_get_sold()
         print(chalk.green(f"SOLD ITEMS: {sold_items}"))
 
-        #push sold_items to queue
-        publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
+        # #push sold_items to queue
+        # publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
         
 
 
@@ -254,7 +254,8 @@ if __name__ == "__main__":
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     scrape_data_dir_raw = os.path.join('src','scrape_file_output','raw')
-    input_file_path = os.path.join(curr_dir,'..',scrape_data_dir_raw,'RAW_SCRAPE_prada_2024-17-10_prada_bags_831244f0','RAW_ITALIST_prada_2024-17-10_prada_bags_831244f0.csv')
+    input_file_path = os.path.join(curr_dir,'..',scrape_data_dir_raw,'RAW_SCRAPE_prada_2024-21-10_bags_6ff1078f','RAW_ITALIST_prada_2024-21-10_bags_6ff1078f.csv')
+
     # input_file_path = os.path.join(curr_dir,'..','src','file_output','italist_2024-30-09_prada_bags.csv')
     # print(os.path.isfile(input_file_path))
     compare_driver(input_file_path)

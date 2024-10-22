@@ -56,7 +56,7 @@ def scrape_process(brand,category,specific_item):
 
         output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
         print(output_dir)
-        italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,False)
+        italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
         scraped_file = italist_scraper.run()
         print(scraped_file)
 
