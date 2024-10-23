@@ -120,7 +120,7 @@ def parse_file_name(file):
     source = file_name_tokens[1]
     brand = file_name_tokens[2]
     date = file_name_tokens[3]
-    category = file_name_tokens[5]
+    category = file_name_tokens[4]
     query_hash = file_name_tokens[-1].split('.')[0]
 
     print(chalk.blue(f"file_name_tokens {file_name_tokens}"))
