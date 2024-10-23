@@ -67,7 +67,7 @@ def publish_to_queue(product_msg):
         #                         properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent))
 
         #if not end signal message - convert dates to strings to not throw serialization error cause of datetime format
-        if product_msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE' and product_msg.get('type') != 'PROCESSED ALL SCRAPED FILES FOR QUERY' != 'PROCESSING SOLD ITEMS COMPLETE':
+        if product_msg.get('type') != 'PROCESSING SCRAPED FILE COMPLETE' and product_msg.get('type') != 'PROCESSED ALL SCRAPED FILES FOR QUERY' and product_msg.get('type')!= 'PROCESSING SOLD ITEMS COMPLETE':
             product_msg['curr_scrape_date'] = (product_msg['curr_scrape_date']).strftime('%Y-%m-%d')
             product_msg['prev_scrape_date'] = (product_msg['prev_scrape_date']).strftime('%Y-%m-%d')
 
