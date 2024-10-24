@@ -26,16 +26,32 @@ curr_dir = os.path.dirname(os.path.abspath(__file__))
 file_output_dir = os.path.join(curr_dir, '..', 'src', 'file_output')
 
 
-try:
-    #1 - get all existing product_ids from db
-    existing_product_ids_prices_dates_list = DB_fetch_product_ids_prices_dates('Prada') #returns list of dicts
-    # print(existing_product_ids_prices_dates)
-except Exception as e:
-    print(chalk.red(f"Error fetching product data from DB: {e}"))
-    sys.exit(1)
+def parse_file_name(file):
+    """
+    filenames recieved are in the same format.
+    possible filenames recieved:
+        FILTERED_italist_prada_2024-14-10_bags_c4672843.csv
+        RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv
+    """
+    file_path_tokens = file.split('/')[-1]
+    file_name_tokens = file_path_tokens.split('_')
+    source = file_name_tokens[1]
+    brand = file_name_tokens[2]
+    date = file_name_tokens[3]
+    category = file_name_tokens[4]
+    query_hash = file_name_tokens[-1].split('.')[0]
 
+    print(chalk.blue(f"file_name_tokens {file_name_tokens}"))
+    print(chalk.blue(f"source: {source}"))
+    print(chalk.blue(f"brand {brand}"))
+    print(chalk.blue(f"date: {date}"))
+    print(chalk.blue(f"category {category}"))
+    print(chalk.blue(f"query hash: {query_hash}"))
 
-
+    return {
+        'brand':brand,
+        'source':source,
+    }
 
 def db_data_to_dictionary(existing_db_data_list):
 
@@ -146,7 +162,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
 
         #get sold items for this src and push to queue
         sold_items = DB_get_sold()
-        print(chalk.green(f"SOLD ITEMS: {sold_items}"))
+        # print(chalk.green(f"SOLD ITEMS: {sold_items}"))
 
         #push sold_items to queue
         publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
@@ -231,17 +247,44 @@ def process_new_product(row, scrape_date, new_products):
     new_products.append(temp)
     print(chalk.green(f"New product added: {row['product_id']}"))
 
+# def get_existing_db_data():
+#     try:
+#         #1 - get all existing product_ids from db
+#         existing_product_ids_prices_dates_list = DB_fetch_product_ids_prices_dates('Prada') #returns list of dicts
+#         # print(existing_product_ids_prices_dates)
+#         return existing_product_ids_prices_dates_list
+#     except Exception as e:
+#         print(chalk.red(f"Error fetching product data from DB: {e}"))
+#         sys.exit(1)
 
-def compare_driver(scraped_data_file_path):
+
+
+
+
+def compare_driver(scraped_data_file_path,spec_item):
     """
     Drives the comparison process for a given scraped data file.
 
     :param scraped_data_file_path: Path to the scraped data file.
     """
+
+
     try:
-        existing_product_ids_prices_dict = db_data_to_dictionary(existing_product_ids_prices_dates_list)
-        # print(existing_product_ids_prices_dict)
-        compare_scraped_data_to_db(scraped_data_file_path, existing_product_ids_prices_dict)
+        
+        res = parse_file_name(scraped_data_file_path)
+        brand = (res['brand']).upper()
+        source = (res['source']).upper()
+      
+        if spec_item != None:
+
+            #only get db records that match this spec item
+            existing_product_ids_prices_dict = DB_fetch_product_ids_prices_dates(brand,source,spec_item)
+            print(existing_product_ids_prices_dict)
+        # else:
+        #     #get all items or this source
+        #     existing_product_ids_prices_dict = db_data_to_dictionary(existing_product_ids_prices_dates_list)
+        #     # print(existing_product_ids_prices_dict)
+        #     compare_scraped_data_to_db(scraped_data_file_path, existing_product_ids_prices_dict)
     except Exception as e:
         print(chalk.red(f"Error in comparison driver: {e}"))
         raise
@@ -258,6 +301,6 @@ if __name__ == "__main__":
 
     # input_file_path = os.path.join(curr_dir,'..','src','file_output','italist_2024-30-09_prada_bags.csv')
     # print(os.path.isfile(input_file_path))
-    compare_driver(input_file_path)
+    compare_driver(input_file_path,'BROWN SUEDE PRADA BUCKLE LARGE HANDBAG')
 
     publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": input_file_path})

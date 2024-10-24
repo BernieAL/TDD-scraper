@@ -34,7 +34,7 @@ raw_root_dir = os.path.join(file_output_dir_root,'raw')
 print(raw_root_dir)
 
 
-sample_seed_data_path = os.path.join(raw_root_dir,'RAW_SCRAPE_prada_2024-17-10_prada_bags_831244f0','RAW_ITALIST_prada_2024-17-10_prada_bags_831244f0.csv')
+sample_seed_data_path = os.path.join(raw_root_dir,'RAW_SCRAPE_prada_2024-23-10_bags_3d1a448c','RAW_ITALIST_prada_2024-23-10_bags_3d1a448c.csv')
 
 with open(sample_seed_data_path,'r') as file:
     csv_reader = csv.reader(file)
@@ -53,9 +53,9 @@ with open(sample_seed_data_path,'r') as file:
 
     for row in csv_reader:
         """csv row structure -> product_id,brand,product_name,curr_price,listing_url,source"""
-        product_id = row[0]
-        brand = row[1]
-        product_name = row[2]
+        product_id = row[0].upper()
+        brand = row[1].upper()
+        product_name = row[2].upper()
         # curr_price = row[3].split()[1] #extract price from string Ex. "USD 1195"
         curr_price = row[3]
         prev_price = curr_price #no prev price, use curr as initial val

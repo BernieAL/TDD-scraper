@@ -94,29 +94,62 @@ def fetch_product_ids_and_prices(brand):
     except Exception as e:
         print(f"(fetch_products_ids_and_prices) Error: {Exception}")
 
-def DB_fetch_product_ids_prices_dates(brand):
+
+
+
+def DB_fetch_product_ids_prices_dates(brand,source,spec_item=None):
     conn = get_db_connection()
-    try:
-        cur = conn.cursor()
-        query = "SELECT product_id, curr_price, curr_scrape_date, prev_price, prev_scrape_date FROM products WHERE brand = %s"
-        cur.execute(query,(brand,))
-        result = cur.fetchall()
 
-        # Convert result from list of tuples to list of dictionaries
-        products_to_list_of_dicts = [
-                    {'product_id':row[0], 
-                     'curr_price': (row[1]),
-                     'curr_scrape_date':(row[2]),
-                     'prev_price':(row[3]),
-                     'prev_scrape_date':(row[4])
-                     } for row in result
-                    ]
 
-        print(chalk.blue(f"sold_items as dict {products_to_list_of_dicts}"))
-        return products_to_list_of_dicts
-        
-    except Exception as e:
-        print(f"(fetch_products_ids_and_prices) Error: {Exception}")
+    #if spec_item specified, get db records matching spec_item product_name
+    if spec_item != None:
+
+        try:
+            cur = conn.cursor()
+            query = "SELECT product_id, curr_price, curr_scrape_date, prev_price, prev_scrape_date FROM products WHERE brand = %s and product_name = %s"
+            cur.execute(query,(brand,spec_item))
+            result = cur.fetchall()
+
+            # Convert result from list of tuples to list of dictionaries
+            products_to_list_of_dicts = [
+                        {'product_id':row[0], 
+                        'curr_price': (row[1]),
+                        'curr_scrape_date':(row[2]),
+                        'prev_price':(row[3]),
+                        'prev_scrape_date':(row[4])
+                        } for row in result
+                        ]
+
+            print(chalk.blue(f"retrieved db items {products_to_list_of_dicts}"))
+            return products_to_list_of_dicts
+            
+        except Exception as e:
+            print(f"(fetch_products_ids_and_prices) Error: {Exception}")
+
+    else:
+        #if not spec_item specified, get all records matching source (Ex. Italist)
+        try:
+            cur = conn.cursor()
+            query = "SELECT product_id, curr_price, curr_scrape_date, prev_price, prev_scrape_date FROM products WHERE brand = %s and source = %s"
+            cur.execute(query,(brand,source))
+            result = cur.fetchall()
+
+            # Convert result from list of tuples to list of dictionaries
+            products_to_list_of_dicts = [
+                        {'product_id':row[0], 
+                        'curr_price': (row[1]),
+                        'curr_scrape_date':(row[2]),
+                        'prev_price':(row[3]),
+                        'prev_scrape_date':(row[4])
+                        } for row in result
+                        ]
+
+            print(chalk.blue(f"retrieved db items {products_to_list_of_dicts}"))
+            return products_to_list_of_dicts
+            
+        except Exception as e:
+            print(f"(fetch_products_ids_and_prices) Error: {Exception}")
+
 
   
 def DB_bulk_update_existing(update_products):
@@ -276,7 +309,7 @@ def decimal_default(obj):
         return obj.isoformat()  # Convert datetime.date to ISO format string
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
-def DB_get_sold():
+def DB_get_sold(spec_item=None):
 
     conn = psycopg2.connect(
         host="localhost",
@@ -287,7 +320,7 @@ def DB_get_sold():
     )
     cur = conn.cursor()
 
-    sold_query = """SELECT * FROM products WHERE sold = %s"""
+    sold_query = """SELECT * FROM products WHERE sold = %s and """
     cur.execute(sold_query, ('t',))
 
     result = cur.fetchall()
@@ -344,5 +377,5 @@ def DB_get_sold():
     return sold_items_to_dict
 
 if __name__ == "__main__":
-    DB_get_sold()
-    # DB_fetch_product_ids_prices_dates('Prada')
+    # DB_get_sold()
+    DB_fetch_product_ids_prices_dates('Prada','ITALIST','Embroidered Fabric Small Symbole Shopping Bag')
