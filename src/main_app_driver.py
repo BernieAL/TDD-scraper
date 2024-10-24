@@ -1,6 +1,7 @@
 # src/main_app_driver.py
 import os,csv,sys
 from datetime import datetime
+from simple_chalk import chalk
 
 # Ensure the project root is accessible
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,14 +59,14 @@ def scrape_process(brand,category,specific_item):
         print(output_dir)
         italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True) #if True, use local site copy
         scraped_file = italist_scraper.run()
-        print(scraped_file)
+        print(chalk.green(f"(MAIN_DRIVER){scraped_file}"))
 
       
         
         if specific_item != None:
             filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
-            # filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
-            # compare_driver(filtered_file,specific_item)
+            filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
+            compare_driver(filtered_file,specific_item)
 
             # # #manual testing price change
             # filtered_file = os.path.join(scraped_data_dir_filtered,'FILTERED_prada_2024-14-10_bags_f3f28ac8','FILTERED_italist_prada_2024-14-10_bags_f3f28ac8.csv')
@@ -79,6 +80,7 @@ def scrape_process(brand,category,specific_item):
             # compare_driver(scraped_file)
 
         return filtered_file if not scraped_file else scraped_file
+        # return None
 
 def driver_function():
     
@@ -105,6 +107,9 @@ def driver_function():
 
                 #if file doesnt have spec item , use None
                 specific_item = file_row[2].strip() if len(file_row) > 2 else None
+                specific_item = specific_item.upper()
+                
+                print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
                 output_file = scrape_process(brand, category, specific_item)
 
                 #if filtered file use that, if not use scraped file as source file - queue MUST recieve a source file to parse from and build price report subdir
