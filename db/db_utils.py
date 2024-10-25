@@ -309,7 +309,7 @@ def decimal_default(obj):
         return obj.isoformat()  # Convert datetime.date to ISO format string
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
-def DB_get_sold(spec_item=None):
+def DB_get_sold(source,spec_item=None):
 
     conn = psycopg2.connect(
         host="localhost",
@@ -320,8 +320,8 @@ def DB_get_sold(spec_item=None):
     )
     cur = conn.cursor()
 
-    sold_query = """SELECT * FROM products WHERE sold = %s and """
-    cur.execute(sold_query, ('t',))
+    sold_query = """SELECT * FROM products WHERE sold = %s and source = %s"""
+    cur.execute(sold_query, ('t',source))
 
     result = cur.fetchall()
     # print(chalk.red(f"result directly from db {result}"))

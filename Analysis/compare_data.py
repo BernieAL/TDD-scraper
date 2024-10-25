@@ -111,7 +111,7 @@ def db_data_to_dictionary(existing_db_data_list):
     except Exception as e:
          print(chalk.red(f"Error converting DB data to dictionary: {e}"))
 
-def compare_scraped_data_to_db(input_file, existing_product_data_dict):
+def compare_scraped_data_to_db(input_file, existing_product_data_dict,source):
     """
     Compares scraped product data to existing database records. Updates existing products, adds new products, 
     and marks products as sold if they are no longer listed.
@@ -161,8 +161,8 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict):
         DB_bulk_update_sold(items_not_found)
 
         #get sold items for this src and push to queue
-        sold_items = DB_get_sold()
-        # print(chalk.green(f"SOLD ITEMS: {sold_items}"))
+        sold_items = DB_get_sold(source)
+        print(chalk.green(f"SOLD ITEMS: {sold_items}"))
 
         #push sold_items to queue
         publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
@@ -261,7 +261,7 @@ def process_new_product(row, scrape_date, new_products):
 
 
 
-def compare_driver(scraped_data_file_path,spec_item):
+def compare_driver(scraped_data_file_path,spec_item=None):
     """
     Drives the comparison process for a given scraped data file.
 
@@ -275,12 +275,18 @@ def compare_driver(scraped_data_file_path,spec_item):
         brand = (res['brand']).upper()
         source = (res['source']).upper()
       
-        if spec_item != None:
+      
 
-            #only get db records that match this spec item
-            existing_product_ids_prices_dict = DB_fetch_product_ids_prices_dates(brand,source,spec_item)
-            print(existing_product_ids_prices_dict)
+        #only get db records that match this spec item
+        db_data = DB_fetch_product_ids_prices_dates(brand,source,spec_item)
+        existing_product_ids_prices_dict = db_data_to_dictionary(db_data)
+        print(existing_product_ids_prices_dict)
+        compare_scraped_data_to_db(scraped_data_file_path,existing_product_ids_prices_dict,source)
+
+
+
         # else:
+
         #     #get all items or this source
         #     existing_product_ids_prices_dict = db_data_to_dictionary(existing_product_ids_prices_dates_list)
         #     # print(existing_product_ids_prices_dict)
@@ -296,11 +302,17 @@ if __name__ == "__main__":
     
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    scrape_data_dir_raw = os.path.join('src','scrape_file_output','raw')
-    input_file_path = os.path.join(curr_dir,'..',scrape_data_dir_raw,'RAW_SCRAPE_prada_2024-21-10_bags_6ff1078f','RAW_ITALIST_prada_2024-21-10_bags_6ff1078f.csv')
+    scrape_data_dir = os.path.join('src','scrape_file_output')
+   
+    
+    general_input_file_path = os.path.join(curr_dir,'..',scrape_data_dir,'raw','RAW_SCRAPE_PRADA_2024-24-10_BAGS_a44eabd1','RAW_ITALIST_PRADA_2024-24-10_BAGS_a44eabd1.csv')
 
-    # input_file_path = os.path.join(curr_dir,'..','src','file_output','italist_2024-30-09_prada_bags.csv')
-    # print(os.path.isfile(input_file_path))
-    compare_driver(input_file_path,'BROWN SUEDE PRADA BUCKLE LARGE HANDBAG')
 
-    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": input_file_path})
+    filtered_input_file_path =  os.path.join(curr_dir,'..',scrape_data_dir,'filtered','FILTERED_PRADA_2024-24-10_BAGS_3615329e','FILTERED_ITALIST_PRADA_2024-24-10_BAGS_3615329e.csv')
+    
+    #compare_driver(filtered_input_file_path,'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
+    # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
+
+    
+    compare_driver(general_input_file_path)
+    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": general_input_file_path})

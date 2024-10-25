@@ -73,7 +73,7 @@ def scrape_process(brand,category,specific_item):
             # compare_driver(filtered_file)
         else:
             
-            compare_driver(scraped_file,False)
+            compare_driver(scraped_file,specific_item)
             
             # #manual testing price change
             # scraped_file = os.path.join(scraped_data_dir_raw,'RAW_SCRAPE_prada_2024-14-10_bags_f3f28ac8','RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv')
@@ -106,9 +106,8 @@ def driver_function():
                 category = file_row[1].strip().upper()
 
                 #if file doesnt have spec item , use None
-                specific_item = file_row[2].strip() if len(file_row) > 2 else None
-                specific_item = specific_item.upper()
-                
+                specific_item = file_row[2].strip().upper() if len(file_row) > 2 else None
+
                 print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
                 output_file = scrape_process(brand, category, specific_item)
 

@@ -129,8 +129,8 @@ if __name__ == "__main__":
     root_dir = os.path.abspath(os.path.join(current_dir,".."))
     print(chalk.red(root_dir))
 
-    price_report_dir = os.path.join(root_dir,'price_report_output','PRICE_REPORT_prada_2024-14-10_bags_f3f28ac8')
-    sold_report_dir = os.path.join(root_dir, 'sold_report_output','SOLD_REPORT_prada_2024-20-10_bags_831244f0')
+    price_report_dir = os.path.join(root_dir,'price_report_output','PRICE_REPORT_PRADA_2024-25-10_BAGS_a44eabd1')
+    sold_report_dir = os.path.join(root_dir, 'sold_report_output','SOLD_REPORT_PRADA_2024-25-10_BAGS_a44eabd1')
 
     
 

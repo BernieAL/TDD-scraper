@@ -44,7 +44,7 @@ def make_price_report_subdir(price_report_root_dir,brand,category,query_hash):
             dir_name = f"PRICE_REPORT_{brand}_{current_date}_{category}_{query_hash}"
             new_sub_dir = os.path.join(price_report_root_dir, dir_name)
             
-            print(f"Attempting to create directory: {new_sub_dir}")
+            print(chalk.yellow(f"Attempting to create directory: {new_sub_dir}"))
             
             # Check if the directory already exists; if not, create it
             if not os.path.exists(new_sub_dir):
@@ -93,7 +93,7 @@ def make_sold_report_subdir(sold_report_root_dir,brand,category,query_hash):
             dir_name = f"SOLD_REPORT_{brand}_{current_date}_{category}_{query_hash}"
             new_sub_dir = os.path.join(sold_report_root_dir, dir_name)
             
-            print(f"Attempting to create directory: {new_sub_dir}")
+            print(chalk.yellow(f"Attempting to create directory: {new_sub_dir}"))
             
             # Check if the directory already exists; if not, create it
             if not os.path.exists(new_sub_dir):
@@ -140,12 +140,12 @@ def main():
     def callback(ch, method, properties, body):
         try:
             msg = json.loads(body)
-            # print(f"Message received: {msg}")
+            print(f"Message received: {msg}")
 
 
             if 'source_file' in msg:
                 source_file = msg['source_file']
-                print(f"Received source file for processing: {source_file}")
+                print(chalk.green(f"Received source file for processing: {source_file}"))
 
                 try:
                     source, date, brand, category, query_hash = parse_file_name(source_file)
@@ -175,7 +175,7 @@ def main():
                     sold_items_file_name = f"SOLD_{source}_{brand}_{date}_{query_hash}.csv"
                     sold_items_file_path = os.path.join(sold_report_subdir,sold_items_file_name)
                     
-                    # print(chalk.red(f"SOLD ITEMS:{sold_items} "))
+                    print(chalk.red(f"SOLD ITEMS:{sold_items} "))
 
                     with open(sold_items_file_path,'w',newline='',encoding='utf-8') as file:
                         
@@ -221,7 +221,7 @@ def main():
                     if brand and category and query_hash:
                         try:
                             print(chalk.green(f"Sending email with price report from subdir: {price_report_subdir}"))
-                            # print(chalk.green(f"And with sold report from subdir: {sold_report_subdir}"))
+                            print(chalk.green(f"And with sold report from subdir: {sold_report_subdir}"))
                             
                             send_email_with_report('balmanzar883@gmail.com', price_report_subdir,sold_report_subdir, f"{brand}_{category}", no_change_sources)
                             print(chalk.green("Email sent successfully"))
