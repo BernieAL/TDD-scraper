@@ -1,15 +1,4 @@
-product_id,curr_price,curr_scrape_date,prev_price,prev_scrape_date,sold_date,sold,url,source
-14557360-14389669,2580.0,2024-10-23,2580.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/embroidered-fabric-small-symbole-shopping-bag/14389669/14557360/prada/,ITALIST
-14558494-14390803,2580.0,2024-10-23,2580.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/embroidered-fabric-small-symbole-shopping-bag/14390803/14558494/prada/,ITALIST
-14602956-14435265,3361.0,2024-10-23,3361.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/tote/14435265/14602956/prada/,ITALIST
-14602953-14435262,1554.0,2024-10-23,1554.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/backpacks/backpack/14435262/14602953/prada/,ITALIST
-14602941-14435250,1115.0,2024-10-23,1115.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/shoulder-bags/shoulder-bag/14435250/14602941/prada/,ITALIST
-14586701-14419010,2264.0,2024-10-23,2264.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/shoulder-bags/prada-arque-leather-shoulder-bag/14419010/14586701/prada/,ITALIST
-14566061-14398370,1896.0,2024-10-23,1896.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/tote/14398370/14566061/prada/,ITALIST
-14530345-14362654,968.0,2024-10-23,968.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/tote/14362654/14530345/prada/,ITALIST
-14627105-14459414,3982.0,2024-10-23,3982.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/prada-buckle-leather-bag/14459414/14627105/prada/,ITALIST
-14602957-14435266,2091.0,2024-10-23,2091.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/tote/14435266/14602957/prada/,ITALIST
-14628464-14460773,4240.0,2024-10-23,4240.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/caramel-leather-shopping-bag/14460773/14628464/prada/,ITALIST
-14609462-14441771,2580.0,2024-10-23,2580.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/cleo-shoulder-bag/14441771/14609462/prada/,ITALIST
-14598217-14430526,1115.0,2024-10-23,1115.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/luggage/calf-leather-pouch/14430526/14598217/prada/,ITALIST
-14544713-14377022,4097.0,2024-10-23,4097.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/caramel-leather-medium-prada-buckle-handbag/14377022/14544713/prada/,ITALIST
+product_id,product_name,curr_price,curr_scrape_date,prev_price,prev_scrape_date,sold_date,sold,url,source
+14565337-14397646,EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG,2580.0,2024-10-23,2580.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/embroidered-fabric-small-symbole-shopping-bag/14397646/14565337/prada/,ITALIST
+14557360-14389669,EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG,2580.0,2024-10-23,2580.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/embroidered-fabric-small-symbole-shopping-bag/14389669/14557360/prada/,ITALIST
+14558494-14390803,EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG,2580.0,2024-10-23,2580.0,2024-10-23,2024-10-23,True,https://www.italist.com/us/women/bags/totes/embroidered-fabric-small-symbole-shopping-bag/14390803/14558494/prada/,ITALIST

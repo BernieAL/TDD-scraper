@@ -179,7 +179,7 @@ def main():
 
                     with open(sold_items_file_path,'w',newline='',encoding='utf-8') as file:
                         
-                        fieldnames = ['product_id', 'curr_price', 'curr_scrape_date', 'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source']
+                        fieldnames = ['product_id', 'product_name','curr_price', 'curr_scrape_date', 'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source']
                         
                         #csv dictwriter
                         writer = csv.DictWriter(file,fieldnames=fieldnames)
@@ -190,6 +190,7 @@ def main():
                         for product_id,product_data in sold_items.items():
                             row = {'product_id': product_id}
                             row.update(product_data)  # Add the rest of the nested dictionary as columns
+                            print(chalk.red(f"(worker) sold row: {row}"))
                             writer.writerow(row)
 
 

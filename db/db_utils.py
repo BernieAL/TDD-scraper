@@ -196,7 +196,7 @@ def DB_bulk_update_existing(update_products):
         print(f"(BULK_UPDATE) - An error occurred: {e}")
         conn.rollback()  # Rollback in case of error
     
-    # Print a success message if no exception occurred
+    # Print a success message if no exceptprada,bagsion occurred
     print(f"Bulk update successful. {cur.rowcount} rows updated.")
 
 
@@ -320,62 +320,84 @@ def DB_get_sold(source,spec_item=None):
     )
     cur = conn.cursor()
 
-    sold_query = """SELECT * FROM products WHERE sold = %s and source = %s"""
-    cur.execute(sold_query, ('t',source))
+    #specific item query
+    try:
 
-    result = cur.fetchall()
-    # print(chalk.red(f"result directly from db {result}"))
-    # print(result)
-    # Convert result from list of tuples to list of dictionaries
-    sold_items_list_of_dicts = [
-        {
-            'product_id': row[0], 
-            'curr_price': float(row[3]) if isinstance(row[3], decimal.Decimal) else row[3],
-            'curr_scrape_date': row[4] if isinstance(row[4], date) else 'N/A',
-            'prev_price': float(row[5]) if isinstance(row[5], decimal.Decimal) else row[5],
-            'prev_scrape_date': row[6] if isinstance(row[6], date) else 'N/A',
-            'sold_date': row[7] if isinstance(row[7], date) else 'N/A',
-            'sold': 'True' if row[8] else 'False',
-            'url': row[9],
-            'source':row[10]
-        }
-        for row in result
-    ]
+        spec_item_sold_query = """SELECT * FROM products WHERE sold = %s and source = %s and  product_name = %s"""
+        general_sold_query = """SELECT * FROM products WHERE sold = %s and source = %s """
 
-    # print(chalk.green(f"result after converting to list of dicts {sold_items_list_of_dicts}"))
+        if spec_item != None:
+            sold_query = spec_item_sold_query
+            cur.execute(sold_query, ('t',source,spec_item))
+            
+        else:
+            sold_query = general_sold_query
+            cur.execute(sold_query, ('t',source))
+            
+       
+        result = cur.fetchall()
+        # print(chalk.red(f"result directly from db {result}"))
+        # print(result)
+        # Convert result from list of tuples to list of dictionaries
+        sold_items_list_of_dicts = [
+            {
+                'product_id': row[0], 
+                'brand':row[1],
+                'product_name':row[2],
+                'curr_price': float(row[3]) if isinstance(row[3], decimal.Decimal) else row[3],
+                'curr_scrape_date': row[4] if isinstance(row[4], date) else 'N/A',
+                'prev_price': float(row[5]) if isinstance(row[5], decimal.Decimal) else row[5],
+                'prev_scrape_date': row[6] if isinstance(row[6], date) else 'N/A',
+                'sold_date': row[7] if isinstance(row[7], date) else 'N/A',
+                'sold': 'True' if row[8] else 'False',
+                'url': row[9],
+                'source':row[10]
+            }
+            for row in result
+        ]
 
-    sold_items_to_dict = {}
+        sold_items_to_dict = {}
 
-    for prod in sold_items_list_of_dicts:
-        product_id=prod['product_id']
-        curr_price= float(prod['curr_price']) if isinstance(prod['curr_price'], decimal.Decimal) else prod['curr_price']
-        curr_scrape_date=prod['curr_scrape_date'].strftime('%Y-%m-%d')
-        prev_price=float(prod['prev_price']) if isinstance(prod['prev_price'], decimal.Decimal) else prod['prev_price']
-        prev_scrape_date= prod['curr_scrape_date'].strftime('%Y-%m-%d')
-        sold_date= prod['sold_date'].strftime('%Y-%m-%d')
-        sold= 'True' if prod['sold'] else 'False'
-        url= prod['url']
-        source=prod['source']
-    
-        sold_items_to_dict[product_id] = { 
-            'curr_price': curr_price,
-            'curr_scrape_date': curr_scrape_date,
-            'prev_price': prev_price,
-            'prev_scrape_date': prev_scrape_date,
-            'sold_date': sold_date,
-            'sold': sold,
-            'url': url,
-            'source':source
-        }
+        for prod in sold_items_list_of_dicts:
+            product_id=prod['product_id']
+            product_name = prod['product_name']
+            curr_price= float(prod['curr_price']) if isinstance(prod['curr_price'], decimal.Decimal) else prod['curr_price']
+            curr_scrape_date=prod['curr_scrape_date'].strftime('%Y-%m-%d')
+            prev_price=float(prod['prev_price']) if isinstance(prod['prev_price'], decimal.Decimal) else prod['prev_price']
+            prev_scrape_date= prod['curr_scrape_date'].strftime('%Y-%m-%d')
+            sold_date= prod['sold_date'].strftime('%Y-%m-%d')
+            sold= 'True' if prod['sold'] else 'False'
+            url= prod['url']
+            source=prod['source']
         
+            sold_items_to_dict[product_id] = { 
+                'product_name':product_name,
+                'curr_price': curr_price,
+                'curr_scrape_date': curr_scrape_date,
+                'prev_price': prev_price,
+                'prev_scrape_date': prev_scrape_date,
+                'sold_date': sold_date,
+                'sold': sold,
+                'url': url,
+                'source':source
+            }
+
+
+        return sold_items_to_dict
+                    
+    except Exception as e:
+                print(f"(DB_UTILS) get_sold - specific failed {e}")
+
+
+      
 
     # print(chalk.blue(f"sold_items as dict {sold_items_to_dict}"))
 
     # # Serialize and pretty print the result with the custom JSON serializer
     # print(json.dumps(sold_items, indent=2, default=decimal_default))
 
-    return sold_items_to_dict
 
 if __name__ == "__main__":
-    # DB_get_sold()
-    DB_fetch_product_ids_prices_dates('Prada','ITALIST','Embroidered Fabric Small Symbole Shopping Bag')
+    # print(DB_get_sold("ITALIST"))
+    # print(DB_get_sold("ITALIST","EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG"))
+    print(DB_fetch_product_ids_prices_dates('PRADA','ITALIST','EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG'))

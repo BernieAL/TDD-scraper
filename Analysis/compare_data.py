@@ -111,7 +111,7 @@ def db_data_to_dictionary(existing_db_data_list):
     except Exception as e:
          print(chalk.red(f"Error converting DB data to dictionary: {e}"))
 
-def compare_scraped_data_to_db(input_file, existing_product_data_dict,source):
+def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spec_item=None):
     """
     Compares scraped product data to existing database records. Updates existing products, adds new products, 
     and marks products as sold if they are no longer listed.
@@ -119,6 +119,12 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source):
     :param input_file: Path to the scraped data file.
     :param existing_product_data_dict: Dictionary of existing product data from the database.
     """
+    
+    
+    if spec_item != None:
+        print(chalk.yellow(f"PROCESSING FILTERED QUERY - SPEC ITEM {spec_item}"))
+    else:
+         print(chalk.yellow(f"PROCESSING GENERAL QUERY - NO SPEC ITEM"))
     try:
         updated_products = []
         new_products = []
@@ -144,7 +150,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source):
 
             for row in csv_reader:
                 print(chalk.red(f"ID: {row['product_id']}, Brand: {row['brand']}, "
-                                f"Product: {row['product_name']}, Curr Price: {row['curr_price']}"))
+                f"Product: {row['product_name']}, Curr Price: {row['curr_price']}"))
 
                 # Compare against existing product data from DB
                 if row['product_id'] in existing_product_data_dict:
@@ -161,8 +167,8 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source):
         DB_bulk_update_sold(items_not_found)
 
         #get sold items for this src and push to queue
-        sold_items = DB_get_sold(source)
-        print(chalk.green(f"SOLD ITEMS: {sold_items}"))
+        sold_items = DB_get_sold(source,spec_item)
+        print(chalk.green(f"SOLD ITEMS: {sold_items}\n ---------------" ))
 
         #push sold_items to queue
         publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
@@ -204,7 +210,7 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
         updated_products.append(temp)
         # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
         #this is like spread operator in js
-        publish_to_queue({**temp, 'product_name': row['product_name'], 'listing_url': row['listing_url'],"source_file": input_file})
+        publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file})
     else:
         # Update scrape dates if price has not changed
         product_data['prev_scrape_date'] = product_data['curr_scrape_date']
@@ -247,19 +253,6 @@ def process_new_product(row, scrape_date, new_products):
     new_products.append(temp)
     print(chalk.green(f"New product added: {row['product_id']}"))
 
-# def get_existing_db_data():
-#     try:
-#         #1 - get all existing product_ids from db
-#         existing_product_ids_prices_dates_list = DB_fetch_product_ids_prices_dates('Prada') #returns list of dicts
-#         # print(existing_product_ids_prices_dates)
-#         return existing_product_ids_prices_dates_list
-#     except Exception as e:
-#         print(chalk.red(f"Error fetching product data from DB: {e}"))
-#         sys.exit(1)
-
-
-
-
 
 def compare_driver(scraped_data_file_path,spec_item=None):
     """
@@ -275,22 +268,15 @@ def compare_driver(scraped_data_file_path,spec_item=None):
         brand = (res['brand']).upper()
         source = (res['source']).upper()
       
-      
-
         #only get db records that match this spec item
         db_data = DB_fetch_product_ids_prices_dates(brand,source,spec_item)
+
+        #convert retrieved db data to dictionary
         existing_product_ids_prices_dict = db_data_to_dictionary(db_data)
         print(existing_product_ids_prices_dict)
-        compare_scraped_data_to_db(scraped_data_file_path,existing_product_ids_prices_dict,source)
+        
+        compare_scraped_data_to_db(scraped_data_file_path,existing_product_ids_prices_dict,source,spec_item)
 
-
-
-        # else:
-
-        #     #get all items or this source
-        #     existing_product_ids_prices_dict = db_data_to_dictionary(existing_product_ids_prices_dates_list)
-        #     # print(existing_product_ids_prices_dict)
-        #     compare_scraped_data_to_db(scraped_data_file_path, existing_product_ids_prices_dict)
     except Exception as e:
         print(chalk.red(f"Error in comparison driver: {e}"))
         raise
@@ -308,11 +294,11 @@ if __name__ == "__main__":
     general_input_file_path = os.path.join(curr_dir,'..',scrape_data_dir,'raw','RAW_SCRAPE_PRADA_2024-24-10_BAGS_a44eabd1','RAW_ITALIST_PRADA_2024-24-10_BAGS_a44eabd1.csv')
 
 
-    filtered_input_file_path =  os.path.join(curr_dir,'..',scrape_data_dir,'filtered','FILTERED_PRADA_2024-24-10_BAGS_3615329e','FILTERED_ITALIST_PRADA_2024-24-10_BAGS_3615329e.csv')
+    filtered_input_file_path =  os.path.join(curr_dir,'..',scrape_data_dir,'filtered','FILTERED_PRADA_2024-25-10_BAGS_962a1246','FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv')
     
-    #compare_driver(filtered_input_file_path,'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
-    # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
+    compare_driver(filtered_input_file_path,'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
+    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
 
     
-    compare_driver(general_input_file_path)
-    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": general_input_file_path})
+    # compare_driver(general_input_file_path)
+    # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": general_input_file_path})

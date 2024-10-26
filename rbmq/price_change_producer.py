@@ -78,7 +78,7 @@ def publish_to_queue(product_msg):
                                 routing_key='price_change_queue', 
                                 body=json.dumps(product_msg),
                                 properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent))
-        print(chalk.green(f"Successfully sent task to queue: {product_msg}"))
+        print(chalk.green(f"Successfully sent task to queue: {product_msg} \n -------------"))
 
     except Exception as e:
         print(chalk.red(f"error publishing message to queue{e}"))
