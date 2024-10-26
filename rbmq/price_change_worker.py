@@ -204,6 +204,8 @@ def main():
 
                 elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
                     print(chalk.green("SIGNAL RECD: PROCESSING SCRAPED FILE COMPLETE"))
+                    
+                    print(chalk.red(f"Rec'd Products: {recd_products}"))
                     if recd_products:
                         try:
                             # Process received products and generate the report

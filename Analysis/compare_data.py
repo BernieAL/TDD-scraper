@@ -154,9 +154,9 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
 
                 # Compare against existing product data from DB
                 if row['product_id'] in existing_product_data_dict:
-                    process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file)
+                    process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file,source)
                 else:
-                    process_new_product(row, scrape_date, new_products)
+                    process_new_product(row, scrape_date, new_products,source)
 
         # Bulk update and insert operations
         if len(new_products) > 0:
@@ -183,7 +183,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
         raise
 
 
-def process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file):
+def process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file,source):
     """
     Processes an existing product by checking for price changes and updating the necessary fields.
 
@@ -207,12 +207,14 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
             'prev_price': product_data['prev_price'],
             'prev_scrape_date': product_data['prev_scrape_date']
         }
+
+        #add to updated list - for price and scrape dates to be updated
         updated_products.append(temp)
         # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
         #this is like spread operator in js
-        publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file})
+        publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file,"source":source})
     else:
-        # Update scrape dates if price has not changed
+        # Update  product scrape dates if price has not changed
         product_data['prev_scrape_date'] = product_data['curr_scrape_date']
         product_data['curr_scrape_date'] = scrape_date
         updated_products.append({

@@ -17,7 +17,7 @@ def make_output_dir():
     current_dir = os.path.abspath(os.path.dirname(__file__))
     root_dir = os.path.abspath(os.path.join(current_dir,".."))
 
-    output_dir = os.path.join(root_dir,"OUTPUT_price_changes")
+    output_dir = os.path.join(root_dir,"price_report_output")
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -105,10 +105,20 @@ def reorder_columns(df):
     """
     try:
         # Drop the original price_change_percent column
-        df = df.drop(columns=['price_change_percent'])
-        #restructure cols to be new col + all old cols
-        cols = ['price_change_percent_signed'] + [col for col in df.columns if col != 'price_change_percent_signed']
-        return df[cols]
+        df = df.drop(columns=['price_change_percent','source_file'])
+
+
+        desired_order = ['price_change_percent_signed', 'product_id', 'product_name']
+        remaining_columns = [col for col in df.columns if col not in desired_order]
+        new_order = desired_order + remaining_columns
+        
+        
+        # #restructure cols to be new col + all old cols
+        # cols = ['price_change_percent_signed'] +  [col for col in df.columns if col != 'price_change_percent_signed']
+
+        print(df[new_order])
+
+        return df[new_order]
     except Exception as e:
         print(chalk.red(f"Error reordering columns: {e}"))
         
@@ -142,11 +152,17 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
         
         # Step 1: Get the data
         products = get_all_messages(product_data)
-        # print(chalk.green(products))
+
+        #extract src site from first message in list of messages - using source property
+        source = products[0]['source']
+        # print (source)
+
+        print(chalk.green(products))
         
         # Step 2: Create DataFrame
         df = pd.DataFrame(products)
         
+
         # Step 3: Calculate the price change and drop the original percentage column
         df = calculate_price_change(df)
         
@@ -160,7 +176,7 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
         report_file_path = output_file
         df_filtered.to_csv(report_file_path,index=False)
         
-        print(f"Filtered DataFrame saved to '{report_file_path}'")
+        # print(f"Filtered DataFrame saved to '{report_file_path}'")
     except Exception as e:
         print(chalk.red(f"Error in the price difference calculation process: {e}"))
        
@@ -211,30 +227,32 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
 
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     #test input filtered file
+    #test input filtered file
 
-#     #get path to proj root dir
-#     # proj_root =os.path.join('..',os.path.dirname(__file__))
-#     # /home/ubuntu/Documents/Projects/TDD-scraper/Analysis
+    #get path to proj root dir
+    # proj_root =os.path.join('..',os.path.dirname(__file__))
+    # /home/ubuntu/Documents/Projects/TDD-scraper/Analysis
     
-#     curr_dir = os.getcwd()
-#     filtered_root = os.path.join(curr_dir,'src','file_output','filtered')
-#     # print(os.path.isdir(filtered_root))
 
-#     test_filtered_subdir = os.path.join(filtered_root,'FILTERED_prada_2024-11-10_bags_562f8f10')
-#     test_filtered_file = os.path.join(test_filtered_subdir,'FILTERED_italist_prada_2024-11-10_bags_171f20b5.csv')
+    product_msg_list = [
+            {'product_name': 'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG', 'product_id': '14558494-14390803', 'curr_price': 280.0, 'curr_scrape_date': '2024-10-25', 'prev_price': 2580.0, 'prev_scrape_date': '2024-10-23', 'listing_url': 'HTTPS://WWW.ITALIST.COM/US/WOMEN/BAGS/TOTES/EMBROIDERED-FABRIC-SMALL-SYMBOLE-SHOPPING-BAG/14390803/14558494/PRADA/', 'source_file': '/home/ubuntu/Documents/Projects/TDD-scraper/Analysis/../src/scrape_file_output/filtered/FILTERED_PRADA_2024-25-10_BAGS_962a1246/FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv', 'source': 'ITALIST'}, {'product_name': 'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG', 'product_id': '14557360-14389669', 'curr_price': 580.0, 'curr_scrape_date': '2024-10-25', 'prev_price': 2580.0, 'prev_scrape_date': '2024-10-23', 'listing_url': 'HTTPS://WWW.ITALIST.COM/US/WOMEN/BAGS/TOTES/EMBROIDERED-FABRIC-SMALL-SYMBOLE-SHOPPING-BAG/14389669/14557360/PRADA/', 'source_file': '/home/ubuntu/Documents/Projects/TDD-scraper/Analysis/../src/scrape_file_output/filtered/FILTERED_PRADA_2024-25-10_BAGS_962a1246/FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv', 'source': 'ITALIST'}
+        ]
 
-#     data = []
-#     output_dir = make_output_dir()
 
-#     with open(test_filtered_file,'r',encoding='utf-8') as file:
-        
-       
-#         for row in file:
-#             data.append(row.strip())
-#     print(data)
-#     calc_percentage_diff_driver(output_dir,data,test_filtered_file)
+    curr_dir = os.getcwd()
+    filtered_root = os.path.join(curr_dir,'src','scrape_file_output','filtered')
+    # print(os.path.isdir(filtered_root))
+
+    test_filtered_subdir = os.path.join(filtered_root,'FILTERED_PRADA_2024-25-10_BAGS_962a1246')
+    test_filtered_file = os.path.join(test_filtered_subdir,'FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv')
+
+
+
+    output_dir = make_output_dir()
+
+
+    calc_percentage_diff_driver(output_dir,product_msg_list,test_filtered_file)
 
     
