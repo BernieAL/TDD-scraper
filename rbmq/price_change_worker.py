@@ -8,7 +8,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from Analysis.percent_change_analysis import calc_percentage_diff_driver
+from analysis.percent_change_analysis import calc_percentage_diff_driver
 from email_sender import send_email_with_report
 
 def make_price_report_root_dir():

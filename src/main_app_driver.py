@@ -1,5 +1,5 @@
 # src/main_app_driver.py
-import os,csv,sys
+import os,csv,sys,pika,json
 from datetime import datetime
 from simple_chalk import chalk
 
@@ -13,17 +13,17 @@ scraped_data_dir_raw = os.path.join(curr_dir, 'scrape_file_output','raw')
 scraped_data_dir_filtered = os.path.join(curr_dir, 'scrape_file_output','filtered')
 
 # Import the ScraperUtils class from utils
-from utils.ScraperUtils import ScraperUtils
+from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 
 # Import the scraper classes to construct instances of 
-from src.scrapers.italist_scraper import ItalistScraper
+from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
 
 #import comparision function
-from Analysis.compare_data import compare_driver
+from analysis.compare_data import compare_driver
 
 
 from rbmq.price_change_producer import publish_to_queue
-
+from rbmq.scrape_producer import publish_to_scrape_queue
 
 # Initialize the ScraperUtils instance
 utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
@@ -38,6 +38,9 @@ utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
 #         raise ImportError("italist_driver scraper could not be imported")
 #     except Exception as e:
 #         print(f"Error while running italist scraper: {e}")
+
+
+
 
 
 def scrape_process(brand,category,specific_item):
@@ -57,6 +60,9 @@ def scrape_process(brand,category,specific_item):
 
         output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
         print(output_dir)
+
+
+
         italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True) #if True, use local site copy
         scraped_file = italist_scraper.run()
         print(chalk.green(f"(MAIN_DRIVER){scraped_file}"))
@@ -82,43 +88,109 @@ def scrape_process(brand,category,specific_item):
         return filtered_file if not scraped_file else scraped_file
         # return None
 
+
+
+def wait_until_query_scrape_complete(query_hash=None):
+     
+    #listen for completion msg from scrape_worker published
+
+    """
+    Waits for a specific completion message from the scrape_completion_queue that matches the provided query_hash.
+    """
+    # Set up connection and queue listener
+    connection_params = pika.ConnectionParameters(host='localhost', port=5672, credentials=pika.PlainCredentials('guest', 'guest'))
+    connection = pika.BlockingConnection(connection_params)
+    channel = connection.channel()
+    channel.queue_declare(queue='scrape_queue', durable=True)
+
+    
+    def callback(ch, method, properties, body):
+        message = json.loads(body)
+        
+        # # Check if the message matches the expected query_hash
+        # if message.get('type') == 'SCRAPE_COMPLETE' and message.get('query_hash') == query_hash:
+        #     print(f"Received completion message for query_hash: {query_hash}")
+        #     ch.basic_ack(delivery_tag=method.delivery_tag)  # Acknowledge the message
+        #     channel.stop_consuming()  # Stop listening as the required message is received
+
+        if message.get('type') == 'SCRAPE_COMPLETE':
+            print(f"Received completion message")
+            ch.basic_ack(delivery_tag=method.delivery_tag)  # Acknowledge the message
+            channel.stop_consuming()  # Stop listening as the required message is received
+
+
+    # Start consuming messages and wait until the specific completion message is received
+    print(f"Waiting for completion message for query_hash: {query_hash}")
+    channel.basic_consume(queue='scrape_queue', on_message_callback=callback)
+    channel.start_consuming()
+    connection.close()
+
+def scrape_process_2(brand,category,specific_item):
+      
+    # # Initialize the variables
+    # scraped_file = None
+    # filtered_file = None
+    # current_date = datetime.now().strftime('%Y-%d-%m')
+    
+    
+    # query = f"{brand}_{category}" #Prada_bags , Gucci_shirts
+            
+    # #if True, use local site copy
+    # query_hash = utils.generate_hash(query,specific_item,current_date)
+
+    # output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
+    # print(output_dir)
+    
+    
+    # publish_to_scrape_queue(brand,category,output_dir,query_hash,True)
+    
+    publish_to_scrape_queue({'test':'test'})
+    #wait until all sites scrapes for this query before moving on
+    # Wait until we receive a specific completion message for the current query_hash
+    # wait_until_query_scrape_complete(query_hash)
+
+    wait_until_query_scrape_complete()
+
+
 def driver_function():
     
+
+    output_file = scrape_process_2("PRADA", "BAGS", None)
     
-    with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
+    # with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
         
 
-        csv_reader = csv.reader(file)
-        #skip first line - file headers
-        next(csv_reader)
+    #     csv_reader = csv.reader(file)
+    #     #skip first line - file headers
+    #     next(csv_reader)
         
-        for file_row in csv_reader:
+    #     for file_row in csv_reader:
             
-            #if file_row empty, continue
-            if not file_row or not any(file_row):
-                continue
+    #         #if file_row empty, continue
+    #         if not file_row or not any(file_row):
+    #             continue
             
-            try:
+    #         try:
 
-                #extract brand,category, and spec item
+    #             #extract brand,category, and spec item
 
-                brand = file_row[0].strip().upper()
-                category = file_row[1].strip().upper()
+    #             brand = file_row[0].strip().upper()
+    #             category = file_row[1].strip().upper()
 
-                #if file doesnt have spec item , use None
-                specific_item = file_row[2].strip().upper() if len(file_row) > 2 else None
+    #             #if file doesnt have spec item , use None
+    #             specific_item = file_row[2].strip().upper() if len(file_row) > 2 else None
 
-                print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
-                output_file = scrape_process(brand, category, specific_item)
+    #             # print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
+    #             output_file = scrape_process_2(brand, category, specific_item)
 
-                #if filtered file use that, if not use scraped file as source file - queue MUST recieve a source file to parse from and build price report subdir
-                publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file":output_file})
+    #             # #if filtered file use that, if not use scraped file as source file - queue MUST recieve a source file to parse from and build price report subdir
+    #             # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file":output_file})
            
-            except Exception as e:
-                print(f"scrape_process failure {e}")
+    #         except Exception as e:
+    #             print(f"scrape_process failure {e}")
 
         
-        print("processed all rows in input file")
+        # print("processed all rows in input file")
 # Example usage in your code
 if __name__ == "__main__":
     # brand = 'Prada'
