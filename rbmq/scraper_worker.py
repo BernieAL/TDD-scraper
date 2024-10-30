@@ -11,7 +11,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from rbmq.scrape_producer import publish_to_scrape_queue
+from rbmq.scrape_producer import SCRAPE_publish_to_queue
 # Import the ScraperUtils class from utils
 from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 
@@ -65,7 +65,7 @@ def main():
             
 
 
-            publish_to_scrape_queue({'type':'SCRAPE_COMPLETE','query_hash':query_hash})
+            SCRAPE_publish_to_queue({'type':'SCRAPE_COMPLETE','query_hash':query_hash})
 
         except Exception as e:
             print(chalk.red(f"Error processing message: {e}"))
@@ -90,7 +90,7 @@ def main():
         print(chalk.green("Clearing queue"))
         channel.queue_purge(queue='scrape_queue')
 
-        print(chalk.blue('[*] Waiting for messages. To exit press CTRL+C'))
+        print(chalk.blue('(SCRAPE_WORKER)[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()
 
     except Exception as e:

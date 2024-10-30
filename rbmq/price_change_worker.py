@@ -258,7 +258,7 @@ def main():
         # print(chalk.green("Clearing queue"))
         # channel.queue_purge(queue='price_change_queue')
 
-        print(chalk.blue('[*] Waiting for messages. To exit press CTRL+C'))
+        print(chalk.blue('(PRICE_CHANGE_WORKER)[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()
 
     except Exception as e:
