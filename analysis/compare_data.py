@@ -19,7 +19,7 @@ from db.db_utils import (
     DB_bulk_update_sold,
     DB_get_sold
 )
-from rbmq.price_change_producer import publish_to_queue
+from rbmq.price_change_producer import PRICE_publish_to_queue
 
 # Directory setup for input/output
 curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -171,12 +171,12 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
         print(chalk.green(f"SOLD ITEMS: {sold_items}\n ---------------" ))
 
         #push sold_items to queue
-        publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
+        PRICE_publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
         
 
 
         # After processing all products, send completion signal
-        publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file})
+        PRICE_publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file})
 
     except Exception as e:
         print(chalk.red(f"Error comparing scraped data: {e}"))
@@ -212,7 +212,7 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
         updated_products.append(temp)
         # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
         #this is like spread operator in js
-        publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file,"source":source})
+        PRICE_publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file,"source":source})
     else:
         # Update  product scrape dates if price has not changed
         product_data['prev_scrape_date'] = product_data['curr_scrape_date']
@@ -299,7 +299,7 @@ if __name__ == "__main__":
     filtered_input_file_path =  os.path.join(curr_dir,'..',scrape_data_dir,'filtered','FILTERED_PRADA_2024-25-10_BAGS_962a1246','FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv')
     
     compare_driver(filtered_input_file_path,'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
-    publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
+    PRICE_publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
 
     
     # compare_driver(general_input_file_path)

@@ -12,7 +12,7 @@ connection = pika.BlockingConnection(connection_params)
 channel = connection.channel()
 
 # Purge the queue
-channel.queue_purge(queue='price_change_queue')
+channel.queue_purge(queue='scrape_queue')
 
 print("Queue cleared.")
 

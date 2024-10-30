@@ -21,7 +21,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 
-def publish_to_queue(product_msg):
+def PRICE_publish_to_queue(product_msg):
     """
     publishes rec'd messages to queue
 
@@ -105,5 +105,5 @@ if __name__ == "__main__":
         'listing_url': "test.com",
         'type': 'PRODUCT_CHANGE'  # Example message type
     }
-    publish_to_queue(product_message)
-    publish_to_queue({'type': 'PROCESSING SCRAPED FILE COMPLETE'})
+    PRICE_publish_to_queue(product_message)
+    PRICE_publish_to_queue({'type': 'PROCESSING SCRAPED FILE COMPLETE'})

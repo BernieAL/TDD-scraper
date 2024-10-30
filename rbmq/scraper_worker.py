@@ -12,6 +12,12 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from rbmq.scrape_producer import publish_to_scrape_queue
+# Import the ScraperUtils class from utils
+from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
+
+# Import the scraper classes to construct instances of 
+from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
+
 
 """
 
@@ -25,7 +31,15 @@ write message to log for each scrape process if completed or failed
 
 write message to queue when all scrapes for query done - ready for comparison now
 
+returns names of created file paths in subdirs where scraped data written to in shared volume
+
 """
+
+def run_italist_scraper(brand,category,output_dir,query_hash):
+    italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True) #if True, use local site copy
+    scraped_file = italist_scraper.run()
+    print(chalk.green(f"(scraper_worker{scraped_file}"))
+
 
 
 def main():
@@ -38,12 +52,28 @@ def main():
     def callback(ch, method, properties, body):
         try:
             msg = json.loads(body)
-            print(f"Message received: {msg}")
-            publish_to_scrape_queue({'type':'SCRAPE_COMPLETE'})
+            print(chalk.yellow(f"Message received: {msg}"))
+            
+            query_hash = msg['query_hash']
+            brand = msg['brand']
+            category = msg['category']
+            output_dir = msg['output_dir']
+
+            
+            run_italist_scraper(brand,category,output_dir,query_hash)
+
+            
+
+
+            publish_to_scrape_queue({'type':'SCRAPE_COMPLETE','query_hash':query_hash})
+
         except Exception as e:
-            pass
+            print(chalk.red(f"Error processing message: {e}"))
+        finally:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
-
+       
+        
 
 
     # RabbitMQ setup
@@ -57,6 +87,8 @@ def main():
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='scrape_queue', on_message_callback=callback)
         
+        print(chalk.green("Clearing queue"))
+        channel.queue_purge(queue='scrape_queue')
 
         print(chalk.blue('[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()
@@ -66,6 +98,7 @@ def main():
     finally:
         if connection and connection.is_open:
             connection.close()
+
 
 if __name__ == "__main__":
     main()
