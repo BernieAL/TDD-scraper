@@ -22,6 +22,7 @@ def main():
 
             output_dir = msg['output_dir']
             query_hash = msg['query_hash']
+            spec_item = msg['specific_item']
             
             # Process each file in output_dir using compare_driver
             if os.path.isdir(output_dir):
@@ -29,10 +30,10 @@ def main():
                     for file in files:
                         file_path = os.path.join(root, file)
                         print(chalk.blue(f"Processing file: {file_path}"))
-                        compare_driver(file_path)
+                        compare_driver(file_path,spec_item)
 
             # Once processing is complete, send COMPARE_COMPLETE message
-            COMPARE_publish_to_queue({'type': 'COMPARE_COMPLETE', 'output_dir': output_dir, 'query_hash': query_hash})
+            COMPARE_publish_to_queue({'type': 'COMPARE_COMPLETE', 'output_dir': output_dir, 'query_hash': query_hash,'specific_item':spec_item})
             print(chalk.green("COMPARE_COMPLETE message sent."))
 
         except Exception as e:

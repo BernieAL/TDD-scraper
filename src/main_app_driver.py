@@ -235,9 +235,13 @@ def driver_function():
                 pass output dir to compare
                 """
                 
-                COMPARE_publish_to_queue({'type':'POPULATED_OUTPUT_DIR','output_dir':output_dir,'query_hash':query_hash})
+                COMPARE_publish_to_queue({'type':'POPULATED_OUTPUT_DIR','output_dir':output_dir,
+                'query_hash':query_hash,
+                'specific_item':specific_item})
 
                 wait_until_compare_process_complete(query_hash)
+
+                PRICE_publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com",'brand':brand,'category':category,'query_hash':query_hash})
 
             except Exception as e:
                 print(f"scrape_process failure {e}")
