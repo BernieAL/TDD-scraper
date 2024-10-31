@@ -24,7 +24,7 @@ from analysis.compare_data import compare_driver
 
 from rbmq.price_change_producer import PRICE_publish_to_queue
 from rbmq.scrape_producer import SCRAPE_publish_to_queue
-from rbmq.compare_producer import publish_to_compare_queue
+from rbmq.compare_producer import COMPARE_publish_to_queue
 
 
 # Initialize the ScraperUtils instance
@@ -122,11 +122,41 @@ def wait_until_query_scrape_complete(query_hash=None):
     channel.start_consuming()
     connection.close()
 
+
+def wait_until_compare_process_complete(query_hash=None):
+    """
+    Waits for a specific completion message from the compare queue that matches the provided query_hash.
+
+    compare recieves output dir and for each file, passes to compare driver
+    which calls price change worker etc.
+    """
+    
+    # Set up connection and queue listener
+    connection_params = pika.ConnectionParameters(host='localhost', port=5672, credentials=pika.PlainCredentials('guest', 'guest'))
+    connection = pika.BlockingConnection(connection_params)
+    channel = connection.channel()
+    channel.queue_declare(queue='compare_queue', durable=True)
+
+    def callback(ch, method, properties, body):
+        message = json.loads(body)
+        
+        # Check if the message matches the expected query_hash
+        if message.get('type') == 'COMPARE_COMPLETE' and message.get('query_hash') == query_hash:
+            print(chalk.green(f":::Received completion message for query_hash: {query_hash}"))
+            ch.basic_ack(delivery_tag=method.delivery_tag)  # Acknowledge the message
+            channel.stop_consuming()  # Stop listening as the required message is received
+
+    # Start consuming messages and wait until the specific completion message is received
+    print(chalk.blue(f":::Waiting for completion message for query_hash: {query_hash}"))
+    channel.basic_consume(queue='compare_queue', on_message_callback=callback)
+    channel.start_consuming()
+    connection.close()
+
 def scrape_process_2(brand,category,specific_item):
       
     # Initialize the variables
     scraped_file = None
-    filtered_file = None
+    filtered_subdir = None
     current_date = datetime.now().strftime('%Y-%d-%m')
     
     
@@ -137,38 +167,36 @@ def scrape_process_2(brand,category,specific_item):
 
     output_dir = utils.make_scraped_sub_dir_raw(brand,category,query_hash)
     print(output_dir)
-    
-    if specific_item != None:
-            filtered_sub_dir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
-            filtered_file = (utils.filter_specific(scraped_file,specific_item,filtered_sub_dir,query_hash))
-            
-            msg = {
-                'brand':brand,
-                'category':category,
-                'output_dir':filtered_sub_dir,
-                'specific_item':specific_item,
-                'query_hash':query_hash,
-                'local_test':True
-            }
-            SCRAPE_publish_to_queue(msg)
 
-    else:
-            msg = {
-                'brand':brand,
-                'category':category,
-                'output_dir':output_dir,
-                'specific_item':specific_item,
-                'query_hash':query_hash,
-                'local_test':True
-            }
-            SCRAPE_publish_to_queue(msg)
-            
-    
-    # wait until all sites scrapes for this query before moving on
-    # Wait until we receive a specific completion message for the current query_hash
+
+    msg = {
+            'brand':brand,
+            'category':category,
+            'output_dir':output_dir,
+            'specific_item':specific_item,
+            'query_hash':query_hash,
+            'local_test':True
+        }
+    SCRAPE_publish_to_queue(msg)
+    #wwhen this completes, output_dir will be populated with raw scraped files
     wait_until_query_scrape_complete(query_hash)
-    return output_dir
+    
+    #eval if filtering for specific query needed
+    if specific_item != None:
+            
+            #create the sub dir to hold the filtered files
+            filtered_subdir = utils.make_filtered_sub_dir(brand,category,scraped_data_dir_filtered,query_hash)
 
+            for root,subdir,files in os.walk(output_dir):
+                 
+                 for raw_file in files:
+                    raw_file_path = os.path.join(root,raw_file)
+                    utils.filter_specific(raw_file_path,specific_item,filtered_subdir,query_hash)
+            
+            return query_hash,filtered_subdir
+           
+    
+    return query_hash,output_dir
 
 def driver_function():
     
@@ -196,18 +224,21 @@ def driver_function():
 
                 #if file doesnt have spec item , use None
                 specific_item = file_row[2].strip().upper() if len(file_row) > 2 else None
-
+                print(specific_item)
                 # print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
-                output_dir = scrape_process_2(brand, category, specific_item)
+                query_hash,output_dir = scrape_process_2(brand, category, specific_item)
 
+                print(chalk.green(f"Output DIR {output_dir}"))
 
                 """
                 because output dir holds all output files from all the scrapers,
                 pass output dir to compare
                 """
                 
-                publish_to_compare_queue({'type':'POPULATED_OUTPUT_DIR','output_dir':output_dir})
-           
+                # COMPARE_publish_to_queue({'type':'POPULATED_OUTPUT_DIR','output_dir':output_dir,'query_hash':query_hash})
+
+                # wait_until_compare_process_complete(query_hash)
+
             except Exception as e:
                 print(f"scrape_process failure {e}")
 

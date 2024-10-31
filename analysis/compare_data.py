@@ -287,20 +287,25 @@ def compare_driver(scraped_data_file_path,spec_item=None):
 
 if __name__ == "__main__":
     
-    
-    
+   
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     scrape_data_dir = os.path.join('src','scrape_file_output')
+    print(scrape_data_dir)
    
     
-    general_input_file_path = os.path.join(curr_dir,'..',scrape_data_dir,'raw','RAW_SCRAPE_PRADA_2024-24-10_BAGS_a44eabd1','RAW_ITALIST_PRADA_2024-24-10_BAGS_a44eabd1.csv')
-
-
-    filtered_input_file_path =  os.path.join(curr_dir,'..',scrape_data_dir,'filtered','FILTERED_PRADA_2024-25-10_BAGS_962a1246','FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv')
+    # general_input_file_path = os.path.join(curr_dir,'..',scrape_data_dir,'raw','RAW_SCRAPE_PRADA_2024-24-10_BAGS_a44eabd1','RAW_ITALIST_PRADA_2024-24-10_BAGS_a44eabd1.csv')
+    # filtered_input_file_path =  os.path.join(curr_dir,'..',scrape_data_dir,'filtered','FILTERED_PRADA_2024-25-10_BAGS_962a1246','FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv')
     
-    compare_driver(filtered_input_file_path,'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
-    PRICE_publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
+    # compare_driver(filtered_input_file_path,'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
+    # PRICE_publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
 
-    
+
+
+    test_output_dir_path = os.path.join(scrape_data_dir,'filtered','RAW_SCRAPE_PRADA_2024-30-10_BAGS_7eabf40e')
+    print(test_output_dir_path)
+    for root,subdirs,files in os.walk(test_output_dir_path):
+        for file in files:
+            print(file)
+
     # compare_driver(general_input_file_path)
     # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": general_input_file_path})

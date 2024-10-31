@@ -10,36 +10,33 @@ if parent_dir not in sys.path:
 
 from analysis.compare_data import compare_driver
 from rbmq.price_change_producer import PRICE_publish_to_queue
+from rbmq.compare_producer import COMPARE_publish_to_queue
+
 
 def main():
-
-    
     def callback(ch, method, properties, body):
+        try:
+            msg = json.loads(body)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            print(chalk.yellow(f"Message received: {msg}"))
+
+            output_dir = msg['output_dir']
+            query_hash = msg['query_hash']
             
-            try:
-                msg = json.loads(body)
-                print(chalk.yellow(f"Message received: {msg}"))
-
-                output_dir = msg['output_dir']
-
-                for _,subdirs,files in os.walk(output_dir):
-                    
+            # Process each file in output_dir using compare_driver
+            if os.path.isdir(output_dir):
+                for root, subdirs, files in os.walk(output_dir):
                     for file in files:
-                        file_path = os.path.join(output_dir,file)
-                        print(file_path)
+                        file_path = os.path.join(root, file)
+                        print(chalk.blue(f"Processing file: {file_path}"))
                         compare_driver(file_path)
-                        
 
-            
-            except Exception as e:
-                print(chalk.red(f"Error processing message: {e}"))
-            finally:
-                ch.basic_ack(delivery_tag=method.delivery_tag)
+            # Once processing is complete, send COMPARE_COMPLETE message
+            COMPARE_publish_to_queue({'type': 'COMPARE_COMPLETE', 'output_dir': output_dir, 'query_hash': query_hash})
+            print(chalk.green("COMPARE_COMPLETE message sent."))
 
-       
-        
-
-
+        except Exception as e:
+            print(chalk.red(f"Error processing message: {e}"))
 
     # RabbitMQ setup
     try:
@@ -64,9 +61,5 @@ def main():
         if connection and connection.is_open:
             connection.close()
 
-   
-
-
-
 if __name__ == "__main__":
-      main()
+    main()

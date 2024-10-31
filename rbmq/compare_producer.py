@@ -5,7 +5,7 @@ from simple_chalk import chalk
 import json
 
 
-def publish_to_compare_queue(msg):
+def COMPARE_publish_to_queue(msg):
 
     try:
         # Set up the connection parameters (use correct RabbitMQ host and credentials)
@@ -43,4 +43,4 @@ if __name__ == "__main__":
     urls_to_scrape = ['https://example.com', 'https://anotherexample.com']
     
 
-    publish_to_compare_queue()
+    COMPARE_publish_to_queue()
