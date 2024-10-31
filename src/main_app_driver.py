@@ -235,9 +235,9 @@ def driver_function():
                 pass output dir to compare
                 """
                 
-                # COMPARE_publish_to_queue({'type':'POPULATED_OUTPUT_DIR','output_dir':output_dir,'query_hash':query_hash})
+                COMPARE_publish_to_queue({'type':'POPULATED_OUTPUT_DIR','output_dir':output_dir,'query_hash':query_hash})
 
-                # wait_until_compare_process_complete(query_hash)
+                wait_until_compare_process_complete(query_hash)
 
             except Exception as e:
                 print(f"scrape_process failure {e}")
