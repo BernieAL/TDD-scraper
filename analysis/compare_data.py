@@ -3,7 +3,7 @@ import sys
 import csv
 import json
 import psycopg2
-from datetime import datetime
+from datetime import datetime,date
 from simple_chalk import chalk
 
 # Get parent directory and add it to sys.path for importing other modules
@@ -25,6 +25,14 @@ from rbmq.price_change_producer import PRICE_publish_to_queue
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 file_output_dir = os.path.join(curr_dir, '..', 'src', 'file_output')
 
+
+def JSON_serializer(input_dict):
+
+    for key,inner_dict in input_dict.items():
+        for inner_key,value in inner_dict.items():
+            if isinstance(value,(datetime,date)):
+                inner_dict[inner_key] = value.strftime('%Y-%m-%d')
+        return input_dict
 
 def parse_file_name(file):
     """
@@ -111,6 +119,85 @@ def db_data_to_dictionary(existing_db_data_list):
     except Exception as e:
          print(chalk.red(f"Error converting DB data to dictionary: {e}"))
 
+def process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file,source):
+    """
+    Processes an existing product by checking for price changes and updating the necessary fields.
+
+    :param row: Scraped data row from the CSV.
+    :param existing_product_data_dict: Dictionary of existing products from the DB.
+    :param updated_products: List to hold updated product data.
+    :param scrape_date: Date of the current scrape.
+    """
+    product_data = existing_product_data_dict[row['product_id']]
+    if float(row['curr_price']) != product_data['curr_price']:
+        # Update price and date
+        product_data['prev_price'] = product_data['curr_price']
+        product_data['curr_price'] = float(row['curr_price'])
+        product_data['prev_scrape_date'] = product_data['curr_scrape_date']
+        product_data['curr_scrape_date'] = scrape_date
+
+        temp = {
+            'product_id': row['product_id'],
+            'curr_price': product_data['curr_price'],
+            'curr_scrape_date': scrape_date,
+            'prev_price': product_data['prev_price'],
+            'prev_scrape_date': product_data['prev_scrape_date']
+        }
+
+        #add to updated list - for price and scrape dates to be updated
+        updated_products.append(temp)
+
+        # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
+        #this is like spread operator in js
+        PRICE_publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file,"source":source})
+        print(chalk.yellow(f"PUBLISHED ITEM TO QUEUE {temp['product_id']}"))
+
+
+    else:
+        # Update  product scrape dates if price has not changed
+        product_data['prev_scrape_date'] = product_data['curr_scrape_date']
+        product_data['curr_scrape_date'] = scrape_date
+        updated_products.append({
+            'product_id': row['product_id'],
+            'curr_price': product_data['curr_price'],
+            'curr_scrape_date': scrape_date,
+            'prev_price': product_data['prev_price'],
+            'prev_scrape_date': product_data['prev_scrape_date']
+        })
+
+    print(chalk.yellow(f"Updated product: {row['product_id']}"))
+    existing_product_data_dict.pop(row['product_id'])
+
+
+def process_new_product(row, scrape_date, new_products):
+    """
+    Processes a new product that was not found in the existing database records.
+
+    :param row: Scraped data row from the CSV.
+    :param scrape_date: Date of the current scrape.
+    :param new_products: List to hold new product data.
+    """
+
+    print(chalk.red(row['source']))
+    temp = {
+        'product_id': row['product_id'],
+        'brand': row['brand'],
+        'product_name': row['product_name'],
+        'curr_price': float(row['curr_price']),
+        'curr_scrape_date': scrape_date,
+        'prev_price': float(row['curr_price']),
+        'prev_scrape_date': scrape_date,
+        'sold_date': None,
+        'sold': False,
+        'listing_url':row['listing_url'],
+        'source':row['source']
+    }
+    new_products.append(temp)
+    print(chalk.green(f"New product added: {row['product_id']}"))
+
+
+
+
 def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spec_item=None):
     """
     Compares scraped product data to existing database records. Updates existing products, adds new products, 
@@ -164,10 +251,16 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
         
         #all remaining in dict were not found in todays scrape - meaning they were sold
         items_not_found = existing_product_data_dict
+        print(chalk.cyan(f"db items not found in current scrape file {items_not_found}"))
         DB_bulk_update_sold(items_not_found)
 
         #get sold items for this src and push to queue
-        sold_items = DB_get_sold(source,spec_item)
+        # sold_items = DB_get_sold(source,spec_item)
+
+        #convert datetime objects in dict to stft to avoid serialization error in queue
+        sold_items = JSON_serializer(items_not_found)
+
+
         print(chalk.green(f"SOLD ITEMS: {sold_items}\n ---------------" ))
 
         #push sold_items to queue
@@ -182,81 +275,6 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
         print(chalk.red(f"Error comparing scraped data: {e}"))
         raise
 
-
-def process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file,source):
-    """
-    Processes an existing product by checking for price changes and updating the necessary fields.
-
-    :param row: Scraped data row from the CSV.
-    :param existing_product_data_dict: Dictionary of existing products from the DB.
-    :param updated_products: List to hold updated product data.
-    :param scrape_date: Date of the current scrape.
-    """
-    product_data = existing_product_data_dict[row['product_id']]
-    if float(row['curr_price']) != product_data['curr_price']:
-        # Update price and date
-        product_data['prev_price'] = product_data['curr_price']
-        product_data['curr_price'] = float(row['curr_price'])
-        product_data['prev_scrape_date'] = product_data['curr_scrape_date']
-        product_data['curr_scrape_date'] = scrape_date
-
-        temp = {
-            'product_id': row['product_id'],
-            'curr_price': product_data['curr_price'],
-            'curr_scrape_date': scrape_date,
-            'prev_price': product_data['prev_price'],
-            'prev_scrape_date': product_data['prev_scrape_date']
-        }
-
-        #add to updated list - for price and scrape dates to be updated
-        updated_products.append(temp)
-        # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
-        #this is like spread operator in js
-        PRICE_publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file,"source":source})
-        print(chalk.yellow(f"PUBLISHED ITEM TO QUEUE {temp['product_id']}"))
-
-        
-    else:
-        # Update  product scrape dates if price has not changed
-        product_data['prev_scrape_date'] = product_data['curr_scrape_date']
-        product_data['curr_scrape_date'] = scrape_date
-        updated_products.append({
-            'product_id': row['product_id'],
-            'curr_price': product_data['curr_price'],
-            'curr_scrape_date': scrape_date,
-            'prev_price': product_data['prev_price'],
-            'prev_scrape_date': product_data['prev_scrape_date']
-        })
-
-    print(chalk.yellow(f"Updated product: {row['product_id']}"))
-    existing_product_data_dict.pop(row['product_id'])
-
-
-def process_new_product(row, scrape_date, new_products):
-    """
-    Processes a new product that was not found in the existing database records.
-
-    :param row: Scraped data row from the CSV.
-    :param scrape_date: Date of the current scrape.
-    :param new_products: List to hold new product data.
-    """
-
-    print(chalk.red(row['source']))
-    temp = {
-        'product_id': row['product_id'],
-        'brand': row['brand'],
-        'product_name': row['product_name'],
-        'curr_price': float(row['curr_price']),
-        'curr_scrape_date': scrape_date,
-        'prev_price': float(row['curr_price']),
-        'prev_scrape_date': scrape_date,
-        'sold_date': None,
-        'sold': False,
-        'listing_url':row['listing_url'],
-        'source':row['source']
-    }
-    new_products.append(temp)
-    print(chalk.green(f"New product added: {row['product_id']}"))
 
 
 def compare_driver(scraped_data_file_path,spec_item=None):
