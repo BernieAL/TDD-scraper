@@ -17,10 +17,12 @@ process_info = {
     "brand": None,
     "category": None,
     "query_hash": None,
+    "date":None,
     "price_report_subdir": None,
     "sold_report_subdir": None,
     "price_report_root_dir": None,
-    "sold_report_root_dir": None
+    "sold_report_root_dir": None,
+    "source":None,
 }
 
 def make_price_report_root_dir():
@@ -162,7 +164,8 @@ def main():
     def callback(ch, method, properties, body):
         try:
             msg = json.loads(body)
-            print(f"Message received: {msg}")
+            print(f"Message received: {msg} \n -------- \n")
+
 
 
             if 'source_file' in msg:
@@ -174,6 +177,12 @@ def main():
                         
                     try:
                         source, date, brand, category, query_hash = parse_file_name(source_file)
+                        process_info['source'] = source
+                        process_info['date'] = date
+                        process_info['category'] = category
+                        process_info['brand'] = brand
+                        process_info['query_hash'] = query_hash
+
                         print(chalk.green(f"Parsed values - Brand: {brand}, Category: {category}, Query Hash: {query_hash}"))
 
                         # Store parsed values in process_info
@@ -211,11 +220,17 @@ def main():
              # Process sold items when message type indicates completion of sold processing
             if msg.get('type') == 'PROCESSING SOLD ITEMS COMPLETE':
                 sold_items = msg['sold_items']
+                
+                source = process_info['source']
+                brand = process_info['brand']
+                query_hash = process_info['query_hash']
+                date = process_info['date']
+
                 sold_items_file_name = f"SOLD_{source}_{brand}_{date}_{query_hash}.csv"
 
                 sold_items_file_path = os.path.join(process_info["sold_report_subdir"], sold_items_file_name)
                 
-                print(chalk.red(f"SOLD ITEMS:{sold_items} "))
+                print(chalk.red(f"SOLD ITEMS:{sold_items} \n ------------------------\n"))
 
                 with open(sold_items_file_path,'w',newline='',encoding='utf-8') as file:
                     
@@ -239,8 +254,10 @@ def main():
 
             # Now process the product messages or the end signal
             if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY', 'PROCESSING SOLD ITEMS COMPLETE']:
+                
                 recd_products.append(msg)
-                print(f"Product added to queue. Current count: {len(recd_products)}")
+                print(f"Price Change - Product added to queue. Current count: {len(recd_products)}")
+
 
             elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
                 print(chalk.green("SIGNAL RECD: PROCESSING SCRAPED FILE COMPLETE"))
@@ -304,8 +321,8 @@ def main():
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='price_change_queue', on_message_callback=callback)
         
-        # print(chalk.green("Clearing queue"))
-        # channel.queue_purge(queue='price_change_queue')
+        print(chalk.green("Clearing queue"))
+        channel.queue_purge(queue='price_change_queue')
 
         print(chalk.blue('(PRICE_CHANGE_WORKER)[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()

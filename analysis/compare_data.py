@@ -213,6 +213,9 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
         # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
         #this is like spread operator in js
         PRICE_publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file,"source":source})
+        print(chalk.yellow(f"PUBLISHED ITEM TO QUEUE {temp['product_id']}"))
+
+        
     else:
         # Update  product scrape dates if price has not changed
         product_data['prev_scrape_date'] = product_data['curr_scrape_date']

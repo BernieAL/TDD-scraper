@@ -17,6 +17,9 @@ from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 
 # Import the scraper classes to construct instances of 
 from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
+from rbmq.process_producer import PROCESS_publish_to_queue
+
+
 
 
 """
@@ -65,7 +68,13 @@ def main():
             
 
 
-            SCRAPE_publish_to_queue({'type':'SCRAPE_COMPLETE','query_hash':query_hash})
+            PROCESS_publish_to_queue({
+                'type': 'SCRAPE_COMPLETE',
+                'query_hash': query_hash,
+                'output_dir': output_dir,
+            })
+            print(chalk.green("SCRAPE_COMPLETE message sent to process_queue."))
+
 
         except Exception as e:
             print(chalk.red(f"Error processing message: {e}"))

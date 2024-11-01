@@ -152,6 +152,43 @@ def wait_until_compare_process_complete(query_hash=None):
     channel.start_consuming()
     connection.close()
 
+def wait_until_process_complete(query_hash=None):
+    """
+    Waits for a specific completion message from the compare queue that matches the provided query_hash.
+
+    compare recieves output dir and for each file, passes to compare driver
+    which calls price change worker etc.
+    """
+    
+    # Set up connection and queue listener
+    connection_params = pika.ConnectionParameters(host='localhost', port=5672, credentials=pika.PlainCredentials('guest', 'guest'))
+    connection = pika.BlockingConnection(connection_params)
+    channel = connection.channel()
+    channel.queue_declare(queue='process_queue', durable=True)
+
+    def callback(ch, method, properties, body):
+        message = json.loads(body)
+        
+
+        # Check if the message matches the expected query_hash
+        if message.get('type') == 'SCRAPE_COMPLETE' and message.get('query_hash') == query_hash:
+            print(chalk.green(f":::Received SCRAPE completion message for query_hash: {query_hash}"))
+            ch.basic_ack(delivery_tag=method.delivery_tag)  # Acknowledge the message
+            channel.stop_consuming()  # Stop listening as the required message is received
+
+        # Check if the message matches the expected query_hash
+        elif message.get('type') == 'COMPARE_COMPLETE' and message.get('query_hash') == query_hash:
+            print(chalk.green(f":::Received COMPARE completion message for query_hash: {query_hash}"))
+            ch.basic_ack(delivery_tag=method.delivery_tag)  # Acknowledge the message
+            channel.stop_consuming()  # Stop listening as the required message is received
+
+    # Start consuming messages and wait until the specific completion message is received
+    print(chalk.blue(f":::Waiting for completion message for query_hash: {query_hash}"))
+    channel.basic_consume(queue='process_queue', on_message_callback=callback)
+    channel.start_consuming()
+    connection.close()
+
+
 def scrape_process_2(brand,category,specific_item):
       
     # Initialize the variables
@@ -179,7 +216,7 @@ def scrape_process_2(brand,category,specific_item):
         }
     SCRAPE_publish_to_queue(msg)
     #wwhen this completes, output_dir will be populated with raw scraped files
-    wait_until_query_scrape_complete(query_hash)
+    wait_until_process_complete(query_hash)
     
     #eval if filtering for specific query needed
     if specific_item != None:
@@ -226,9 +263,15 @@ def driver_function():
                 specific_item = file_row[2].strip().upper() if len(file_row) > 2 else None
                 print(specific_item)
                 # print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
-                query_hash,output_dir = scrape_process_2(brand, category, specific_item)
+                # query_hash,output_dir = scrape_process_2(brand, category, specific_item)
 
-                print(chalk.green(f"Output DIR {output_dir}"))
+                # print(chalk.green(f"Output DIR {output_dir}"))
+
+
+
+                #FILTERED SOLD TEST - using manually modified filtered scrape file
+                query_hash='e9ace73b'
+                output_dir = "/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_PRADA_2024-31-10_BAGS_e9ace73b"
 
                 """
                 because output dir holds all output files from all the scrapers,
@@ -239,7 +282,7 @@ def driver_function():
                 'query_hash':query_hash,
                 'specific_item':specific_item})
 
-                wait_until_compare_process_complete(query_hash)
+                wait_until_process_complete(query_hash)
 
                 PRICE_publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com",'brand':brand,'category':category,'query_hash':query_hash})
 
