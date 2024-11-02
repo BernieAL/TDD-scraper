@@ -8,6 +8,7 @@ from simple_chalk import chalk
 
 # Get parent directory and add it to sys.path for importing other modules
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FILE_SCRAPE_DATE = None
 
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
@@ -17,7 +18,8 @@ from db.db_utils import (
     DB_bulk_update_existing, 
     bulk_insert_new,
     DB_bulk_update_sold,
-    DB_get_sold
+    DB_get_sold,
+    DB_get_sold_daily
 )
 from rbmq.price_change_producer import PRICE_publish_to_queue
 
@@ -223,6 +225,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
             scrape_date_line = next(csv_reader)
             scrape_date = scrape_date_line[0].split(':')[1].strip()
             scrape_date = datetime.strptime(scrape_date, '%Y-%d-%m').date()
+            FILE_SCRAPE_DATE = scrape_date
             print(f"Scrape Date: {scrape_date}")
 
             # Get query info
@@ -257,9 +260,9 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
         #get sold items for this src and push to queue
         # sold_items = DB_get_sold(source,spec_item)
 
-        #convert datetime objects in dict to stft to avoid serialization error in queue
-        sold_items = JSON_serializer(items_not_found)
-
+        #convert datetime objects in dict to strft to avoid serialization error in queue
+        # sold_items = JSON_serializer(items_not_found)
+        sold_items = DB_get_sold_daily(source,items_not_found,FILE_SCRAPE_DATE,spec_item)
 
         print(chalk.green(f"SOLD ITEMS: {sold_items}\n ---------------" ))
 

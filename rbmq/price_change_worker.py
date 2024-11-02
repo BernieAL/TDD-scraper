@@ -288,12 +288,12 @@ def main():
                         
                         print(chalk.green(f"And with sold report from subdir: {process_info['sold_report_subdir']}"))
                         
-                        send_email_with_report('balmanzar883@gmail.com', 
-                                               process_info ['price_report_subdir'],
-                                               process_info['sold_report_subdir'], 
+                        # send_email_with_report('balmanzar883@gmail.com', 
+                        #                        process_info ['price_report_subdir'],
+                        #                        process_info['sold_report_subdir'], 
 
-                                               f"{process_info['brand']}_{ process_info['category']}", no_change_sources)
-                        print(chalk.green("Email sent successfully"))
+                        #                        f"{process_info['brand']}_{ process_info['category']}", no_change_sources)
+                        # print(chalk.green("Email sent successfully"))
                         no_change_sources.clear()
                     except Exception as e:
                         print(chalk.red(f"Error during email sending: {e}"))

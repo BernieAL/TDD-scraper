@@ -262,7 +262,8 @@ def driver_function():
                 #if file doesnt have spec item , use None
                 specific_item = file_row[2].strip().upper() if len(file_row) > 2 else None
                 print(specific_item)
-                # print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
+                print(chalk.red(f"(MAIN) SPECIFIC ITEM- {specific_item}"))
+
                 # query_hash,output_dir = scrape_process_2(brand, category, specific_item)
 
                 # print(chalk.green(f"Output DIR {output_dir}"))
@@ -271,7 +272,7 @@ def driver_function():
 
                 #FILTERED SOLD TEST - using manually modified filtered scrape file
                 query_hash='e9ace73b'
-                output_dir = "/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_PRADA_2024-31-10_BAGS_e9ace73b"
+                output_dir = "/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_PRADA_2024-02-11_BAGS_765dd2d2"
 
                 """
                 because output dir holds all output files from all the scrapers,

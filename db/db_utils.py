@@ -309,6 +309,97 @@ def decimal_default(obj):
         return obj.isoformat()  # Convert datetime.date to ISO format string
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
+def DB_get_sold_daily(source,items_not_found_dict,file_scrape_date,spec_item=None):
+    conn = psycopg2.connect(
+        host="localhost",
+        port="5433",
+        database="designer_products",
+        user="admin",
+        password="admin!"
+    )
+    cur = conn.cursor()
+
+    #specific item query
+    try:
+
+        spec_item_sold_query = """SELECT * FROM products WHERE sold = %s and source = %s and  product_name = %s and sold_date = %s"""
+        general_sold_query = """SELECT * FROM products WHERE sold = %s and source = %s and sold_date = %s """
+        
+        print(chalk.magenta(items_not_found_dict))
+        for product_id, details in items_not_found_dict.items():
+            # curr_scrape_date = details['curr_scrape_date']
+            # print(f"Product ID: {product_id}, Curr Scrape Date: {curr_scrape_date}")
+
+                        
+                    
+                  
+                    
+            if spec_item != None:
+                sold_query = spec_item_sold_query
+                cur.execute(sold_query, ('t',source,spec_item,file_scrape_date))
+            else:
+                sold_query = general_sold_query
+                cur.execute(sold_query, ('t',source,file_scrape_date))
+
+        result = cur.fetchall()
+        print(chalk.red(f"result directly from db {result}"))
+
+
+         # Convert result from list of tuples to list of dictionaries
+        sold_items_list_of_dicts = [
+            {
+                'product_id': row[0], 
+                'brand':row[1],
+                'product_name':row[2],
+                'curr_price': float(row[3]) if isinstance(row[3], decimal.Decimal) else row[3],
+                'curr_scrape_date': row[4] if isinstance(row[4], date) else 'N/A',
+                'prev_price': float(row[5]) if isinstance(row[5], decimal.Decimal) else row[5],
+                'prev_scrape_date': row[6] if isinstance(row[6], date) else 'N/A',
+                'sold_date': row[7] if isinstance(row[7], date) else 'N/A',
+                'sold': 'True' if row[8] else 'False',
+                'url': row[9],
+                'source':row[10]
+            }
+            for row in result
+        ]
+
+        sold_items_to_dict = {}
+
+        for prod in sold_items_list_of_dicts:
+            product_id=prod['product_id']
+            product_name = prod['product_name']
+            curr_price= float(prod['curr_price']) if isinstance(prod['curr_price'], decimal.Decimal) else prod['curr_price']
+            curr_scrape_date=prod['curr_scrape_date'].strftime('%Y-%m-%d')
+            prev_price=float(prod['prev_price']) if isinstance(prod['prev_price'], decimal.Decimal) else prod['prev_price']
+            prev_scrape_date= prod['curr_scrape_date'].strftime('%Y-%m-%d')
+            sold_date= prod['sold_date'].strftime('%Y-%m-%d')
+            sold= 'True' if prod['sold'] else 'False'
+            url= prod['url']
+            source=prod['source']
+        
+            sold_items_to_dict[product_id] = { 
+                'product_name':product_name,
+                'curr_price': curr_price,
+                'curr_scrape_date': curr_scrape_date,
+                'prev_price': prev_price,
+                'prev_scrape_date': prev_scrape_date,
+                'sold_date': sold_date,
+                'sold': sold,
+                'url': url,
+                'source':source
+            }
+
+
+        return sold_items_to_dict
+        
+
+    except Exception as e:
+                print(f"(DB_UTILS) get_sold daily{e}")
+
+     
+       
+
+
 def DB_get_sold(source,spec_item=None):
 
     conn = psycopg2.connect(
@@ -338,6 +429,7 @@ def DB_get_sold(source,spec_item=None):
         result = cur.fetchall()
         # print(chalk.red(f"result directly from db {result}"))
         # print(result)
+
         # Convert result from list of tuples to list of dictionaries
         sold_items_list_of_dicts = [
             {
