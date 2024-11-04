@@ -118,9 +118,11 @@ def send_email_with_report(receiver_email, price_report_subdir,sold_report_subdi
             server.login(sender_email, app_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
             print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {receiver_email} - FOR VEH: {query}"))
+        return True
     
     except Exception as e:
         print(chalk.red(f"There was an error sending the email: {e}"))
+        return False
 
 if __name__ == "__main__":
     # Example usage

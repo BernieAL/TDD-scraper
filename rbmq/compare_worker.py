@@ -12,6 +12,19 @@ from analysis.compare_data import compare_driver
 from rbmq.price_change_producer import PRICE_publish_to_queue
 from rbmq.process_producer import PROCESS_publish_to_queue
 
+# Globals for tracking
+process_info = {
+    "brand": None,
+    "category": None,
+    "query_hash": None,
+    "date":None,
+    "price_report_subdir": None,
+    "sold_report_subdir": None,
+    "price_report_root_dir": None,
+    "sold_report_root_dir": None,
+    "source":None,
+}
+
 
 def main():
     def callback(ch, method, properties, body):
@@ -23,7 +36,7 @@ def main():
             if msg.get('type')=='POPULATED_OUTPUT_DIR':
 
                 output_dir = msg['output_dir']
-                query_hash = msg['query_hash']
+                process_info['query_hash'] = msg['query_hash']
                 spec_item = msg['specific_item']
                 
                 # Process each file in output_dir using compare_driver
@@ -32,16 +45,19 @@ def main():
                         for file in files:
                             file_path = os.path.join(root, file)
                             print(chalk.blue(f"Processing file: {file_path}"))
-                            compare_driver(file_path,spec_item)
+                            compare_driver(file_path,process_info['query_hash'],spec_item)
+                    print("Finished processing files in output_dir.")
 
-                # Once processing is complete, send COMPARE_COMPLETE message
-                PROCESS_publish_to_queue({'type':'COMPARE_COMPLETE', 
-                                          'output_dir': output_dir, 
-                                          'query_hash': query_hash,
-                                          'specific_item':spec_item})
+                        
+                
+            elif msg.get('type')== 'PRICE_WORKER_COMPLETE':
+                print('RECIEVED MSG FROM PRICE CHANGE WORKER')
+                # Once processing is complete, send COMPARE_COMPLETE message to main PROCESS queue
+                PROCESS_publish_to_queue({'type':'COMPARE_COMPLETE',
+                                          'query_hash':process_info['query_hash']})
                 
                 print(chalk.green("COMPARE_COMPLETE message sent to process_queue."))
-
+          
         
         except Exception as e:
             print(chalk.red(f"Error processing message: {e}"))

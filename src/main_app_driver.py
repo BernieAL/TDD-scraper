@@ -272,7 +272,7 @@ def driver_function():
 
                 #FILTERED SOLD TEST - using manually modified filtered scrape file
                 query_hash='e9ace73b'
-                output_dir = "/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_PRADA_2024-02-11_BAGS_765dd2d2"
+                output_dir = "/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_PRADA_2024-03-11_BAGS_1897e733"
 
                 """
                 because output dir holds all output files from all the scrapers,

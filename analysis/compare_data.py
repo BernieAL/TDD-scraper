@@ -200,7 +200,7 @@ def process_new_product(row, scrape_date, new_products):
 
 
 
-def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spec_item=None):
+def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,query_hash,spec_item=None):
     """
     Compares scraped product data to existing database records. Updates existing products, adds new products, 
     and marks products as sold if they are no longer listed.
@@ -272,7 +272,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
 
 
         # After processing all products, send completion signal
-        PRICE_publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file})
+        PRICE_publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file,'query_hash':query_hash})
 
     except Exception as e:
         print(chalk.red(f"Error comparing scraped data: {e}"))
@@ -280,7 +280,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,spe
 
 
 
-def compare_driver(scraped_data_file_path,spec_item=None):
+def compare_driver(scraped_data_file_path,query_hash,spec_item=None):
     """
     Drives the comparison process for a given scraped data file.
 
@@ -301,7 +301,7 @@ def compare_driver(scraped_data_file_path,spec_item=None):
         existing_product_ids_prices_dict = db_data_to_dictionary(db_data)
         print(existing_product_ids_prices_dict)
         
-        compare_scraped_data_to_db(scraped_data_file_path,existing_product_ids_prices_dict,source,spec_item)
+        compare_scraped_data_to_db(scraped_data_file_path,existing_product_ids_prices_dict,source,query_hash,spec_item)
 
     except Exception as e:
         print(chalk.red(f"Error in comparison driver: {e}"))

@@ -2,13 +2,16 @@ import sys,csv,json,os
 import pika
 from simple_chalk import chalk
 from datetime import datetime
-from shutil import rmtree  # For removing directories
+from shutil import rmtree
+
+
 
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from analysis.percent_change_analysis import calc_percentage_diff_driver
+from rbmq.compare_producer import COMPARE_publish_to_queue
 from email_sender import send_email_with_report
 
 
@@ -279,6 +282,7 @@ def main():
                     no_change_sources.append(f"{process_info['brand']}_{process_info['category']}")
                     print(f"No change sources updated: {no_change_sources}")
 
+                COMPARE_publish_to_queue({'type':'PRICE_WORKER_COMPLETE','query_hash':process_info['query_hash']})
 
             elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
                 print(chalk.green("SIGNAL RECD: PROCESSED ALL SCRAPED FILES FOR QUERY"))
@@ -288,13 +292,22 @@ def main():
                         
                         print(chalk.green(f"And with sold report from subdir: {process_info['sold_report_subdir']}"))
                         
-                        # send_email_with_report('balmanzar883@gmail.com', 
-                        #                        process_info ['price_report_subdir'],
-                        #                        process_info['sold_report_subdir'], 
+                        # Send email and capture result
+                        email_sent = send_email_with_report('balmanzar883@gmail.com', 
+                                               process_info ['price_report_subdir'],
+                                               process_info['sold_report_subdir'], 
+                                               f"{process_info['brand']}_{ process_info['category']}", no_change_sources)
+                        
+                        if not email_sent:
+                            raise Exception("Email failed to send")
 
-                        #                        f"{process_info['brand']}_{ process_info['category']}", no_change_sources)
-                        # print(chalk.green("Email sent successfully"))
-                        no_change_sources.clear()
+                        # If email was sent successfully, proceed
+                        else:
+                           print(chalk.green("Email sent successfully"))
+                           COMPARE_publish_to_queue({'type':'PRICE_WORKER_COMPLETE','query_hash':process_info['query_hash']})
+                           no_change_sources.clear()
+
+                       
                     except Exception as e:
                         print(chalk.red(f"Error during email sending: {e}"))
                 else:
