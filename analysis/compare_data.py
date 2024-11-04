@@ -171,7 +171,7 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
     existing_product_data_dict.pop(row['product_id'])
 
 
-def process_new_product(row, scrape_date, new_products):
+def process_new_product(row, scrape_date, new_products,source):
     """
     Processes a new product that was not found in the existing database records.
 
@@ -247,6 +247,9 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,que
                     process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file,source)
                 else:
                     process_new_product(row, scrape_date, new_products,source)
+
+
+
 
         # Bulk update and insert operations
         if len(new_products) > 0:
@@ -333,3 +336,8 @@ if __name__ == "__main__":
 
     # compare_driver(general_input_file_path)
     # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": general_input_file_path})
+
+
+
+
+    
