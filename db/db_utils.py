@@ -364,7 +364,7 @@ def DB_get_sold_daily(source,items_not_found_dict,file_scrape_date,spec_item=Non
         ]
 
         sold_items_to_dict = {}
-
+    
         for prod in sold_items_list_of_dicts:
             product_id=prod['product_id']
             product_name = prod['product_name']

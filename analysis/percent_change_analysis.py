@@ -105,7 +105,7 @@ def reorder_columns(df):
     """
     try:
         # Drop the original price_change_percent column
-        df = df.drop(columns=['price_change_percent','source_file'])
+        df = df.drop(columns=['price_change_percent'])
 
 
         desired_order = ['price_change_percent_signed', 'product_id', 'product_name']
@@ -156,8 +156,8 @@ def calc_percentage_diff_driver(output_dir,product_data,source_file):
         #extract src site from first message in list of messages - using source property
         source = products[0]['source']
         # print (source)
-
-        print(chalk.green(products))
+        print(chalk.yellow(f"(CALC DRIVER){source_file})"))
+        print(chalk.green(f"(CALC DRIVER){products})"))
         
         # Step 2: Create DataFrame
         df = pd.DataFrame(products)

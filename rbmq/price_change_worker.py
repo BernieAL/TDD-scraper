@@ -1,11 +1,10 @@
-import sys,csv,json,os
+import sys, csv, json, os
 import pika
 from simple_chalk import chalk
 from datetime import datetime
 from shutil import rmtree
 
-
-
+# Initialize paths
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
@@ -14,470 +13,298 @@ from analysis.percent_change_analysis import calc_percentage_diff_driver
 from rbmq.compare_producer import COMPARE_publish_to_queue
 from email_sender import send_email_with_report
 
-
 # Globals for tracking
 process_info = {
     "brand": None,
     "category": None,
     "query_hash": None,
-    "date":None,
+    "date": None,
     "price_report_subdir": None,
     "sold_report_subdir": None,
     "price_report_root_dir": None,
     "sold_report_root_dir": None,
-    "source":None,
+    "source": None,
+    "source_file":None
 }
+recd_products = []  # Global list to store products for each query
 
+def reset_process_info():
+    """Completely clear process_info and recd_products for a new query."""
+    for key in process_info.keys():
+        process_info[key] = None
+    global recd_products
+    recd_products.clear()  # Clear recd_products to avoid data carryover
+    print(chalk.blue("[INFO] Reset process_info and recd_products for a new query "))
+
+def exit_with_error(message):
+    print(chalk.red(f"[CRITICAL ERROR] {message}"))
+    sys.exit(1)
+
+# Directory creation functions
 def make_price_report_root_dir():
-    """
-    Creates the report output directory if it doesn't exist.
-    """
     try:
-        current_dir = os.path.abspath(os.path.dirname(__file__))
-        root_dir = os.path.abspath(os.path.join(current_dir, ".."))
-        price_report_root_dir = os.path.join(root_dir, "price_report_output")
-
-        if not os.path.exists(price_report_root_dir):
-            os.makedirs(price_report_root_dir)
-
-        return price_report_root_dir
+        root_dir = os.path.join(parent_dir, "price_report_output")
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir)
+        return root_dir
     except Exception as e:
-        print(chalk.red(f"Error creating output directory: {e}"))
-        return None
+        exit_with_error(f"Error creating price report output directory: {e}")
 
-def make_price_report_subdir(price_report_root_dir,brand,category,query_hash):
-        """
-        Creates a new subdir in price_report output root for this specific query.
-        Will return subdir path
-
-        :param brand: Brand name (e.g., Prada)
-        :param category: Category of the product (e.g., Bags)
-        :param query_hash: A hash for the query
-        :return: The path of the created directory
-        """
-        current_date = datetime.now().strftime('%Y-%d-%m')
-        try:
-            # Build the directory name using the brand, query, and hash
-            dir_name = f"PRICE_REPORT_{brand}_{current_date}_{category}_{query_hash}"
-            new_sub_dir = os.path.join(price_report_root_dir, dir_name)
-            
-            print(chalk.yellow(f"Attempting to create directory: {new_sub_dir}"))
-            
-            # Check if the directory already exists; if not, create it
-            if not os.path.exists(new_sub_dir):
-                os.makedirs(new_sub_dir)
-                print(f"Directory created: {new_sub_dir}")
-            else:
-                print(f"Directory already exists: {new_sub_dir}")
-            
-            return new_sub_dir
-        
-        except Exception as e:
-            print(f"Error while creating sub-directory for raw scrape: {e}")
-            return None
+def make_price_report_subdir(root_dir, brand, category, query_hash):
+    try:
+        subdir = os.path.join(root_dir, f"PRICE_REPORT_{brand}_{category}_{query_hash}")
+        if not os.path.exists(subdir):
+            os.makedirs(subdir)
+        return subdir
+    except Exception as e:
+        exit_with_error(f"Error creating price report subdirectory: {e}")
 
 def make_sold_report_root_dir():
-    """
-    Creates the report output directory if it doesn't exist.
-    """
     try:
-        current_dir = os.path.abspath(os.path.dirname(__file__))
-        root_dir = os.path.abspath(os.path.join(current_dir, ".."))
-        sold_report_root_dir = os.path.join(root_dir, "sold_report_output")
-
-        if not os.path.exists(sold_report_root_dir):
-            os.makedirs(sold_report_root_dir)
-
-        return sold_report_root_dir
+        root_dir = os.path.join(parent_dir, "sold_report_output")
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir)
+        return root_dir
     except Exception as e:
-        print(chalk.red(f"Error creating output directory: {e}"))
-        return None
-    
+        exit_with_error(f"Error creating sold report output directory: {e}")
 
-def make_sold_report_subdir(sold_report_root_dir,brand,category,query_hash):
-        """
-        Creates a new subdir in sold_report output root for this specific query.
-        Will return subdir path
-
-        :param brand: Brand name (e.g., Prada)
-        :param category: Category of the product (e.g., Bags)
-        :param query_hash: A hash for the query
-        :return: The path of the created directory
-        """
-        current_date = datetime.now().strftime('%Y-%d-%m')
-        try:
-            # Build the directory name using the brand, query, and hash
-            dir_name = f"SOLD_REPORT_{brand}_{current_date}_{category}_{query_hash}"
-            new_sub_dir = os.path.join(sold_report_root_dir, dir_name)
-            
-            print(chalk.yellow(f"Attempting to create directory: {new_sub_dir}"))
-            
-            # Check if the directory already exists; if not, create it
-            if not os.path.exists(new_sub_dir):
-                os.makedirs(new_sub_dir)
-                print(f"Directory created: {new_sub_dir}")
-            else:
-                print(f"Directory already exists: {new_sub_dir}")
-            
-            return new_sub_dir
-        
-        except Exception as e:
-            print(f"Error while creating sub-directory for raw scrape: {e}")
-            return None
+def make_sold_report_subdir(root_dir, brand, category, query_hash):
+    try:
+        subdir = os.path.join(root_dir, f"SOLD_REPORT_{brand}_{category}_{query_hash}")
+        if not os.path.exists(subdir):
+            os.makedirs(subdir)
+        return subdir
+    except Exception as e:
+        exit_with_error(f"Error creating sold report subdirectory: {e}")
 
 def parse_file_name(file):
-    """
-    filenames recieved are in the same format.
-    possible filenames recieved:
-        FILTERED_italist_prada_2024-14-10_bags_c4672843.csv
-        RAW_italist_prada_2024-14-10_bags_f3f28ac8.csv
-    """
-    file_path_tokens = file.split('/')[-1]
-    file_name_tokens = file_path_tokens.split('_')
-    source = file_name_tokens[1]
-    brand = file_name_tokens[2]
-    date = file_name_tokens[3]
-    category = file_name_tokens[4]
-    query_hash = file_name_tokens[-1].split('.')[0]
+    try:
+        tokens = file.split('/')[-1].split('_')
+        source, brand, date, category, query_hash = tokens[1], tokens[2], tokens[3], tokens[4], tokens[-1].split('.')[0]
+        print(chalk.blue(f"[INFO] Parsed filename tokens: {tokens}"))
+        return source, date, brand, category, query_hash
+    except IndexError as e:
+        exit_with_error(f"Filename parsing error: {e}")
 
-    print(chalk.blue(f"file_name_tokens {file_name_tokens}"))
-    print(chalk.blue(f"source: {source}"))
-    print(chalk.blue(f"brand {brand}"))
-    print(chalk.blue(f"date: {date}"))
-    print(chalk.blue(f"category {category}"))
-    print(chalk.blue(f"query hash: {query_hash}"))
-
-    return source, date, brand, category, query_hash
-
-def parse_dir_name(dir):
-
-    """
-    tokenize dirname
-    """
-    tokens = dir.split('_')
-
-    print(tokens)
-
-
+# Main processing function
 def main():
+    no_change_sources = []
 
-    recd_products = []  # Reset received products for each callback
-    no_change_sources = []  # Track sources with no price changes
-
-    def callback_old(ch, method, properties, body):
+    def callback_v1(ch, method, properties, body):
         try:
             msg = json.loads(body)
-            print(f"Message received: {msg} \n -------- \n")
+            print(f"\n{chalk.green('[NEW MESSAGE]')} Received: {msg}")
 
-
-
-            if 'source_file' in msg:
-                
+            if msg.get('type') == "NEW_QUERY":
+                reset_process_info()  # Only reset once per NEW_QUERY
                 source_file = msg['source_file']
-                print(chalk.green(f"Received source file for processing: {source_file}"))
+                print(chalk.green(f"[PROCESSING] :::NEW QUERY::: \n New source file: {source_file}"))
                 
-               
-                        
-                try:
-                        source, date, brand, category, query_hash = parse_file_name(source_file)
-                        process_info['source'] = source
-                        process_info['date'] = date
-                        process_info['category'] = category
-                        process_info['brand'] = brand
-                        process_info['query_hash'] = query_hash
+                #parse filename, populate globals for this query   
+                source, date, brand, category, query_hash = parse_file_name(source_file)
+                process_info.update({
+                    'source': source,
+                    'date': date,
+                    'category': category,
+                    'brand': brand,
+                    'query_hash': query_hash,
+                    "price_report_root_dir": make_price_report_root_dir(),
+                    "sold_report_root_dir": make_sold_report_root_dir(),
+                    "source_file": source_file
+                })
+                process_info['price_report_subdir'] = make_price_report_subdir(
+                    process_info['price_report_root_dir'], brand, category, query_hash
+                )
+                process_info['sold_report_subdir'] = make_sold_report_subdir(
+                    process_info['sold_report_root_dir'], brand, category, query_hash
+                )
+                print(chalk.blue(f"[INFO] Process info updated for new file \n ------------- \n"))
 
-                        print(chalk.green(f"Parsed values - Brand: {brand}, Category: {category}, Query Hash: {query_hash}"))
 
-                        # Store parsed values in process_info
-                        process_info.update({
-                            "brand": brand,
-                            "category": category,
-                            "query_hash": query_hash,
-                            "price_report_root_dir": make_price_report_root_dir(),
-                            "sold_report_root_dir": make_sold_report_root_dir()
-                        })
 
-                        #create price and sold report dirs once for this query_hash
-                       
 
-                except Exception as e:
-                        print(chalk.red(f"Parse filename failed: {e}"))
-                        return  # Exit if filename parsing fails
 
-               
-             # Process sold items when message type indicates completion of sold processing
-            if msg.get('type') == 'PROCESSING SOLD ITEMS COMPLETE':
-                sold_items = msg['sold_items']
-                
-                source = process_info['source']
-                brand = process_info['brand']
-                query_hash = process_info['query_hash']
-                date = process_info['date']
-
-                sold_items_file_name = f"SOLD_{source}_{brand}_{date}_{query_hash}.csv"
-
-                sold_items_file_path = os.path.join(process_info["sold_report_subdir"], sold_items_file_name)
-                
-                print(chalk.red(f"SOLD ITEMS:{sold_items} \n ------------------------\n"))
-
-                #if sold_items is NOT empty - sold items observed 
-                if sold_items != None:
-                    with open(sold_items_file_path,'w',newline='',encoding='utf-8') as file:
-                        
-                        fieldnames = ['product_id', 'product_name','curr_price', 'curr_scrape_date', 'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source']
-                        
-                        #csv dictwriter
-                        writer = csv.DictWriter(file,fieldnames=fieldnames)
-
-                        #write headers
-                        writer.writeheader()
-
-                        for product_id,product_data in sold_items.items():
-                            row = {'product_id': product_id}
-                            row.update(product_data)  # Add the rest of the nested dictionary as columns
-                            print(chalk.red(f"(worker) sold row: {row}"))
-                            writer.writerow(row)
-                        print(f"SOLD ITEMS written to {sold_items_file_path}")
-                #no sold items observed
-                else:
-                    print(chalk.magenta(f"NO SOLD ITEMS FOR QUERY {query_hash}"))
-                    
-
-            # Now process the product messages or the end signal
-            if msg.get('type') not in ['PROCESSING SCRAPED FILE COMPLETE', 'PROCESSED ALL SCRAPED FILES FOR QUERY', 'PROCESSING SOLD ITEMS COMPLETE']:
-                
+            elif msg.get('type') == 'PRODUCT_PRICE_CHANGE':
                 recd_products.append(msg)
-                print(f"Price Change - Product added to queue. Current count: {len(recd_products)}")
+                print(f"[PROCESSING] Added product price change. Total items in queue: {len(recd_products)}")
+                print(chalk.yellow(recd_products))
 
+            elif msg.get('type') == 'PROCESSING_SOLD_ITEMS_COMPLETE':
+                print(chalk.green(f"[PROCESSING] SOLD ITEMS]"))
+                sold_items_file_name = f"SOLD_{process_info['source']}_{process_info['brand']}_{process_info['date']}_{process_info['query_hash']}.csv"
+                sold_items_file_path = os.path.join(process_info["sold_report_subdir"], sold_items_file_name)
 
-            # elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
-            #     print(chalk.green("SIGNAL RECD: PROCESSING SCRAPED FILE COMPLETE"))
-                
-            #     print(chalk.red(f"Rec'd Products: {recd_products}"))
-            #     if recd_products:
-            #         try:
-            #             # Process received products and generate the report
-            #             calc_percentage_diff_driver(
-            #                  process_info["price_report_subdir"], 
-            #                  recd_products, 
-            #                  source_file)
-            #             print(chalk.green("Report generated and stored in output directory"))
-            #         except Exception as e:
-            #             print(chalk.red(f"Error in processing products: {e}"))
-            #     else:
-            #         print(chalk.red("No products received; adding to no_change_sources list"))
-            #         query = f"{brand}-{category}"
-            #         no_change_sources.append(f"{process_info['brand']}_{process_info['category']}")
-            #         print(f"No change sources updated: {no_change_sources}")
+                sold_items_dict = msg['sold_items_dict'] 
 
-            #     COMPARE_publish_to_queue({'type':'PRICE_WORKER_COMPLETE','query_hash':process_info['query_hash']})
+                #if sold items dict not empty
+                if sold_items_dict != None:                                                                                                               
+                    with open(sold_items_file_path, 'w', newline='', encoding='utf-8') as file:
+                        writer = csv.DictWriter(file, fieldnames=['product_id', 'product_name', 'curr_price', 'curr_scrape_date', 'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source'])
+                        writer.writeheader()
+                        for product_id, product_data in sold_items_dict.items():
+                            writer.writerow({'product_id': product_id, **product_data})
+                    print(chalk.green(f"[SUCCESS] Sold items written to {sold_items_file_path}"))
+                else:
+                    print(chalk.magenta(f"[INFO] No sold items for query {process_info['query_hash']}"))
 
-            # Ensure each query has a unique report directory
-            elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
-                process_info['price_report_subdir'] = make_price_report_subdir(
-                    process_info['price_report_root_dir'],
-                    process_info['brand'],
-                    process_info['category'],
-                    process_info['query_hash']
-                )
-                process_info['sold_report_subdir'] = make_sold_report_subdir(
-                    process_info['sold_report_root_dir'],
-                    process_info['brand'],
-                    process_info['category'],
-                    process_info['query_hash']
-                )
-                print(chalk.green("Created new subdirectories for the query"))
+            elif msg.get('type') == 'PROCESSING_SCRAPED_FILE_COMPLETE':
+                print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS]"))
+                print(f"recd_products{recd_products}")
+                print(f"price report subdir {process_info['price_report_subdir']}")
 
-                # Call the percentage difference analysis or report generation function here
                 if recd_products:
                     try:
-                        calc_percentage_diff_driver(
-                            process_info["price_report_subdir"], 
-                            recd_products, 
-                            source_file
-                        )
-                        print(chalk.green("Report generated and stored in output directory"))
+                        calc_percentage_diff_driver(process_info["price_report_subdir"], recd_products, process_info['source_file'])
+                        print(chalk.green(f"[SUCCESS] Report generated and stored in {process_info['price_report_subdir']}"))
                     except Exception as e:
-                        print(chalk.red(f"Error in processing products: {e}"))
+                        exit_with_error(f"Error processing product data: {e}")
                 else:
-                    print(chalk.red("No products received; adding to no_change_sources list"))
+                    print(chalk.red("[INFO] No products received; added to no_change_sources list"))
                     no_change_sources.append(f"{process_info['brand']}_{process_info['category']}")
 
-                # Send completion signal to COMPARE queue
                 COMPARE_publish_to_queue({'type': 'PRICE_WORKER_COMPLETE', 'query_hash': process_info['query_hash']})
 
-
-
-            elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
-                print(chalk.green("SIGNAL RECD: PROCESSED ALL SCRAPED FILES FOR QUERY"))
-                if process_info['brand'] and process_info['category'] and process_info['query_hash']:
-                    try:
-                        print(chalk.green(f"Sending email with price report from subdir: {process_info['price_report_subdir']}"))
-                        
-                        print(chalk.green(f"And with sold report from subdir: {process_info['sold_report_subdir']}"))
-                        
-                        # Send email and capture result
-                        email_sent = send_email_with_report('balmanzar883@gmail.com', 
-                                               process_info ['price_report_subdir'],
-                                               process_info['sold_report_subdir'], 
-                                               f"{process_info['brand']}_{ process_info['category']}", no_change_sources)
-                        
-                        if not email_sent:
-                            raise Exception("Email failed to send")
-
-                        # If email was sent successfully, proceed
-                        else:
-                           print(chalk.green("Email sent successfully"))
-                           COMPARE_publish_to_queue({'type':'PRICE_WORKER_COMPLETE','query_hash':process_info['query_hash']})
-                           no_change_sources.clear()
-
-                       
-                    except Exception as e:
-                        print(chalk.red(f"Error during email sending: {e}"))
-                else:
-                    print(chalk.red("Email not sent due to missing brand, category, or query_hash values"))
-
-                # Clear the queue **after** email is sent and processing is done
-                #MUST clear queue to remove prev query published messages
-                channel.queue_purge(queue='price_change_queue')
-                print(chalk.green("Queue cleared and ready for the next query"))
-
-        except Exception as e:
-            print(chalk.red(f"Error processing message: {e}"))
-        finally:
-            ch.basic_ack(delivery_tag=method.delivery_tag)  # Acknowledge message
-    def callback(ch, method, properties, body):
-        try:
-            msg = json.loads(body)
-            print(f"Message received: {msg} \n -------- \n")
-
-
-            """
-            source_file: scraped date file we are reading from
-            if source_file provided in queue msg
-                parse source file - to extract 
-                    source: Ex 'ITALIST'
-                    date: yyyy-dd-mm
-                    category: Ex. BAGS
-                    query_hash: 5a9d069b
-
-                
-            """
-            if 'source_file' in msg:
-                source_file = msg['source_file']
-                print(chalk.green(f"(PRICE WORKER STEP 1) - Received source file for parsing: {source_file}"))
-
-                #if process_info['brand'] is not set - we didnt process the source file for this query yet. This is to only have to process the file once and set globals once
-                if not process_info['brand']:
-                    try:
-                        source, date, brand, category, query_hash = parse_file_name(source_file)
-                        process_info.update({
-                            'source': source,
-                            'date': date,
-                            'category': category,
-                            'brand': brand,
-                            'query_hash': query_hash,
-                            'price_report_root_dir': make_price_report_root_dir(),
-                            'sold_report_root_dir': make_sold_report_root_dir()
-                        })
-                    except Exception as e:
-                        print(chalk.red(f"(PRICE WORKER STEP 1) - Parse filename failed: {e}"))
-                        return
-                else:
-                     print(chalk.green(f"(PRICE WORKER STEP 1) - Source file already parsed: {source_file}"))
-
-
-            # Ensure each query has a unique report directory
-            if msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
-                process_info['price_report_subdir'] = make_price_report_subdir(
-                    process_info['price_report_root_dir'],
-                    process_info['brand'],
-                    process_info['category'],
-                    process_info['query_hash']
-                )
-                process_info['sold_report_subdir'] = make_sold_report_subdir(
-                    process_info['sold_report_root_dir'],
-                    process_info['brand'],
-                    process_info['category'],
-                    process_info['query_hash']
-                )
-                print(chalk.green("(PRICE WORKER STEP 2) Created new subdirectories for the query"))
-
-                # Call the percentage difference analysis or report generation function here
-                if recd_products:
-                    try:
-                        calc_percentage_diff_driver(
-                            process_info["price_report_subdir"], 
-                            recd_products, 
-                            source_file
-                        )
-                        print(chalk.green("Report generated and stored in output directory"))
-                    except Exception as e:
-                        print(chalk.red(f"Error in processing products: {e}"))
-                else:
-                    print(chalk.red("No products received; adding to no_change_sources list"))
-                    no_change_sources.append(f"{process_info['brand']}_{process_info['category']}")
-
-                # Send completion signal to COMPARE queue
-                COMPARE_publish_to_queue({'type': 'PRICE_WORKER_COMPLETE', 'query_hash': process_info['query_hash']})
-
-            elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
-                print(chalk.green("SIGNAL RECEIVED: PROCESSED ALL SCRAPED FILES FOR QUERY"))
+            elif msg.get('type') == 'PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY':
+                # Send email and finalize the process
                 try:
-                    print(f"Sending email with reports from: {process_info['price_report_subdir']} and {process_info['sold_report_subdir']}")
-                    
+                    print(chalk.blue(f"[INFO] Preparing to send email report..."))
                     email_sent = send_email_with_report(
-                        'balmanzar83@gmail.com',
+                        'balmanzar883@gmail.com',
                         process_info['price_report_subdir'],
                         process_info['sold_report_subdir'],
-                        f"{process_info['brand']}_{process_info['category']}", 
+                        f"{process_info['brand']}_{process_info['category']}",
                         no_change_sources
                     )
                     if not email_sent:
-                        raise Exception("Email failed to send")
-                    else:
-                        print(chalk.green("Email sent successfully"))
-                        COMPARE_publish_to_queue({'type': 'PRICE_WORKER_COMPLETE', 'query_hash': process_info['query_hash']})
-                        no_change_sources.clear()
+                        exit_with_error("[ERROR] Email failed to send")
+                    print(chalk.green("[SUCCESS] Email sent successfully"))
+                    COMPARE_publish_to_queue({'type': 'PRICE_WORKER_COMPLETE', 'query_hash': process_info['query_hash']})
+                    no_change_sources.clear()
                 except Exception as e:
-                    print(chalk.red(f"Error during email sending: {e}"))
-
-                # Clear the queue after each query's email is sent
-                channel.queue_purge(queue='price_change_queue')
-
-                #reset global vars before next product
-                # process_info = {key: 'None' for key in process_info}
-
-                print(chalk.green("Queue cleared and ready for the next query"))
-                print(chalk.green("Queue cleared and ready for the next query"))
+                    exit_with_error(f"Error during email sending: {e}")
+                finally:
+                    reset_process_info()
 
         except Exception as e:
-            print(chalk.red(f"Error processing message: {e}"))
+            exit_with_error(f"[ERROR] Message processing failed: {e}")
         finally:
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    # RabbitMQ setup
     try:
         connection_params = pika.ConnectionParameters(host='localhost', port=5672, credentials=pika.PlainCredentials('guest', 'guest'))
         connection = pika.BlockingConnection(connection_params)
         channel = connection.channel()
         channel.queue_declare(queue='price_change_queue', durable=True)
-
-        # Start consuming messages
         channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(queue='price_change_queue', on_message_callback=callback)
+        channel.basic_consume(queue='price_change_queue', on_message_callback=callback_v1)
         
-        print(chalk.green("Clearing queue"))
         channel.queue_purge(queue='price_change_queue')
-
-        print(chalk.blue('(PRICE_CHANGE_WORKER)[*] Waiting for messages. To exit press CTRL+C'))
+        print(chalk.blue('[SYSTEM START] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()
-
     except Exception as e:
-        print(chalk.red(f"Error during RabbitMQ setup or message consumption: {e}"))
+        exit_with_error(f"[ERROR] RabbitMQ setup or message consumption failed: {e}")
     finally:
         if connection and connection.is_open:
             connection.close()
 
 if __name__ == "__main__":
+
+
     main()
+
+
+    """
+    
+        
+ def callback_v2(ch, method, properties, body):
+        try:
+            msg = json.loads(body)
+            print(f"\n{chalk.green('[NEW MESSAGE]')} Received: {msg}")
+            
+            if msg.get('type') == "NEW_QUERY":
+
+                reset_process_info()  # Clear all data at the start of each new query
+
+                source_file = msg['source_file']
+                print(chalk.green(f"[PROCESSING] New source file: {source_file}"))
+                
+                source, date, brand, category, query_hash = parse_file_name(source_file)
+                process_info.update({
+                    'source': source,
+                    'date': date,
+                    'category': category,
+                    'brand': brand,
+                    'query_hash': query_hash,
+                    "price_report_root_dir": make_price_report_root_dir(),
+                    "sold_report_root_dir": make_sold_report_root_dir()
+                })
+                process_info['price_report_subdir'] = make_price_report_subdir(
+                    process_info['price_report_root_dir'], brand, category, query_hash
+                )
+                process_info['sold_report_subdir'] = make_sold_report_subdir(
+                    process_info['sold_report_root_dir'], brand, category, query_hash
+                )
+                print(chalk.blue(f"[INFO] Process info updated for new file"))
+
+            if msg.get('type') == 'PRODUCT PRICE CHANGE':
+                global recd_products
+                recd_products.append(msg)
+                print(f"[PROCESSING] Added product price change. Total items in queue: {len(recd_products)}")
+            
+            if msg.get('type') == 'PROCESSING SOLD ITEMS COMPLETE':
+                sold_items = msg['sold_items']
+                sold_items_file_name = f"SOLD_{process_info['source']}_{process_info['brand']}_{process_info['date']}_{process_info['query_hash']}.csv"
+                sold_items_file_path = os.path.join(process_info["sold_report_subdir"], sold_items_file_name)
+
+                if sold_items is not None:
+                    with open(sold_items_file_path, 'w', newline='', encoding='utf-8') as file:
+                        writer = csv.DictWriter(file, fieldnames=['product_id', 'product_name', 'curr_price', 'curr_scrape_date', 'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source'])
+                        writer.writeheader()
+                        for product_id, product_data in sold_items.items():
+                            writer.writerow({'product_id': product_id, **product_data})
+                    print(chalk.green(f"[SUCCESS] Sold items written to {sold_items_file_path}"))
+                else:
+                    print(chalk.magenta(f"[INFO] No sold items for query {process_info['query_hash']}"))
+
+            elif msg.get('type') == 'PROCESSING SCRAPED FILE COMPLETE':
+                if recd_products:
+                    try:
+                        calc_percentage_diff_driver(process_info["price_report_subdir"], recd_products, process_info['query_hash'])
+                        print(chalk.green(f"[SUCCESS] Report generated and stored in {process_info['price_report_subdir']}"))
+                    except Exception as e:
+                        exit_with_error(f"Error processing product data: {e}")
+                else:
+                    print(chalk.red("[INFO] No products received; added to no_change_sources list"))
+                    no_change_sources.append(f"{process_info['brand']}_{process_info['category']}")
+
+                COMPARE_publish_to_queue({'type': 'PRICE_WORKER_COMPLETE', 'query_hash': process_info['query_hash']})
+
+            elif msg.get('type') == 'PROCESSED ALL SCRAPED FILES FOR QUERY':
+                if process_info['brand'] and process_info['category'] and process_info['query_hash']:
+                    try:
+                        print(chalk.blue(f"[INFO] Preparing to send email report..."))
+                        email_sent = send_email_with_report(
+                            'balmanzar883@gmail.com',
+                            process_info['price_report_subdir'],
+                            process_info['sold_report_subdir'],
+                            f"{process_info['brand']}_{process_info['category']}",
+                            no_change_sources
+                        )
+                        if not email_sent:
+                            exit_with_error("[ERROR] Email failed to send")
+                        print(chalk.green("[SUCCESS] Email sent successfully"))
+                        COMPARE_publish_to_queue({'type': 'PRICE_WORKER_COMPLETE', 'query_hash': process_info['query_hash']})
+                        no_change_sources.clear()
+                    except Exception as e:
+                        exit_with_error(f"Error during email sending: {e}")
+                    finally:
+                        reset_process_info()  # Reset after completion of email report
+
+        except Exception as e:
+            exit_with_error(f"[ERROR] Message processing failed: {e}")
+        finally:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    
+    
+    """

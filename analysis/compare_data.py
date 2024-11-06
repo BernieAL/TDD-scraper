@@ -151,8 +151,8 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
 
         # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
         #this is like spread operator in js
-        PRICE_publish_to_queue({'product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source_file": input_file,"source":source})
-        print(chalk.yellow(f"PUBLISHED ITEM TO QUEUE {temp['product_id']}"))
+        PRICE_publish_to_queue({'type':'PRODUCT_PRICE_CHANGE','product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source":source})
+        print(chalk.yellow(f"PUBLISHED_ITEM_TO_QUEUE {temp['product_id']}"))
 
 
     else:
@@ -211,9 +211,9 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,que
     
     
     if spec_item != None:
-        print(chalk.yellow(f"PROCESSING FILTERED QUERY - SPEC ITEM {spec_item}"))
+        print(chalk.yellow(f"PROCESSING_FILTERED_QUERY - SPEC ITEM {spec_item}"))
     else:
-         print(chalk.yellow(f"PROCESSING GENERAL QUERY - NO SPEC ITEM"))
+         print(chalk.yellow(f"PROCESSING_GENERAL_QUERY - NO SPEC ITEM"))
     try:
         updated_products = []
         new_products = []
@@ -260,22 +260,20 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,que
         print(chalk.cyan(f"db items not found in current scrape file {items_not_found}"))
         DB_bulk_update_sold(items_not_found)
 
-        #get sold items for this src and push to queue
-        # sold_items = DB_get_sold(source,spec_item)
+        # #get sold items for this src and push to queue
+        # # sold_items = DB_get_sold(source,spec_item)
 
         #convert datetime objects in dict to strft to avoid serialization error in queue
         # sold_items = JSON_serializer(items_not_found)
-        sold_items = DB_get_sold_daily(source,items_not_found,FILE_SCRAPE_DATE,spec_item)
+        sold_items_dict = DB_get_sold_daily(source,items_not_found,FILE_SCRAPE_DATE,spec_item)
 
-        print(chalk.green(f"SOLD ITEMS: {sold_items}\n ---------------" ))
+        print(chalk.green(f"SOLD ITEMS: {sold_items_dict}\n ---------------" ))
 
         #push sold_items to queue
-        PRICE_publish_to_queue({"type":"PROCESSING SOLD ITEMS COMPLETE","sold_items":sold_items,"source_file": input_file})
+        PRICE_publish_to_queue({"type":"PROCESSING_SOLD_ITEMS_COMPLETE","sold_items_dict":sold_items_dict})
         
-
-
         # After processing all products, send completion signal
-        PRICE_publish_to_queue({"type": "PROCESSING SCRAPED FILE COMPLETE", "source_file": input_file,'query_hash':query_hash})
+        PRICE_publish_to_queue({"type": "PROCESSING_SCRAPED_FILE_COMPLETE", 'query_hash':query_hash})
 
     except Exception as e:
         print(chalk.red(f"Error comparing scraped data: {e}"))
@@ -296,7 +294,12 @@ def compare_driver(scraped_data_file_path,query_hash,spec_item=None):
         res = parse_file_name(scraped_data_file_path)
         brand = (res['brand']).upper()
         source = (res['source']).upper()
-      
+
+        #intial msg for new query
+        PRICE_publish_to_queue({
+            "type":"NEW_QUERY",
+            "source_file":scraped_data_file_path})
+
         #only get db records that match this spec item
         db_data = DB_fetch_product_ids_prices_dates(brand,source,spec_item)
 
@@ -318,26 +321,20 @@ if __name__ == "__main__":
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     scrape_data_dir = os.path.join('src','scrape_file_output')
     print(scrape_data_dir)
-   
+
+
+
+    fitlered_file_1 = "/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_PRADA_2024-05-11_BAGS_662584ce/FILTERED_ITALIST_PRADA_2024-05-11_BAGS_662584ce.csv"
     
-    # general_input_file_path = os.path.join(curr_dir,'..',scrape_data_dir,'raw','RAW_SCRAPE_PRADA_2024-24-10_BAGS_a44eabd1','RAW_ITALIST_PRADA_2024-24-10_BAGS_a44eabd1.csv')
-    # filtered_input_file_path =  os.path.join(curr_dir,'..',scrape_data_dir,'filtered','FILTERED_PRADA_2024-25-10_BAGS_962a1246','FILTERED_ITALIST_PRADA_2024-25-10_BAGS_962a1246.csv')
+    filtered_file_2 = "/home/ubuntu/Documents/Projects/TDD-scraper/src/scrape_file_output/filtered/FILTERED_PRADA_2024-05-11_BAGS_bdfe5561/FILTERED_ITALIST_PRADA_2024-05-11_BAGS_bdfe5561.csv"
     
-    # compare_driver(filtered_input_file_path,'EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
-    # PRICE_publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": filtered_input_file_path})
+ 
+    compare_driver(fitlered_file_1,'662548ce','EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
 
+    # PRICE_publish_to_queue({"type":"PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY","email":"(main)balmanzar883@gmail.com",'brand':'PRADA','category':'BAGS','query_hash':'662548ce'})
+    
+    compare_driver(filtered_file_2,'bdfe5561','TOTE')
 
-
-    test_output_dir_path = os.path.join(scrape_data_dir,'filtered','RAW_SCRAPE_PRADA_2024-30-10_BAGS_7eabf40e')
-    print(test_output_dir_path)
-    for root,subdirs,files in os.walk(test_output_dir_path):
-        for file in files:
-            print(file)
-
-    # compare_driver(general_input_file_path)
-    # publish_to_queue({"type":"PROCESSED ALL SCRAPED FILES FOR QUERY","email":"balmanzar883@gmail.com","source_file": general_input_file_path})
-
-
-
+    # PRICE_publish_to_queue({"type":PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY","email":"(main)balmanzar883@gmail.com",'brand':'PRADA','category':'BAGS','query_hash':'662548ce'})
 
     
