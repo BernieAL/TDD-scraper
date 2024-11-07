@@ -16,7 +16,7 @@ if parent_dir not in sys.path:
 from db.db_utils import (
     DB_fetch_product_ids_prices_dates, 
     DB_bulk_update_existing, 
-    bulk_insert_new,
+    DB_bulk_insert_new,
     DB_bulk_update_sold,
     DB_get_sold,
     DB_get_sold_daily
@@ -248,14 +248,14 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,que
                 else:
                     process_new_product(row, scrape_date, new_products,source)
 
+        #bulk update
+        DB_bulk_update_existing(updated_products)
 
-
-
-        # Bulk update and insert operations
+        #bulk insert 
         if len(new_products) > 0:
-            bulk_insert_new(new_products)
+            DB_bulk_insert_new(new_products)
         
-        #all remaining in dict were not found in todays scrape - meaning they were sold
+        #all remaining items in dict were not found in todays scrape - meaning they were sold
         items_not_found = existing_product_data_dict
         print(chalk.cyan(f"db items not found in current scrape file {items_not_found}"))
         DB_bulk_update_sold(items_not_found)
@@ -331,10 +331,11 @@ if __name__ == "__main__":
  
     compare_driver(fitlered_file_1,'662548ce','EMBROIDERED FABRIC SMALL SYMBOLE SHOPPING BAG')
 
-    # PRICE_publish_to_queue({"type":"PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY","email":"(main)balmanzar883@gmail.com",'brand':'PRADA','category':'BAGS','query_hash':'662548ce'})
+    PRICE_publish_to_queue({"type":"PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY","email":"(main)balmanzar883@gmail.com",'brand':'PRADA','category':'BAGS','query_hash':'662548ce'})
     
     compare_driver(filtered_file_2,'bdfe5561','TOTE')
 
-    # PRICE_publish_to_queue({"type":PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY","email":"(main)balmanzar883@gmail.com",'brand':'PRADA','category':'BAGS','query_hash':'662548ce'})
+    PRICE_publish_to_queue({"type":"PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY","email":"(main)balmanzar883@gmail.com",'brand':'PRADA','category':'BAGS','query_hash':'bdfe5561'})
+    
 
     

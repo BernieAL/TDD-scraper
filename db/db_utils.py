@@ -243,7 +243,7 @@ def DB_bulk_update_sold(sold_products):
      # Print a success message if no exception occurred
     print(f"Bulk update of sold products successful. {cur.rowcount} rows updated.")
 
-def bulk_insert_new(new_products):
+def DB_bulk_insert_new(new_products):
     
     """
     Recieves list of dicts containing  new products to be inserted into db
