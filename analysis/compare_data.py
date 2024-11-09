@@ -18,7 +18,6 @@ from db.db_utils import (
     DB_bulk_update_existing, 
     DB_bulk_insert_new,
     DB_bulk_update_sold,
-    DB_get_sold,
     DB_get_sold_daily
 )
 from rbmq.price_change_producer import PRICE_publish_to_queue
@@ -247,33 +246,47 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,que
                     process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file,source)
                 else:
                     process_new_product(row, scrape_date, new_products,source)
+            
+            try:
+                #bulk update
+                db_update_success = DB_bulk_update_existing(updated_products) if updated_products else True
+                #bulk insert
+                db_insert_success = DB_bulk_insert_new(new_products) if new_products else True
+                
+                
+                if not db_update_success:
+                    raise Exception("DB update operation failed")
+                if not db_insert_success:
+                    raise Exception("DB insert operation failed")
+                
+                print(chalk.green("[SUCCESS] DB operations were successful."))
 
-        #bulk update
-        DB_bulk_update_existing(updated_products)
+                #all remaining items in dict were not found in todays scrape - meaning they were sold
+                items_not_found = existing_product_data_dict
+                print(chalk.cyan(f"db items not found in current scrape file {items_not_found}"))
 
-        #bulk insert 
-        if len(new_products) > 0:
-            DB_bulk_insert_new(new_products)
+                sold_update_success = DB_bulk_update_sold(items_not_found)
+                
+                if not sold_update_success:
+                    raise Exception ("SOld status update failed")
+                        
+                #get sold items 
+                sold_items_dict = DB_get_sold_daily(source,items_not_found,FILE_SCRAPE_DATE,spec_item)
+            
+                print(chalk.green(f"SOLD ITEMS: {sold_items_dict}\n ---------------" ))
+
+                #push sold_items to queue
+                PRICE_publish_to_queue({"type":"PROCESSING_SOLD_ITEMS_COMPLETE","sold_items_dict":sold_items_dict})
+                
+                # After processing all products, send completion signal
+                PRICE_publish_to_queue({"type": "PROCESSING_SCRAPED_FILE_COMPLETE", 'query_hash':query_hash})
         
-        #all remaining items in dict were not found in todays scrape - meaning they were sold
-        items_not_found = existing_product_data_dict
-        print(chalk.cyan(f"db items not found in current scrape file {items_not_found}"))
-        DB_bulk_update_sold(items_not_found)
 
-        # #get sold items for this src and push to queue
-        # # sold_items = DB_get_sold(source,spec_item)
+            except Exception as db_error:
+                print(chalk.red(f"DB operation failed: {db_error}"))
+                # Handle or log the error as needed (could re-raise or exit here)
 
-        #convert datetime objects in dict to strft to avoid serialization error in queue
-        # sold_items = JSON_serializer(items_not_found)
-        sold_items_dict = DB_get_sold_daily(source,items_not_found,FILE_SCRAPE_DATE,spec_item)
 
-        print(chalk.green(f"SOLD ITEMS: {sold_items_dict}\n ---------------" ))
-
-        #push sold_items to queue
-        PRICE_publish_to_queue({"type":"PROCESSING_SOLD_ITEMS_COMPLETE","sold_items_dict":sold_items_dict})
-        
-        # After processing all products, send completion signal
-        PRICE_publish_to_queue({"type": "PROCESSING_SCRAPED_FILE_COMPLETE", 'query_hash':query_hash})
 
     except Exception as e:
         print(chalk.red(f"Error comparing scraped data: {e}"))

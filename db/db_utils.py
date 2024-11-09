@@ -153,26 +153,10 @@ def DB_fetch_product_ids_prices_dates(brand,source,spec_item=None):
 
   
 def DB_bulk_update_existing(update_products):
-    """
-    Recieves list of dicts containing products to be updated in the db
-    Will be dict containing most recent price and date of scrape
-
-    Ex.
-        [
-            {
-                'product_id':row['product_id'],
-                'last_scrape_date': 'scrape_date',
-                'last_price':row['Price'],
-            },
-            {},
-            ....
-        ]
-    """
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # print(f"products to be updated {update_products} ----------")
-        update_query =  """
+        update_query = """
                         UPDATE products
                         SET curr_price = %s,
                             curr_scrape_date = %s,
@@ -181,36 +165,32 @@ def DB_bulk_update_existing(update_products):
                         WHERE product_id = %s
                         """
         
-        #create list of tuples from update_products list of dicts     
+        # Create list of tuples from update_products list of dicts     
         update_data_as_tuples = [(product['curr_price'],
-                               product['curr_scrape_date'],
-                               product['prev_price'],
-                               product['prev_scrape_date'],
-                               product['product_id']) 
-                               for product in update_products]
+                                  product['curr_scrape_date'],
+                                  product['prev_price'],
+                                  product['prev_scrape_date'],
+                                  product['product_id']) 
+                                 for product in update_products]
         
-        # print(chalk.red(update_data_tuples))
-        cur.executemany(update_query,update_data_as_tuples)
+        cur.executemany(update_query, update_data_as_tuples)
         conn.commit()
-    except Exception as e:
-        print(f"(BULK_UPDATE) - An error occurred: {e}")
-        conn.rollback()  # Rollback in case of error
-    
-    # Print a success message if no exceptprada,bagsion occurred
-    print(f"Bulk update successful. {cur.rowcount} rows updated.")
 
+        if cur.rowcount > 0:
+            print(f"Bulk update successful. {cur.rowcount} rows updated.")
+            return True
+        else:
+            raise Exception("No rows were updated during bulk update.")
+
+    except Exception as e:
+        print(f"(BULK_UPDATE) Error: {e}")
+        conn.rollback()
+        raise Exception(f"BULK_UPDATE_FAILED: {e}")  # Raising detailed exception
 
 def DB_bulk_update_sold(sold_products):
-
-    """sold_products is existing_product_id_prices_dict rec'd from compare_data.py
-        
-       Structure is:
-        existing_product_id_prices_dict[product_id] = {'curr_price':curr_price,
-                                                        'curr_scrape_date':curr_scrape_date,
-                                                        'prev_price':prev_price,
-                                                        'prev_scrape_date':prev_scrape_date,
-                                                        }
-    """
+    if not sold_products:
+        return True
+    
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -222,44 +202,35 @@ def DB_bulk_update_sold(sold_products):
                             WHERE product_id = %s
                             """
         update_data_as_tuples = []
-        for k,v in sold_products.items():
+        for k, v in sold_products.items():
             product_id = k
             sold_date = v['curr_scrape_date']
             sold = True
-            update_data_as_tuples.append((sold_date,sold,product_id))
+            update_data_as_tuples.append((sold_date, sold, product_id))
 
-        print(update_data_as_tuples)
-        # #create list of tuples from sold_products list of dicts     
-        # update_data_as_tuples = [(product['curr_scrape_date'], # using curr as sold_date
-        #                           True,                        #  setting from F to T
-        #                           product['product_id']) 
-        #                        for product in sold_products]
-        cur.executemany(update_sold_query,update_data_as_tuples)
+        cur.executemany(update_sold_query, update_data_as_tuples)
         conn.commit()
-    except Exception as e:
-        print(f"(BULK_UPDATE-SOLD) - An error occurred: {e}")
-        conn.rollback()  # Rollback in case of error
-    
-     # Print a success message if no exception occurred
-    print(f"Bulk update of sold products successful. {cur.rowcount} rows updated.")
 
+        if cur.rowcount > 0:
+            print(f"Bulk update of sold products successful. {cur.rowcount} rows updated.")
+            return True
+        else:
+            raise Exception("No rows were updated for sold status.")
+
+    except Exception as e:
+        print(f"(BULK_UPDATE-SOLD) Error: {e}")
+        conn.rollback()
+        raise Exception(f"BULK_UPDATE_SOLD_FAILED: {e}")  # Raising detailed exception
+    finally:
+        cur.close()
+        conn.close()
+
+  
 def DB_bulk_insert_new(new_products):
-    
-    """
-    Recieves list of dicts containing  new products to be inserted into db
-    Ex.
-    Ex.
-     [
-        {
-            'product_id':row['product_id'],
-            'brand':row['Brand'],
-            #'Product_name':row['Product_Name'],
-            'last_scrape_date': 'scrape_date',
-            'last_price':row['Price'],
-        }
-     ]
-    """
     try:
+
+        if not new_products:
+            return True
         conn = get_db_connection()
         cur = conn.cursor()
 
@@ -278,28 +249,35 @@ def DB_bulk_insert_new(new_products):
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """
 
-        new_products_list_as_tuples =[(product['product_id'],
-                                    product['brand'],
-                                    product['product_name'],
-                                    product['curr_price'],
-                                    product['curr_scrape_date'],
-                                    product['prev_price'],
-                                    product['prev_scrape_date'],
-                                    product['sold_date'],
-                                    product['sold'],
-                                    product['listing_url'],
-                                    product['source']
-                                    ) 
-                                    for product in new_products]
+        new_products_list_as_tuples = [(product['product_id'],
+                                        product['brand'],
+                                        product['product_name'],
+                                        product['curr_price'],
+                                        product['curr_scrape_date'],
+                                        product['prev_price'],
+                                        product['prev_scrape_date'],
+                                        product['sold_date'],
+                                        product['sold'],
+                                        product['listing_url'],
+                                        product['source'])
+                                       for product in new_products]
 
-        cur.executemany(new_product_query,new_products_list_as_tuples)
+        cur.executemany(new_product_query, new_products_list_as_tuples)
         conn.commit()
-    except Exception as e:
-        print(f"(BULK_INSERT_NEW) - An error occurred: {e}")
-        conn.rollback()  # Rollback in case of error
 
-     # Print a success message if no exception occurred
-    print(f"Bulk insert successful. {cur.rowcount} rows inserted.")
+        if cur.rowcount > 0:
+            print(f"Bulk insert successful. {cur.rowcount} rows inserted.")
+            return True
+        else:
+            raise Exception("No rows were inserted during bulk insert.")
+
+    except Exception as e:
+        print(f"(BULK_INSERT_NEW) Error: {e}")
+        conn.rollback()
+        raise Exception(f"BULK_INSERT_FAILED: {e}")  # Raising detailed exception
+    finally:
+        cur.close()
+        conn.close()
 
 # Helper function to convert Decimal and Date to JSON-serializable format
 def decimal_default(obj):
@@ -400,86 +378,43 @@ def DB_get_sold_daily(source,items_not_found_dict,file_scrape_date,spec_item=Non
        
 
 
-def DB_get_sold(source,spec_item=None):
-
-    conn = psycopg2.connect(
-        host="localhost",
-        port="5433",
-        database="designer_products",
-        user="admin",
-        password="admin!"
-    )
-    cur = conn.cursor()
-
-    #specific item query
+def DB_bulk_update_sold(sold_products):
     try:
-
-        spec_item_sold_query = """SELECT * FROM products WHERE sold = %s and source = %s and  product_name = %s"""
-        general_sold_query = """SELECT * FROM products WHERE sold = %s and source = %s """
-
-        if spec_item != None:
-            sold_query = spec_item_sold_query
-            cur.execute(sold_query, ('t',source,spec_item))
-            
-        else:
-            sold_query = general_sold_query
-            cur.execute(sold_query, ('t',source))
-            
-       
-        result = cur.fetchall()
-        # print(chalk.red(f"result directly from db {result}"))
-        # print(result)
-
-        # Convert result from list of tuples to list of dictionaries
-        sold_items_list_of_dicts = [
-            {
-                'product_id': row[0], 
-                'brand':row[1],
-                'product_name':row[2],
-                'curr_price': float(row[3]) if isinstance(row[3], decimal.Decimal) else row[3],
-                'curr_scrape_date': row[4] if isinstance(row[4], date) else 'N/A',
-                'prev_price': float(row[5]) if isinstance(row[5], decimal.Decimal) else row[5],
-                'prev_scrape_date': row[6] if isinstance(row[6], date) else 'N/A',
-                'sold_date': row[7] if isinstance(row[7], date) else 'N/A',
-                'sold': 'True' if row[8] else 'False',
-                'url': row[9],
-                'source':row[10]
-            }
-            for row in result
-        ]
-
-        sold_items_to_dict = {}
-
-        for prod in sold_items_list_of_dicts:
-            product_id=prod['product_id']
-            product_name = prod['product_name']
-            curr_price= float(prod['curr_price']) if isinstance(prod['curr_price'], decimal.Decimal) else prod['curr_price']
-            curr_scrape_date=prod['curr_scrape_date'].strftime('%Y-%m-%d')
-            prev_price=float(prod['prev_price']) if isinstance(prod['prev_price'], decimal.Decimal) else prod['prev_price']
-            prev_scrape_date= prod['curr_scrape_date'].strftime('%Y-%m-%d')
-            sold_date= prod['sold_date'].strftime('%Y-%m-%d')
-            sold= 'True' if prod['sold'] else 'False'
-            url= prod['url']
-            source=prod['source']
+        if not sold_products:
+            return True
         
-            sold_items_to_dict[product_id] = { 
-                'product_name':product_name,
-                'curr_price': curr_price,
-                'curr_scrape_date': curr_scrape_date,
-                'prev_price': prev_price,
-                'prev_scrape_date': prev_scrape_date,
-                'sold_date': sold_date,
-                'sold': sold,
-                'url': url,
-                'source':source
-            }
+        conn = get_db_connection()
+        cur = conn.cursor()
 
+        update_sold_query = """
+                            UPDATE products
+                            SET sold_date = %s,
+                                sold = %s
+                            WHERE product_id = %s
+                            """
+        update_data_as_tuples = []
+        for k, v in sold_products.items():
+            product_id = k
+            sold_date = v['curr_scrape_date']
+            sold = True
+            update_data_as_tuples.append((sold_date, sold, product_id))
 
-        return sold_items_to_dict
-                    
+        cur.executemany(update_sold_query, update_data_as_tuples)
+        conn.commit()
+
+        if cur.rowcount > 0:
+            print(f"Bulk update of sold products successful. {cur.rowcount} rows updated.")
+            return True
+        else:
+            raise Exception("No rows were updated for sold status.")
+
     except Exception as e:
-                print(f"(DB_UTILS) get_sold - specific failed {e}")
-
+        print(f"(BULK_UPDATE-SOLD) Error: {e}")
+        conn.rollback()
+        raise Exception(f"BULK_UPDATE_SOLD_FAILED: {e}")  # Raising detailed exception
+    finally:
+        cur.close()
+        conn.close()
 
       
 

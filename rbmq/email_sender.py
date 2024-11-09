@@ -56,7 +56,6 @@ def attach_file_from_subdir(message,subdir):
     else:
          print(chalk.yellow(f"No report directory provided or it does not exist: {subdir}"))
 
-
 def send_email_with_report(receiver_email, price_report_subdir,sold_report_subdir,query,no_price_change_sources):
     
     print(chalk.red(f"(EMAIL SENDER) subdir valid path: {os.path.isdir(price_report_subdir)}"))
