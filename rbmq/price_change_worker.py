@@ -323,7 +323,7 @@ def main():
                 try:
                     print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS"))
                     print(chalk.green(f"[INFO] Currently have {len(recd_products)} products"))
-                    
+                    curr_query_info['product_name'] = msg.get('product_name')
                     if recd_products and curr_query_info["price_report_subdir"]:
                         calc_percentage_diff_driver(
                             curr_query_info["price_report_subdir"],
@@ -434,7 +434,7 @@ def main():
                             'balmanzar883@gmail.com',
                             curr_query_info['price_report_subdir'],
                             curr_query_info['sold_report_subdir'],
-                            f"{curr_query_info['brand']}_{curr_query_info['category']}",
+                            f"{curr_query_info['brand']}_{curr_query_info['category']}_{curr_query_info['product_name']}",
                             no_change_sources
                         )
 

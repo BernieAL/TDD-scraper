@@ -110,7 +110,7 @@ def main():
                         })
 
             elif msg.get('type') == 'PRICE_WORKER_COMPLETE':
-                print(chalk.green("Received PRICE_WORKER_COMPLETE confirmation"))
+                print(chalk.green("Received PRICE_WORKER_COMPLETE confirmation \n --------------- "))
 
             elif msg.get('type') == 'PRODUCT_PRICE_CHANGE':
                 # Track price changes

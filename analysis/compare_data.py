@@ -130,10 +130,21 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
     :param scrape_date: Date of the current scrape.
     """
     product_data = existing_product_data_dict[row['product_id']]
-    if float(row['curr_price']) != product_data['curr_price']:
+    
+    #Convert prices to float and round to handle precision issues
+    current_file_price = round(float(row['curr_price']), 2)
+    current_db_price = round(product_data['curr_price'], 2)
+    
+    print(chalk.blue(f"Comparing prices for {row['product_id']}:"))
+    print(chalk.blue(f"  File price: {current_file_price} ({type(current_file_price)})"))
+    print(chalk.blue(f"  DB price: {current_db_price} ({type(current_db_price)})"))
+    
+    # Compare rounded float values
+    if current_file_price != current_db_price:
+        print(chalk.yellow(f"Price change detected: {current_db_price} -> {current_file_price}"))
         # Update price and date
         product_data['prev_price'] = product_data['curr_price']
-        product_data['curr_price'] = float(row['curr_price'])
+        product_data['curr_price'] = current_file_price
         product_data['prev_scrape_date'] = product_data['curr_scrape_date']
         product_data['curr_scrape_date'] = scrape_date
 
@@ -145,22 +156,25 @@ def process_existing_product(row, existing_product_data_dict, updated_products, 
             'prev_scrape_date': product_data['prev_scrape_date']
         }
 
-        #add to updated list - for price and scrape dates to be updated
         updated_products.append(temp)
 
-        # **temp unpacks all key value pairs from temp dict and adds prod_name,listing_url to it as new dict. 
-        #this is like spread operator in js
-        PRICE_publish_to_queue({'type':'PRODUCT_PRICE_CHANGE','product_name': row['product_name'],**temp,  'listing_url': row['listing_url'],"source":source})
-        print(chalk.yellow(f"PUBLISHED_ITEM_TO_QUEUE {temp['product_id']}"))
-
-
+        #temp** unpacks rest of unchanged values in dict
+        PRICE_publish_to_queue({
+            'type': 'PRODUCT_PRICE_CHANGE',
+            'product_name': row['product_name'],
+            **temp,
+            'listing_url': row['listing_url'],
+            'source': source
+        })
+        print(chalk.yellow(f"Published price change for {temp['product_id']}"))
     else:
-        # Update  product scrape dates if price has not changed
+        print(chalk.blue(f"No price change needed for {row['product_id']}"))
+        # Only update scrape dates
         product_data['prev_scrape_date'] = product_data['curr_scrape_date']
         product_data['curr_scrape_date'] = scrape_date
         updated_products.append({
             'product_id': row['product_id'],
-            'curr_price': product_data['curr_price'],
+            'curr_price': current_db_price,  # Use the rounded DB price
             'curr_scrape_date': scrape_date,
             'prev_price': product_data['prev_price'],
             'prev_scrape_date': product_data['prev_scrape_date']
@@ -289,7 +303,8 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
                 # Always send completion signal
                 PRICE_publish_to_queue({
                     "type": "PROCESSING_SCRAPED_FILE_COMPLETE",
-                    "query_hash": query_hash
+                    "query_hash": query_hash,
+                    "product_name":row['product_name']
                 })
 
             except Exception as db_error:

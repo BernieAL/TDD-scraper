@@ -110,13 +110,13 @@ def send_email_with_report(receiver_email, price_report_subdir,sold_report_subdi
 
 
 
-    #email gets sent whether theres generate price reports or not     
+    #email gets sent whether theres generated reports or not 
     try:
         # Send the email with the report attached
         with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
             server.login(sender_email, app_password)
             server.sendmail(sender_email, receiver_email, message.as_string())
-            print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {receiver_email} - FOR VEH: {query}"))
+            print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {receiver_email} - FOR QUERY: {query}"))
         return True
     
     except Exception as e:
