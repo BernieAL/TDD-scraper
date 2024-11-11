@@ -46,25 +46,30 @@ class ScraperUtils:
         #if data_type = 1 - data is filtered data, prepend 'fitlered' to file name
         if data_type == 1:
             output_file = os.path.join(output_dir, f"FILTERED_{source}_{brand}_{current_date}_{category}_{query_hash}.csv")
+
         #if data_type == 0, data is raw data, dont prepend anything to file name
         else:
             output_file = os.path.join(output_dir, f"RAW_{source}_{brand}_{current_date}_{category}_{query_hash}.csv")
        
-
-        with open(output_file, mode='w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                
-                file.write(f"Scraped: {current_date} \n")
-                file.write(f"category: {brand}-{category} \n")
-                writer.writerow(['product_id','brand','product_name','curr_price','listing_url','source'])
-                file.write('---------------------- \n')
-                for row in data:
-                    #ensure capitalization of eligible values for case standardization
-                    writer.writerow([str(element).upper() if isinstance(element,str) else element for element in row])
+       #if this specific file exists already, dont overwrite it.
+        if not (os.path.exists(output_file) and os.path.isfile(output_file)):
+            print(f"NO PREV SCRAPE FILE FOR THIS QUERY HASH")
+            with open(output_file, mode='w', newline='', encoding='utf-8') as file:
+                    writer = csv.writer(file)
+                    
+                    file.write(f"Scraped: {current_date} \n")
+                    file.write(f"category: {brand}-{category} \n")
+                    writer.writerow(['product_id','brand','product_name','curr_price','listing_url','source'])
+                    file.write('---------------------- \n')
+                    for row in data:
+                        #ensure capitalization of eligible values for case standardization
+                        writer.writerow([str(element).upper() if isinstance(element,str) else element for element in row])
                                 
-        print(f"Data successfully saved to {output_file}")
-        return output_file
-
+                    print(f"Data successfully saved to {output_file}")
+                    return output_file
+        else:
+            print(f"EXISTS - PREV SCRAPE FILE FOR THIS QUERY HASH")
+            return output_file
 
     #make subdir in scrape_file_output/raw for current search category
     def make_scraped_sub_dir_raw_old(self, brand,category,query_hash):

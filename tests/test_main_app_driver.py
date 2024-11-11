@@ -76,7 +76,7 @@ class TestDriverFunction(unittest.TestCase):
     def test_driver_function(self, mock_run_comparisons, mock_run_scrapers, mock_file):
         mock_run_scrapers.return_value = 'dummy_scraped_dir'
         
-        main_app_driver.driver_function()
+        main_app_driver.claude_driver_function()
         
         # Check that scrapers and comparisons were called
         self.assertEqual(mock_run_scrapers.call_count, 2)

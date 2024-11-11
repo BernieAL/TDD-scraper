@@ -199,23 +199,19 @@ def process_new_product(row, scrape_date, new_products,source):
 
 
 
-def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,query_hash,spec_item=None):
+def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, query_hash, spec_item=None):
     """
-    Compares scraped product data to existing database records. Updates existing products, adds new products, 
-    and marks products as sold if they are no longer listed.
-
-    :param input_file: Path to the scraped data file.
-    :param existing_product_data_dict: Dictionary of existing product data from the database.
+    Compares scraped product data to existing database records.
     """
-    
-    
-    if spec_item != None:
-        print(chalk.yellow(f"PROCESSING_FILTERED_QUERY - SPEC ITEM {spec_item}"))
-    else:
-         print(chalk.yellow(f"PROCESSING_GENERAL_QUERY - NO SPEC ITEM"))
     try:
+        if spec_item is not None:
+            print(chalk.yellow(f"PROCESSING_FILTERED_QUERY - SPEC ITEM {spec_item}"))
+        else:
+            print(chalk.yellow(f"PROCESSING_GENERAL_QUERY - NO SPEC ITEM"))
+
         updated_products = []
         new_products = []
+        scrape_date = None  # Initialize scrape_date
 
         with open(input_file, mode='r') as file:
             csv_reader = csv.reader(file)
@@ -224,6 +220,7 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,que
             scrape_date_line = next(csv_reader)
             scrape_date = scrape_date_line[0].split(':')[1].strip()
             scrape_date = datetime.strptime(scrape_date, '%Y-%d-%m').date()
+            global FILE_SCRAPE_DATE
             FILE_SCRAPE_DATE = scrape_date
             print(f"Scrape Date: {scrape_date}")
 
@@ -237,63 +234,72 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict,source,que
             next(csv_reader)  # Skip delimiter row
             csv_reader = csv.DictReader(file, fieldnames=headers)
 
+            # Process each row
             for row in csv_reader:
                 print(chalk.red(f"ID: {row['product_id']}, Brand: {row['brand']}, "
-                f"Product: {row['product_name']}, Curr Price: {row['curr_price']}"))
+                      f"Product: {row['product_name']}, Curr Price: {row['curr_price']}"))
 
-                # Compare against existing product data from DB
                 if row['product_id'] in existing_product_data_dict:
-                    process_existing_product(row, existing_product_data_dict, updated_products, scrape_date,input_file,source)
+                    process_existing_product(row, existing_product_data_dict, updated_products, scrape_date, input_file, source)
                 else:
-                    process_new_product(row, scrape_date, new_products,source)
-            
+                    process_new_product(row, scrape_date, new_products, source)
+
+            # Database operations
+            db_success = True
             try:
-                #bulk update
-                db_update_success = DB_bulk_update_existing(updated_products) if updated_products else True
-                #bulk insert
-                db_insert_success = DB_bulk_insert_new(new_products) if new_products else True
-                
-                
-                if not db_update_success:
-                    raise Exception("DB update operation failed")
-                if not db_insert_success:
-                    raise Exception("DB insert operation failed")
-                
+                # Bulk update existing products
+                if updated_products:
+                    if not DB_bulk_update_existing(updated_products):
+                        raise Exception("DB update operation failed")
+
+                # Bulk insert new products
+                if new_products:
+                    if not DB_bulk_insert_new(new_products):
+                        raise Exception("DB insert operation failed")
+
                 print(chalk.green("[SUCCESS] DB operations were successful."))
 
-                #all remaining items in dict were not found in todays scrape - meaning they were sold
+                # Process sold items
                 items_not_found = existing_product_data_dict
                 print(chalk.cyan(f"db items not found in current scrape file {items_not_found}"))
 
-                sold_update_success = DB_bulk_update_sold(items_not_found)
+                if items_not_found:  # Only process if there are items not found
+                    # Update sold status
+                    if not DB_bulk_update_sold(items_not_found):
+                        raise Exception("Sold status update failed")
                 
-                if not sold_update_success:
-                    raise Exception ("SOld status update failed")
-                        
-                #get sold items 
-                sold_items_dict = DB_get_sold_daily(source,items_not_found,FILE_SCRAPE_DATE,spec_item)
-            
-                print(chalk.green(f"SOLD ITEMS: {sold_items_dict}\n ---------------" ))
+                    # Get sold items
+                    sold_items_dict = DB_get_sold_daily(source, items_not_found, FILE_SCRAPE_DATE, spec_item)
+                    print(chalk.green(f"SOLD ITEMS: {sold_items_dict}\n ---------------"))
 
-                #push sold_items to queue
-                PRICE_publish_to_queue({"type":"PROCESSING_SOLD_ITEMS_COMPLETE","sold_items_dict":sold_items_dict})
-                
-                # After processing all products, send completion signal
-                PRICE_publish_to_queue({"type": "PROCESSING_SCRAPED_FILE_COMPLETE", 'query_hash':query_hash})
-        
+                    # Push sold items to queue
+                    
+                    PRICE_publish_to_queue({
+                        "type": "PROCESSING_SOLD_ITEMS_COMPLETE",
+                        "sold_items_dict": sold_items_dict,
+                        "query_hash": query_hash  # Add query_hash here
+                    })
+                else:
+                      PRICE_publish_to_queue({
+                        "type": "PROCESSING_SOLD_ITEMS_COMPLETE",
+                        "sold_items_dict": {},
+                        "query_hash": query_hash  # Add query_hash here
+                    })
+
+                # Always send completion signal
+                PRICE_publish_to_queue({
+                    "type": "PROCESSING_SCRAPED_FILE_COMPLETE",
+                    "query_hash": query_hash
+                })
 
             except Exception as db_error:
+                db_success = False
                 print(chalk.red(f"DB operation failed: {db_error}"))
-                # Handle or log the error as needed (could re-raise or exit here)
-
-
+                raise  # Re-raise the exception to be caught by outer try block
 
     except Exception as e:
         print(chalk.red(f"Error comparing scraped data: {e}"))
         raise
-
-
-
 def compare_driver(scraped_data_file_path,query_hash,spec_item=None):
     """
     Drives the comparison process for a given scraped data file.

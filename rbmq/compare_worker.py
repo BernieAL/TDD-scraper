@@ -4,8 +4,6 @@ import sys
 import json
 from simple_chalk import chalk
 
-
-# Ensure the project root is accessible
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
@@ -14,76 +12,146 @@ from analysis.compare_data import compare_driver
 from rbmq.price_change_producer import PRICE_publish_to_queue
 from rbmq.process_producer import PROCESS_publish_to_queue
 
-# Globals for tracking
+# Global state management
 process_info = {
-    "brand": None,
-    "category": None,
     "query_hash": None,
-    "date": None,
-    "price_report_subdir": None,
-    "sold_report_subdir": None,
-    "price_report_root_dir": None,
-    "sold_report_root_dir": None,
-    "source": None,
+    "output_dir": None,
+    "specific_item": None
 }
 
+def reset_process_info():
+    for key in process_info:
+        process_info[key] = None
+
+def safe_compare_driver(file_path, query_hash, specific_item):
+    """Wrapper function to handle database errors gracefully"""
+    try:
+        compare_driver(file_path, query_hash, specific_item)
+        return True
+    except Exception as e:
+        if "duplicate key value" in str(e):
+            # Log but don't fail on duplicate keys
+            print(chalk.yellow(f"Skipping duplicate product in {file_path}"))
+            return True
+        elif "cur referenced before assignment" in str(e):
+            # Database connection issue
+            print(chalk.red(f"Database connection error: {e}"))
+            return False
+        else:
+            print(chalk.red(f"Unexpected error in compare_driver: {e}"))
+            return False
+
 def main():
-    def callback(ch, method, properties, body):
+    def callback(ch, method, properties, body):  # Make sure body is included as parameter
         try:
-            msg = json.loads(body)
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            print(chalk.yellow(f"Message received: {msg}"))
-
+            print(chalk.yellow("Received message on compare_queue"))
+            msg = json.loads(body)  # Now body will be defined
+            print(chalk.yellow(f"Message content: {msg}"))
+            
             if msg.get('type') == 'POPULATED_OUTPUT_DIR':
-                output_dir = msg['output_dir']
-                process_info['query_hash'] = msg['query_hash']
-                spec_item = msg['specific_item']
+                try:
+                    reset_process_info()
+                    
+                    process_info.update({
+                        'output_dir': msg['output_dir'],
+                        'query_hash': msg['query_hash'],
+                        'specific_item': msg.get('specific_item'),
+                        'price_changes': []  # Add tracking for price changes
+                    })
 
-                # Process each file in output_dir using compare_driver
-                if os.path.isdir(output_dir):
-                    for root, subdirs, files in os.walk(output_dir):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            print(chalk.blue(f"Processing file: {file_path}"))
-                            compare_driver(file_path, process_info['query_hash'], spec_item)
-                    print("Finished processing files in output_dir.")
+                    print(chalk.blue(f"Processing output directory: {process_info['output_dir']}"))
+                    
+                    if os.path.isdir(process_info['output_dir']):
+                        successful_files = 0
+                        total_files = 0
+                        
+                        for root, _, files in os.walk(process_info['output_dir']):
+                            for file in files:
+                                total_files += 1
+                                file_path = os.path.join(root, file)
+                                print(chalk.blue(f"Processing file: {file_path}"))
+                                
+                                if safe_compare_driver(
+                                    file_path,
+                                    process_info['query_hash'],
+                                    process_info['specific_item']
+                                ):
+                                    successful_files += 1
+                        
+                        # Only send COMPARE_COMPLETE if processing was successful
+                        if successful_files > 0:
+                            print(chalk.green(f"Successfully processed {successful_files} out of {total_files} files"))
+                            
+                            # Send price changes summary if any were detected
+                            if process_info['price_changes']:
+                                PRICE_publish_to_queue({
+                                    'type': 'PRICE_CHANGES_SUMMARY',
+                                    'query_hash': process_info['query_hash'],
+                                    'changes': process_info['price_changes']
+                                })
+                            
+                            PROCESS_publish_to_queue({
+                                'type': 'COMPARE_COMPLETE',
+                                'query_hash': process_info['query_hash']
+                            })
+                        else:
+                            raise Exception("No files were processed successfully")
+                    else:
+                        raise Exception(f"Directory not found: {process_info['output_dir']}")
+
+                except Exception as e:
+                    print(chalk.red(f"Error processing POPULATED_OUTPUT_DIR message: {e}"))
+                    # Send error message
+                    if process_info['query_hash']:
+                        PROCESS_publish_to_queue({
+                            'type': 'ERROR',
+                            'query_hash': process_info['query_hash'],
+                            'error': str(e)
+                        })
 
             elif msg.get('type') == 'PRICE_WORKER_COMPLETE':
-                print('RECEIVED MSG FROM PRICE CHANGE WORKER')
-                # Send COMPARE_COMPLETE message to main PROCESS queue
-                PROCESS_publish_to_queue({'type': 'COMPARE_COMPLETE', 'query_hash': process_info['query_hash']})
-                
-                # PRICE_publish_to_queue(
-                # {'type': 'PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY',
-                #  'email': '(main)balmanzar883@gmail.com',
-                #  'query_hash': process_info['query_hash']})
-                print(chalk.green("COMPARE_COMPLETE message sent to process_queue."))
+                print(chalk.green("Received PRICE_WORKER_COMPLETE confirmation"))
+
+            elif msg.get('type') == 'PRODUCT_PRICE_CHANGE':
+                # Track price changes
+                if process_info['query_hash']:
+                    process_info['price_changes'].append(msg)
+                    print(chalk.green(f"Added price change for product: {msg.get('product_id')}"))
 
         except Exception as e:
             print(chalk.red(f"Error processing message: {e}"))
+        finally:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
     # RabbitMQ setup
+    connection = None
     try:
-        connection_params = pika.ConnectionParameters(host='localhost', port=5672, credentials=pika.PlainCredentials('guest', 'guest'))
+        connection_params = pika.ConnectionParameters(
+            host='localhost',
+            port=5672,
+            credentials=pika.PlainCredentials('guest', 'guest'),
+            heartbeat=600
+        )
         connection = pika.BlockingConnection(connection_params)
         channel = connection.channel()
+        
         channel.queue_declare(queue='compare_queue', durable=True)
-
-        # Start consuming messages
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='compare_queue', on_message_callback=callback)
-
+        
         print(chalk.green("Clearing queue"))
         channel.queue_purge(queue='compare_queue')
-
+        
         print(chalk.blue('(COMPARE_WORKER)[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()
-
+        
     except Exception as e:
-        print(chalk.red(f"Error during RabbitMQ setup or message consumption: {e}"))
+        print(chalk.red(f"Error in RabbitMQ setup: {e}"))
     finally:
         if connection and connection.is_open:
-            connection.close()
-
+            try:
+                connection.close()
+            except Exception as e:
+                print(chalk.red(f"Error closing connection: {e}"))
 if __name__ == "__main__":
     main()
