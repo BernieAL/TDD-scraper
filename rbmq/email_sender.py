@@ -19,7 +19,7 @@ load_dotenv(find_dotenv())
 port = 465  # For SSL
 app_password = os.getenv("GOOGLE_APP_PW")
 sender_email = os.getenv("GOOGLE_SENDER_EMAIL")  # Your email
-subject = "Daily Price Change Report"
+subject = "Daily Price Change + Sold Reports"
 
 
 
@@ -70,7 +70,7 @@ def send_email_with_report(receiver_email, price_report_subdir,sold_report_subdi
     message['Subject'] = subject
 
     # Email body
-    body = f"Hi there,\n\nPlease find attached the daily price change report for {query}. \n"
+    body = f"Hi there,\n\nPlease find attached the daily price change + sold reports for {query}. \n"
    
     #add details about sources with no prices changes to message body
     if len(no_price_change_sources) > 0:

@@ -335,7 +335,7 @@ def main():
                         print(chalk.yellow("[INFO] No price changes detected for this file"))
                         if curr_query_info.get('brand') and curr_query_info.get('category') and curr_query_info.get('product_name'):
                             no_change_sources.append(
-                                f"{curr_query_info['brand']}_{curr_query_info['category']}_{curr_query_info['product_name']}"
+                                f"{curr_query_info['source']}"
                             )
 
                     # Update process status and notify compare queue
