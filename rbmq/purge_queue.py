@@ -18,3 +18,4 @@ print("Queue cleared.")
 
 # Close the connection
 connection.close()
+

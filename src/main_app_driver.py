@@ -43,7 +43,7 @@ def claude_scrape_process_2(brand, category, specific_item):
         'output_dir': output_dir,
         'specific_item': specific_item,
         'query_hash': query_hash,
-        'local_test': True
+        'local_test': False #set to True to use locally saved copy, False to use live site
     }
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message

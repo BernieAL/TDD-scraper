@@ -62,7 +62,7 @@ def parse_file_name(file):
         'source':source,
     }
 
-def db_data_to_dictionary(existing_db_data_list):
+def db_data_to_dictionary_old(existing_db_data_list):
 
 
     """
@@ -108,6 +108,65 @@ def db_data_to_dictionary(existing_db_data_list):
             prev_scrape_date = prod['prev_scrape_date']
         
     
+
+            existing_db_data_dict[product_id] = {
+                'curr_price': curr_price,
+                'curr_scrape_date': curr_scrape_date,
+                'prev_price': prev_price,
+                'prev_scrape_date': prev_scrape_date
+            }
+            
+        return existing_db_data_dict 
+    except Exception as e:
+         print(chalk.red(f"Error converting DB data to dictionary: {e}"))
+
+
+def db_data_to_dictionary(existing_db_data_list):
+    """
+
+    existing_product_id_prices_dates pre-loads all product ids, prices, and dates
+
+    convert from db data from list of dicts to dict into dictionary for easy lookup
+
+    db data as list of dicts:
+        db data comes in the format of list
+            [
+                {'product_id': '14699240-14531549', 'curr_price': Decimal('418.00'), 'curr_scrape_date': datetime.date(2024, 9, 25), 'prev_price': Decimal('418.00'), 'prev_scrape_date': datetime.date(2024, 9, 25)}, 
+                {'product_id': '14696885-14529194', 'curr_price': Decimal('3955.00'), 'curr_scrape_date': datetime.date(2024, 9, 25), 'prev_price': Decimal('3955.00'), 'prev_scrape_date': datetime.date(2024, 9, 25)}, 
+                {'product_id': '14696866-14529175', 'curr_price': Decimal('3714.00'), 'curr_scrape_date': datetime.date(2024, 9, 25), 'prev_price': Decimal('3714.00'), 'prev_scrape_date': datetime.date(2024, 9, 25)},
+            ]
+
+    
+    desired output Ex.
+        Each product id is key of its own dictionary, where the values are in another dictionary themselves
+            existing_product_id_prices_dict = {
+                '1124423-134234': {'curr_price':1003.00,
+                                'curr_scrape_date':2024/9/3,
+                                'prev_price':1100,
+                                'prev_scrape_date':2024/9/15
+                                },
+                '1124423-134234': {'curr_price':1003.00,
+                                'curr_scrape_date':2024/9/3,
+                                'prev_price':1100,
+                                'prev_scrape_date':2024/9/15
+                                },
+
+            }
+    """
+    try:
+        existing_db_data_dict = {}
+
+        for prod in existing_db_data_list:
+            product_id = prod['product_id'] 
+            # Round all prices to 2 decimal places
+            curr_price = round(float(prod['curr_price']), 2)
+            curr_scrape_date = prod['curr_scrape_date']
+            prev_price = round(float(prod['prev_price']), 2)
+            prev_scrape_date = prod['prev_scrape_date']
+        
+            print(chalk.blue(f"Converting DB data for {product_id}:"))
+            print(chalk.blue(f"  Current price: {curr_price} ({type(curr_price)})"))
+            print(chalk.blue(f"  Previous price: {prev_price} ({type(prev_price)})"))
 
             existing_db_data_dict[product_id] = {
                 'curr_price': curr_price,

@@ -13,14 +13,14 @@ from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
 from rbmq.process_producer import PROCESS_publish_to_queue
 
-def run_italist_scraper(brand,category,output_dir,query_hash):
+def run_italist_scraper(brand,category,output_dir,query_hash,local):
     print(chalk.blue(f"Starting Italist scraper with params:"))
     print(chalk.blue(f"Brand: {brand}"))
     print(chalk.blue(f"Category: {category}"))
     print(chalk.blue(f"Output Dir: {output_dir}"))
     print(chalk.blue(f"Query Hash: {query_hash}"))
     
-    italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,True)
+    italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,local)
     scraped_file = italist_scraper.run()
     print(chalk.green(f"Scraper completed. Output file: {scraped_file}"))
     return scraped_file
@@ -44,7 +44,7 @@ def main():
             output_dir = msg['output_dir']
             
             print(chalk.blue("Starting scrape process..."))
-            scraped_file = run_italist_scraper(brand, category, output_dir, query_hash)
+            scraped_file = run_italist_scraper(brand, category, output_dir, query_hash,msg.get('local_test'))
             
             complete_msg = {
                 'type': 'SCRAPE_COMPLETE',

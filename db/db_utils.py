@@ -362,10 +362,44 @@ def DB_get_sold_daily(source, items_not_found_dict, file_scrape_date, spec_item=
 def DB_bulk_update_sold(sold_products):
     try:
         if not sold_products:
-            return True
+            return True #True for success case
         
         conn = get_db_connection()
         cur = conn.cursor()
+
+
+
+        #first get current sold status for all products - we want to avoid processing already sold items
+        product_ids = list(sold_products.keys())
+        check_status_query = """
+            SELECT product_id, sold, sold_date
+            FROM products
+            WHERE product_id = ANY(%s)
+        """
+        
+        cur.execute(check_status_query, (product_ids,))
+        current_statuses = cur.fetchall()
+
+         # Convert to dict for easy lookup
+        already_sold = {
+            row[0]: {'sold': row[1], 'sold_date': row[2]} 
+            for row in current_statuses 
+            if row[1]  # only include if sold is True
+        }
+
+        # Filter out products that are already marked as sold
+        products_to_update = {}
+        for product_id, product_data in sold_products.items():
+            if product_id in already_sold:
+                print(chalk.yellow(f"Skipping {product_id} - already marked sold on {already_sold[product_id]['sold_date']}"))
+                continue
+            products_to_update[product_id] = product_data
+
+        if not products_to_update:
+            print(chalk.yellow("No new products to mark as sold"))
+            return True
+        
+        print(chalk.blue(f"Found {len(already_sold)} already sold items"))
 
         update_sold_query = """
                             UPDATE products
