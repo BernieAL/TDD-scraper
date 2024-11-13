@@ -1,7 +1,7 @@
 # search.py
 from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
-from models import db, Search
+from app.models import db, Search
 from forms import SearchForm
 
 search_bp = Blueprint('search', __name__)

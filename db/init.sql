@@ -20,5 +20,12 @@ CREATE TABLE products (
     source VARCHAR(50)
 );
 
-
-
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(120) UNIQUE NOT NULL,
+    password_hash VARCHAR(256) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE
+);
