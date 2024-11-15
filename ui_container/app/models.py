@@ -1,40 +1,89 @@
-# models.py
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from flask import g
 
-db = SQLAlchemy()
+class User(UserMixin):
+    def __init__(self, id, email, password_hash):  # Changed username to email
+        self.id = id
+        self.email = email  # Changed from username
+        self.password_hash = password_hash
 
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'  # Explicitly naming the table
-    
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_active = db.Column(db.Boolean, default=True)
-    last_login = db.Column(db.DateTime)
-    
-    # Relationship with searches
-    searches = db.relationship('Search', backref='user', lazy=True)
+    @staticmethod
+    def get_by_id(user_id):
+        cur = g.db.cursor()
+        cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        user_data = cur.fetchone()
+        cur.close()
 
+        if user_data:
+            return User(
+                id=user_data['id'],
+                email=user_data['email'],  # Changed from username
+                password_hash=user_data['password_hash']
+            )
+        return None
+
+    @staticmethod
+    def get_by_email(email):  # Changed from get_by_username
+        cur = g.db.cursor()
+        cur.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user_data = cur.fetchone()
+        cur.close()
+
+        if user_data:
+            return User(
+                id=user_data['id'],
+                email=user_data['email'],  # Changed from username
+                password_hash=user_data['password_hash']
+            )
+        return None
+    def __init__(self, id, email, password_hash):
+        self.id = id
+        self.email = email
+        self.password_hash = password_hash
+
+    @staticmethod
+    def get_by_id(user_id):
+        cur = g.db.cursor()
+        cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))  # Fixed: Added comma to make it a tuple
+        user_data = cur.fetchone()
+        cur.close()
+
+        if user_data:
+            return User(
+                id=user_data['id'],
+                email=user_data['email'],
+                password_hash=user_data['password_hash']
+            )
+        return None
+
+   
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-class Search(db.Model):
-    __tablename__ = 'user_searches'  # Distinct name to avoid conflicts
+@staticmethod
+def create_user(email, password):  # Changed from username
+    password_hash = generate_password_hash(password)
     
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    brand = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(100), nullable=False)
-    spec = db.Column(db.String(100))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default='pending')
-    
-    # You might want to add a foreign key to your products table if it exists
-    # product_id = db.Column(db.Integer, db.ForeignKey('products.id'))
+    cur = g.db.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
+            (email, password_hash)
+        )
+        user_id = cur.fetchone()['id']
+        g.db.commit()
+        cur.close()
+        
+        return User(
+            id=user_id,
+            email=email,  # Changed from username
+            password_hash=password_hash
+        )
+    except Exception as e:
+        g.db.rollback()
+        cur.close()
+        raise e

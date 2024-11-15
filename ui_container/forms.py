@@ -12,6 +12,7 @@ class LoginForm(FlaskForm):
 class SearchForm(FlaskForm):
     brand = StringField('Brand', validators=[DataRequired()])
     category = StringField('Category')
+    spec_item = StringField('Specific Item')  
     submit = SubmitField('Search')
 
 class RegistrationForm(FlaskForm):

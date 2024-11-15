@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Search History</h2>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if searches %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Brand</th>
+                    <th>Category</th>
+                    <th>Spec Item</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for search in searches %}
+                <tr>
+                    <td>{{ search.brand }}</td>
+                    <td>{{ search.category }}</td>
+                    <td>{{ search.spec }}</td>
+                    <td>{{ search.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No search history found.</p>
+    {% endif %}
+
+    <a href="{{ url_for('search.new_search') }}" class="btn btn-primary">New Search</a>
+</div>
+{% endblock %}

@@ -431,7 +431,7 @@ def main():
                         print(chalk.blue(f"[INFO] Total products processed: {len(recd_products)}"))
                         
                         email_sent = send_email_with_report(
-                            'balmanzar883@gmail.com',
+                            msg.get('email'),
                             curr_query_info['price_report_subdir'],
                             curr_query_info['sold_report_subdir'],
                             f"{curr_query_info['brand']}_{curr_query_info['category']}_{curr_query_info['product_name']}",

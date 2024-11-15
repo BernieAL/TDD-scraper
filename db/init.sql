@@ -29,3 +29,21 @@ CREATE TABLE IF NOT EXISTS users (
     last_login TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT TRUE
 );
+
+-- Create searches table
+-- Create searches table
+CREATE TABLE user_searches (
+   id SERIAL PRIMARY KEY,
+   user_id INTEGER REFERENCES users(id),  -- Foreign key reference to users table
+   brand VARCHAR(100) NOT NULL,
+   category VARCHAR(100),
+   spec_item TEXT,
+   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add index on user_id for faster lookups of user's searches
+CREATE INDEX idx_searches_user_id ON user_searches(user_id);
+
+-- Add index on timestamp for sorting in history view
+CREATE INDEX idx_searches_timestamp ON user_searches(timestamp);
+

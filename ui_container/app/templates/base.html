@@ -10,12 +10,12 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">Search App</a>
+            <a class="navbar-brand" href="{{ url_for('search.index') }}">Search App</a>
             {% if current_user.is_authenticated %}
             <div class="navbar-nav">
-                <a class="nav-link" href="{{ url_for('search') }}">New Search</a>
-                <a class="nav-link" href="{{ url_for('search_history') }}">History</a>
-                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                <a class="nav-link" href="{{ url_for('search.new_search') }}">New Search</a>
+                <a class="nav-link" href="{{ url_for('search.history') }}">History</a>
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
             </div>
             {% endif %}
         </div>

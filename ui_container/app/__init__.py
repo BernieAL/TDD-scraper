@@ -4,6 +4,7 @@ from flask_login import LoginManager
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from config import Config
+from app.models import User  # Add this import
 
 login_manager = LoginManager()
 
@@ -26,6 +27,11 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
 
+    # Add the user loader
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.get_by_id(int(user_id))
+
     # Add database connection to app context
     @app.before_request
     def before_request():
@@ -42,7 +48,10 @@ def create_app():
     from app.auth.routes import auth_bp     # Updated import path
     from app.search.routes import search_bp  # Updated import path
     
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(search_bp)
+    app.register_blueprint(auth_bp,url_prefix='/auth')
+    app.register_blueprint(search_bp,url_prefix='/search')
+
+    
     
     return app
+

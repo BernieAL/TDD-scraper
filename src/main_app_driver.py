@@ -119,7 +119,7 @@ def claude_wait_until_process_complete(query_hash=None, expected_type=None):
             connection.close()
         except Exception as e:
             print(chalk.red(f"Error closing connection: {e}"))
-def claude_driver_function():
+def claude_driver_function_from_input_file():
 
 
     
@@ -168,6 +168,41 @@ def claude_driver_function():
 
         print("Processed all rows in input file")
 
+def driver_function_from_search_form(msg):
+
+    brand = msg['brand'].strip().upper()
+    category = msg['category'].strip().upper()
+    spec_item = msg['spec_item'].strip().upper() if msg['spec_item'] else None
+    requester_email = msg['user_email']
+    search_id = msg['search_id']
+
+    query_hash,output_dir = claude_scrape_process_2(brand,category,spec_item)
+
+     # After scrape is complete, publish compare message
+    COMPARE_publish_to_queue({
+        'type': 'POPULATED_OUTPUT_DIR', 
+        'output_dir': output_dir,
+        'query_hash': query_hash,
+        'specific_item': spec_item
+    })
+    
+    # Wait for compare completion
+    claude_wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+    
+    # Signal price worker that all files are processed
+    PRICE_publish_to_queue({
+        "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
+        "query_hash": query_hash,
+        "brand": brand,
+        "category": category,
+        "specific_item": spec_item,
+        "email":requester_email,
+    })
+    
+    # Wait for email confirmation
+    claude_wait_until_process_complete(query_hash, "EMAIL_SENT")
+
+
 # Example usage in your code
 if __name__ == "__main__":
-    claude_driver_function()
+    driver_function_from_search_form()
