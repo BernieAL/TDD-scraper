@@ -31,6 +31,7 @@ from rbmq.compare_producer import COMPARE_publish_to_queue
 utils = ScraperUtils(scraped_data_dir_raw, scraped_data_dir_filtered)
 
 def claude_scrape_process_2(brand, category, specific_item):
+
     current_date = datetime.now().strftime('%Y-%d-%m')
     query = f"{brand}_{category}"  # e.g., Prada_bags, Gucci_shirts
     query_hash = utils.generate_hash(query, specific_item, current_date)
@@ -43,7 +44,7 @@ def claude_scrape_process_2(brand, category, specific_item):
         'output_dir': output_dir,
         'specific_item': specific_item,
         'query_hash': query_hash,
-        'local_test': False #set to True to use locally saved copy, False to use live site
+        'local_test':True #set to True to use locally saved copy, False to use live site
     }
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message
@@ -60,6 +61,7 @@ def claude_scrape_process_2(brand, category, specific_item):
         return query_hash, filtered_subdir
 
     return query_hash, output_dir
+
 def claude_wait_until_process_complete(query_hash=None, expected_type=None):
     """
     Waits for a specific message type for the given query_hash.
