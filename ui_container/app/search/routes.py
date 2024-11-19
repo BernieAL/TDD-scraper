@@ -110,3 +110,38 @@ def history():
     
     return render_template('history.html', searches=searches)
 
+
+@search_bp.route('/delete/<int:search_id>',methods=['POST'])
+@login_required
+def delete_search(search_id):
+    cur = g.db.cursor()
+    try:
+
+        cur.execute("""
+            DELETE FROM user_searches
+            WHERE id = %s AND user_id = %s
+            RETURNING id
+            """,
+            (search_id,current_user.id)
+            )
+        deleted = cur.fetchone()
+        g.db.commit()
+
+        if deleted:
+            flash('Search deletion - SUCCESS')
+        else:
+            flash('Search deletion FAILED')
+    
+    except Exception as e:
+        g.db.rollback()
+        flash('Error deleting search')
+    finally:
+        cur.close()
+        return redirect(url_for('search.history'))
+
+@search_bp.route('/report/<int:search_id>')
+@login_required
+def view_report(search_id):
+    # Placeholder for report viewing - implement later
+    flash('Report viewing will be implemented soon')
+    return redirect(url_for('search.history'))

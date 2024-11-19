@@ -30,7 +30,7 @@ from rbmq.compare_producer import COMPARE_publish_to_queue
 # Initialize the ScraperUtils instance
 utils = ScraperUtils(scraped_data_dir_raw, scraped_data_dir_filtered)
 
-def claude_scrape_process_2(brand, category, specific_item):
+def scrape_process_2(brand, category, specific_item):
 
     current_date = datetime.now().strftime('%Y-%d-%m')
     query = f"{brand}_{category}"  # e.g., Prada_bags, Gucci_shirts
@@ -48,7 +48,7 @@ def claude_scrape_process_2(brand, category, specific_item):
     }
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message
-    claude_wait_until_process_complete(query_hash, "SCRAPE_COMPLETE")
+    wait_until_process_complete(query_hash, "SCRAPE_COMPLETE")
 
     if specific_item is not None:
 
@@ -62,7 +62,7 @@ def claude_scrape_process_2(brand, category, specific_item):
 
     return query_hash, output_dir
 
-def claude_wait_until_process_complete(query_hash=None, expected_type=None):
+def wait_until_process_complete(query_hash=None, expected_type=None):
     """
     Waits for a specific message type for the given query_hash.
     """
@@ -121,13 +121,15 @@ def claude_wait_until_process_complete(query_hash=None, expected_type=None):
             connection.close()
         except Exception as e:
             print(chalk.red(f"Error closing connection: {e}"))
-def claude_driver_function_from_input_file():
+def driver_function_from_input_file():
 
 
     
     with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
         csv_reader = csv.reader(file)
         next(csv_reader)  # Skip header line
+
+        email = 'balmanzar883@gmail.com'
 
         for file_row in csv_reader:
             if not file_row or not any(file_row):
@@ -140,7 +142,7 @@ def claude_driver_function_from_input_file():
                 print(chalk.red(f"(MAIN) SPECIFIC ITEM - {specific_item}"))
 
                 # First run scraping process and wait for completion
-                query_hash, output_dir = claude_scrape_process_2(brand, category, specific_item)
+                query_hash, output_dir = scrape_process_2(brand, category, specific_item)
                 
                 # After scrape is complete, publish compare message
                 COMPARE_publish_to_queue({
@@ -151,7 +153,7 @@ def claude_driver_function_from_input_file():
                 })
                 
                 # Wait for compare completion
-                claude_wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+                wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
                 
                 # Signal price worker that all files are processed
                 PRICE_publish_to_queue({
@@ -159,11 +161,12 @@ def claude_driver_function_from_input_file():
                     "query_hash": query_hash,
                     "brand": brand,
                     "category": category,
-                    "specific_item": specific_item
+                    "specific_item": specific_item,
+                    "email":email
                 })
                 
                 # Wait for email confirmation
-                claude_wait_until_process_complete(query_hash, "EMAIL_SENT")
+                wait_until_process_complete(query_hash, "EMAIL_SENT")
 
             except Exception as e:
                 print(chalk.red(f"Scrape process failure: {e}"))
@@ -178,7 +181,7 @@ def driver_function_from_search_form(msg):
     requester_email = msg['user_email']
     search_id = msg['search_id']
 
-    query_hash,output_dir = claude_scrape_process_2(brand,category,spec_item)
+    query_hash,output_dir = scrape_process_2(brand,category,spec_item)
 
      # After scrape is complete, publish compare message
     COMPARE_publish_to_queue({
@@ -189,7 +192,7 @@ def driver_function_from_search_form(msg):
     })
     
     # Wait for compare completion
-    claude_wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+    wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
     
     # Signal price worker that all files are processed
     PRICE_publish_to_queue({
@@ -202,9 +205,10 @@ def driver_function_from_search_form(msg):
     })
     
     # Wait for email confirmation
-    claude_wait_until_process_complete(query_hash, "EMAIL_SENT")
+    wait_until_process_complete(query_hash, "EMAIL_SENT")
 
 
 # Example usage in your code
 if __name__ == "__main__":
     driver_function_from_search_form()
+    # driver_function_from_input_file()

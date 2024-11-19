@@ -26,8 +26,16 @@
                 <tr>
                     <td>{{ search.brand }}</td>
                     <td>{{ search.category }}</td>
-                    <td>{{ search.spec }}</td>
+                    <td>{{ search.spec_item}}</td>
                     <td>{{ search.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="deleteSearch({{ search.id }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="viewReport({{ search.id }})">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -38,4 +46,26 @@
 
     <a href="{{ url_for('search.new_search') }}" class="btn btn-primary">New Search</a>
 </div>
+
+
+<script>
+
+    function deleteSearch(searchId){
+        if (confirm('Are you sure you want to delete this search?')){
+            fetch(`/search/delete/${searchId}`,{
+                method:'POST',
+            }).then(response => {
+                if(response.ok){
+                    window.location.reload();
+                }
+            })
+        }
+    }
+
+    function viewReport(searchId){
+        window.location.href=`/search/report/${searchId}`;
+    }
+</script>
+
+
 {% endblock %}

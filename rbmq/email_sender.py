@@ -23,7 +23,7 @@ subject = "Daily Price Change + Sold Reports"
 
 
 
-def attach_file_from_subdir(message,subdir):
+def attach_file_from_sub_directory(message,report_subdir):
 
     """
     Will attach files from given subdir to email
@@ -32,10 +32,10 @@ def attach_file_from_subdir(message,subdir):
     """
 
     # if price_report_dir for current source query exists - traverse dir and attach all reports to email
-    if os.path.exists(subdir):
+    if os.path.exists(report_subdir):
 
         try:
-            for dirpath,subdir,files in os.walk(subdir):
+            for dirpath,subdir,files in os.walk(report_subdir):
                 for report_file in files:
                     print(report_file)
                     
@@ -54,10 +54,23 @@ def attach_file_from_subdir(message,subdir):
         except Exception as e:
             print(chalk.red(f"Email Attachment error - There was an error sending the email: {e}"))
     else:
-         print(chalk.yellow(f"No report directory provided or it does not exist: {subdir}"))
+         print(chalk.yellow(f"No report directory provided or it does not exist: {report_subdir}"))
 
-def send_email_with_report(receiver_email, price_report_subdir,sold_report_subdir,query,no_price_change_sources):
+def send_email_with_report(receiver_email, price_report_subdir,
+                           sold_report_subdir,query,no_price_change_sources=None,empty_scrape_files=None):
     
+      # Debug prints
+    print("DEBUG values before email:")
+    print(f"receiver_email: {receiver_email}")
+    print(f"price_report_subdir: {price_report_subdir}")
+    print(f"sold_report_subdir: {sold_report_subdir}")
+    print(f"query: {query}")
+    print(f"no_price_change_sources: {no_price_change_sources}")
+    print(f"type of no_price_change_sources: {type(no_price_change_sources)}")
+
+    #ensure no_price_change_source is always a list to avoid none-type iterable error
+    no_price_change_sources = no_price_change_sources or []
+
     print(chalk.red(f"(EMAIL SENDER) subdir valid path: {os.path.isdir(price_report_subdir)}"))
     
     # Create a secure SSL context
@@ -70,44 +83,25 @@ def send_email_with_report(receiver_email, price_report_subdir,sold_report_subdi
     message['Subject'] = subject
 
     # Email body
-    body = f"Hi there,\n\nPlease find attached the daily price change + sold reports for {query}. \n"
+    body = f"Hi there,\n\nPlease find attached the daily price change + sold reports for \n {query}. \n"
    
+    if empty_scrape_files:
+        body += "\nThe following sources returned no results:\n"
+        for source in empty_scrape_files:
+            body += f"{source}\n"
+
     #add details about sources with no prices changes to message body
     if len(no_price_change_sources) > 0:
         body += "\n The following sources had no price changes: :\n"
         for source in no_price_change_sources:
            body += f"{source}\n"
-
+    
+    
     message.attach(MIMEText(body, 'plain'))
 
-    attach_file_from_subdir(message,price_report_subdir)
-    attach_file_from_subdir(message,sold_report_subdir)
-    # # if price_report_dir for current source query exists - traverse dir and attach all reports to email
-    # if os.path.exists(price_report_subdir):
-
-    #     try:
-    #         for dirpath,subdir,files in os.walk(price_report_subdir):
-    #             for report_file in files:
-    #                 print(report_file)
-                    
-    #                 file_path = os.path.join(dirpath,report_file)
-
-    #                 with open(file_path, 'rb') as attachment:
-    #                     part = MIMEBase('application', 'octet-stream')
-    #                     part.set_payload(attachment.read())
-    #                     encoders.encode_base64(part)
-    #                     part.add_header(
-    #                         'Content-Disposition',
-    #                         f'attachment; filename={os.path.basename(report_file)}'
-    #                     )
-    #                     message.attach(part)
-        
-    #     except Exception as e:
-    #         print(chalk.red(f"Email Attachment error - There was an error sending the email: {e}"))
-    # else:
-    #      print(chalk.yellow(f"No price report directory provided or it does not exist: {price_report_subdir}"))
-
-
+    attach_file_from_sub_directory(message,price_report_subdir)
+    attach_file_from_sub_directory(message,sold_report_subdir)
+   
 
 
     #email gets sent whether theres generated reports or not 

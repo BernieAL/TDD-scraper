@@ -306,9 +306,30 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
             headers = next(csv_reader)
             next(csv_reader)  # Skip delimiter row
             csv_reader = csv.DictReader(file, fieldnames=headers)
+            
 
-            # Process each row
-            for row in csv_reader:
+            #check if file has any addtl data rows - in even filtered result returned empty file
+            data = list(csv_reader)
+            
+            if not data:
+                print(chalk.yellow("File is empty (no data rows)"))
+                # Send both completion messages for empty file
+                PRICE_publish_to_queue({
+                    "type": "PROCESSING_SOLD_ITEMS_COMPLETE",
+                    "sold_items_dict": {},
+                    "query_hash": query_hash
+                })
+                PRICE_publish_to_queue({
+                    "type": "PROCESSING_SCRAPED_FILE_COMPLETE",
+                    "query_hash": query_hash,
+                    "product_name": spec_item,
+                    "scrape_file_empty": True,
+                    "source": source
+                })
+                return
+
+            # Process each row from data, since we already converted csv reader to list and stored in data
+            for row in data:
                 print(chalk.red(f"ID: {row['product_id']}, Brand: {row['brand']}, "
                       f"Product: {row['product_name']}, Curr Price: {row['curr_price']}"))
 
@@ -363,9 +384,8 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
                 PRICE_publish_to_queue({
                     "type": "PROCESSING_SCRAPED_FILE_COMPLETE",
                     "query_hash": query_hash,
-                    "product_name":row['product_name']
+                    "product_name": data[-1]['product_name']
                 })
-
             except Exception as db_error:
                 db_success = False
                 print(chalk.red(f"DB operation failed: {db_error}"))

@@ -37,6 +37,7 @@ process_status = {
 }
 
 recd_products = []  # Global list to store products for each query
+empty_scrape_files = []  # to track sources with no results at all
 
 def reset_query_info():
     """Completely clear process_info and recd_products for a new query."""
@@ -44,7 +45,10 @@ def reset_query_info():
         curr_query_info[key] = None
     global recd_products
     recd_products.clear()  # Clear recd_products to avoid data carryover
-    print(chalk.blue("[INFO] Reset process_info and recd_products for a new query "))
+    global empty_scrape_files
+    empty_scrape_files.clear()
+    print(chalk.blue("[INFO] Reset process_info,recd_products, and empty_scrape_files for a new query "))
+
 
 def reset_process_status():
     for key in process_status:
@@ -321,25 +325,36 @@ def main():
 
             elif msg.get('type') == 'PROCESSING_SCRAPED_FILE_COMPLETE':
                 try:
-                    print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS"))
-                    print(chalk.green(f"[INFO] Currently have {len(recd_products)} products"))
-                    curr_query_info['product_name'] = msg.get('product_name')
-                    if recd_products and curr_query_info["price_report_subdir"]:
-                        calc_percentage_diff_driver(
-                            curr_query_info["price_report_subdir"],
-                            recd_products,
-                            curr_query_info['source_file']
-                        )
-                        print(chalk.green(f"[SUCCESS] Report generated and stored in {curr_query_info['price_report_subdir']}"))
+                    #if scraped output file is empty (only containing headers)
+                    if msg.get('scrape_file_empty'):
+                        
+                        print(chalk.yellow("[INFO] Scraped file was empty"))
+                        empty_scrape_files.append(msg.get('source'))
+                        
+                      
+                    #scraped output file NOT empty
                     else:
-                        print(chalk.yellow("[INFO] No price changes detected for this file"))
-                        if curr_query_info.get('brand') and curr_query_info.get('category') and curr_query_info.get('product_name'):
-                            no_change_sources.append(
-                                f"{curr_query_info['source']}"
+                        print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS"))
+                        print(chalk.green(f"[INFO] Currently have {len(recd_products)} products"))
+                        curr_query_info['product_name'] = msg.get('product_name')
+                        if recd_products and curr_query_info["price_report_subdir"]:
+                            calc_percentage_diff_driver(
+                                curr_query_info["price_report_subdir"],
+                                recd_products,
+                                curr_query_info['source_file']
                             )
+                            print(chalk.green(f"[SUCCESS] Report generated and stored in {curr_query_info['price_report_subdir']}"))
+                        else:
+                            print(chalk.yellow("[INFO] No price changes detected for this file"))
+                            if curr_query_info.get('brand') and curr_query_info.get('category') and curr_query_info.get('product_name'):
+                                no_change_sources.append(
+                                    f"{curr_query_info['source']}"
+                                )
+
 
                     # Update process status and notify compare queue
                     process_status['PROCESSING_SCRAPED_FILE_COMPLETE'] = True
+
                     COMPARE_publish_to_queue({
                         'type': 'PRICE_WORKER_COMPLETE',
                         'query_hash': curr_query_info['query_hash'],
@@ -387,41 +402,6 @@ def main():
                 except Exception as e:
                     print(chalk.red(f"CALLBACK - CASE - PROCESS SOLD ITEMS ERROR: {e}"))
 
-
-                try:
-                    print(chalk.green(f"[PROCESSING] SOLD ITEMS"))
-                    sold_items_dict = msg.get('sold_items_dict')
-                    
-                    if sold_items_dict:
-                        if not curr_query_info["sold_report_subdir"]:
-                            curr_query_info["sold_report_subdir"] = make_sold_report_subdir(
-                                curr_query_info['sold_report_root_dir'],
-                                curr_query_info['brand'],
-                                curr_query_info['category'],
-                                curr_query_info['query_hash']
-                            )
-                        
-                        sold_items_file_path = os.path.join(
-                            curr_query_info["sold_report_subdir"],
-                            f"SOLD_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.csv"
-                        )
-                        
-                        with open(sold_items_file_path, 'w', newline='', encoding='utf-8') as file:
-                            writer = csv.DictWriter(file, fieldnames=[
-                                'product_id', 'product_name', 'curr_price', 'curr_scrape_date',
-                                'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source'
-                            ])
-                            writer.writeheader()
-                            for product_id, product_data in sold_items_dict.items():
-                                writer.writerow({'product_id': product_id, **product_data})
-                        print(chalk.green(f"[SUCCESS] Sold items written to {sold_items_file_path}"))
-                    else:
-                        print(chalk.magenta(f"[INFO] No sold items for query {curr_query_info['query_hash']}"))
-
-                    process_status['PROCESSING_SOLD_ITEMS_COMPLETE'] = True
-
-                except Exception as e:
-                    print(chalk.red(f"CALLBACK - CASE - PROCESS SOLD ITEMS ERROR: {e}"))
 
             
             elif msg.get('type') == 'PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY':
