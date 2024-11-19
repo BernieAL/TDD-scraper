@@ -405,27 +405,20 @@ def main():
 
             
             elif msg.get('type') == 'PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY':
+               
                 if processes_up_to_end_signal():
                     try:
                         print(chalk.blue(f"[INFO] All processes complete, preparing email report..."))
                         print(chalk.blue(f"[INFO] Total products processed: {len(recd_products)}"))
                         
                         email_sent = send_email_with_report(
-                            msg.get('email'),
-                            curr_query_info['price_report_subdir'],
-                            curr_query_info['sold_report_subdir'],
-                            f"{curr_query_info['brand']}_{curr_query_info['category']}_{curr_query_info['product_name']}",
-                            no_change_sources
-                        )
-
-                        if not email_sent:
-                            exit_with_error("[ERROR] Email failed to send")
-                            
-                        print(chalk.green("[SUCCESS] Email sent successfully"))
-                        PROCESS_publish_to_queue({
-                            'type': "EMAIL_SENT",
-                            'query_hash': curr_query_info['query_hash']
-                        })
+                                {'email': msg.get('email')},  # Format msg properly as a dict with email
+                                curr_query_info['price_report_subdir'],
+                                curr_query_info['sold_report_subdir'],
+                                f"{curr_query_info['brand']}_{curr_query_info['category']}_{curr_query_info['product_name']}",
+                                no_change_sources,
+                                empty_scrape_files
+                            )
                     except Exception as e:
                         exit_with_error(f"Error during email sending: {e}")
                     finally:

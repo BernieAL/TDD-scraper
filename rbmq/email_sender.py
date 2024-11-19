@@ -56,66 +56,75 @@ def attach_file_from_sub_directory(message,report_subdir):
     else:
          print(chalk.yellow(f"No report directory provided or it does not exist: {report_subdir}"))
 
-def send_email_with_report(receiver_email, price_report_subdir,
-                           sold_report_subdir,query,no_price_change_sources=None,empty_scrape_files=None):
-    
-      # Debug prints
-    print("DEBUG values before email:")
-    print(f"receiver_email: {receiver_email}")
-    print(f"price_report_subdir: {price_report_subdir}")
-    print(f"sold_report_subdir: {sold_report_subdir}")
-    print(f"query: {query}")
-    print(f"no_price_change_sources: {no_price_change_sources}")
-    print(f"type of no_price_change_sources: {type(no_price_change_sources)}")
-
-    #ensure no_price_change_source is always a list to avoid none-type iterable error
-    no_price_change_sources = no_price_change_sources or []
-
-    print(chalk.red(f"(EMAIL SENDER) subdir valid path: {os.path.isdir(price_report_subdir)}"))
-    
-    # Create a secure SSL context
-    context = ssl.create_default_context()
-
-    # Email message setup
-    message = MIMEMultipart()
-    message['From'] = sender_email
-    message['To'] = receiver_email
-    message['Subject'] = subject
-
-    # Email body
-    body = f"Hi there,\n\nPlease find attached the daily price change + sold reports for \n {query}. \n"
+def send_email_with_report(msg, price_report_subdir, sold_report_subdir,query,no_price_change_sources=None,empty_scrape_files=None):
    
-    if empty_scrape_files:
-        body += "\nThe following sources returned no results:\n"
-        for source in empty_scrape_files:
-            body += f"{source}\n"
-
-    #add details about sources with no prices changes to message body
-    if len(no_price_change_sources) > 0:
-        body += "\n The following sources had no price changes: :\n"
-        for source in no_price_change_sources:
-           body += f"{source}\n"
-    
-    
-    message.attach(MIMEText(body, 'plain'))
-
-    attach_file_from_sub_directory(message,price_report_subdir)
-    attach_file_from_sub_directory(message,sold_report_subdir)
-   
-
-
-    #email gets sent whether theres generated reports or not 
-    try:
-        # Send the email with the report attached
-        with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
-            server.login(sender_email, app_password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
-            print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {receiver_email} - FOR QUERY: {query}"))
-        return True
-    
-    except Exception as e:
-        print(chalk.red(f"There was an error sending the email: {e}"))
+   if 'email' not in msg:
+        print(chalk.red("Error: No email address provided in message"))
         return False
+
+   # Debug prints
+   print("DEBUG values before email:")
+   print(f"receiver_email: {msg['email']}")
+   print(f"price_report_subdir: {price_report_subdir}")
+   print(f"sold_report_subdir: {sold_report_subdir}")
+   print(f"query: {query}")
+   print(f"no_price_change_sources: {no_price_change_sources}")
+   print(f"type of no_price_change_sources: {type(no_price_change_sources)}")
+
+   #ensure no_price_change_source is always a list to avoid none-type iterable error
+   no_price_change_sources = no_price_change_sources or []
+
+   print(chalk.red(f"(EMAIL SENDER) subdir valid path: {os.path.isdir(price_report_subdir)}"))
+   
+   # Create a secure SSL context
+   context = ssl.create_default_context()
+
+   # Email message setup
+   message = MIMEMultipart()
+   message['From'] = sender_email
+   message['To'] = msg['email']  # Changed from receiver_email
+   message['Subject'] = subject
+
+   # Email body
+   if empty_scrape_files:
+       body = f"""Hi there,\n
+No results were found for your search: {query}
+This could be due to:
+- Item not available
+- Search terms may need adjustment
+- Technical issue
+
+If you are sure there is an error - forward this email to support@example.com for assistance.
+
+Sources that returned no results:\n"""
+       for source in empty_scrape_files:
+           body += f"{source}\n"
+   else:
+       body = f"Hi there,\n\nPlease find attached the daily price change + sold reports for \n {query}. \n"
+
+   #add details about sources with no prices changes to message body
+   if len(no_price_change_sources) > 0:
+       body += "\n The following sources had no price changes: :\n"
+       for source in no_price_change_sources:
+          body += f"{source}\n"
+   
+   message.attach(MIMEText(body, 'plain'))
+
+   attach_file_from_sub_directory(message,price_report_subdir)
+   attach_file_from_sub_directory(message,sold_report_subdir)
+
+   #email gets sent whether theres generated reports or not 
+   try:
+       # Send the email with the report attached
+       with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
+           server.login(sender_email, app_password)
+           server.sendmail(sender_email, msg['email'], message.as_string())  # Changed from receiver_email
+           print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {msg['email']} - FOR QUERY: {query}"))
+       return True
+   
+   except Exception as e:
+       print(chalk.red(f"There was an error sending the email: {e}"))
+       return False
 
 if __name__ == "__main__":
     # Example usage

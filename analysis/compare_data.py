@@ -312,23 +312,44 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
             data = list(csv_reader)
             
             if not data:
-                print(chalk.yellow("File is empty (no data rows)"))
+                
+                """
+                if scraped file is empty:
+                        -scraping may have failed
+                        -fitlering spec item from scraped file may have failed 
+                        -or filtering resulted in empty file - meaning the spec item was not found among scraped result - could indicate SOLD
+                
+                """
+                print(chalk.yellow("Scraped File is empty (no data rows)"))
+
+
                 # Send both completion messages for empty file
                 PRICE_publish_to_queue({
                     "type": "PROCESSING_SOLD_ITEMS_COMPLETE",
                     "sold_items_dict": {},
-                    "query_hash": query_hash
+                    "query_hash": query_hash,
+                    "no_results_reason": "No items found matching your search criteria. This could mean the item is no longer available or there was an issue with the search. If you believe this is incorrect, please forward this email to support@example.com for review."
                 })
                 PRICE_publish_to_queue({
                     "type": "PROCESSING_SCRAPED_FILE_COMPLETE",
                     "query_hash": query_hash,
                     "product_name": spec_item,
                     "scrape_file_empty": True,
-                    "source": source
+                    "source": source,
+                    "empty_file_details": {
+                        "source": source,
+                        "search_term": spec_item,
+                        "possible_reasons": [
+                            "Item not available",
+                            "Search terms may need adjustment",
+                            "Technical issue"
+                        ]
+                    }
                 })
                 return
 
-            # Process each row from data, since we already converted csv reader to list and stored in data
+
+            # if scraped file not empty - Process each row from data, since we already converted csv reader to list and stored in data
             for row in data:
                 print(chalk.red(f"ID: {row['product_id']}, Brand: {row['brand']}, "
                       f"Product: {row['product_name']}, Curr Price: {row['curr_price']}"))
