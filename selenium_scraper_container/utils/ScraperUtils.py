@@ -175,7 +175,7 @@ class ScraperUtils:
         return source,date,brand,category,query_hash
 
    
-    def filter_specific(self, scraped_data_file, specific_item, filtered_subdir, query_hash):
+    def filter_by_specific_item(self, scraped_data_file, specific_item, filtered_subdir, query_hash):
        
 
         # Convert file to DataFrame
@@ -248,5 +248,5 @@ if __name__ == "__main__":
     
    
 
-    utils.filter_specific(input_file_path,spec_item,filtered_subdir,query_hash)
+    utils.filter_by_specific_item(input_file_path,spec_item,filtered_subdir,query_hash)
 

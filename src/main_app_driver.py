@@ -30,6 +30,13 @@ from rbmq.compare_producer import COMPARE_publish_to_queue
 # Initialize the ScraperUtils instance
 utils = ScraperUtils(scraped_data_dir_raw, scraped_data_dir_filtered)
 
+subprocess_status = {
+    'SCRAPE' :False,
+    'FILTER' : False,
+    'COMPARE' : False,
+    'EMAIL' : False
+}
+
 def scrape_process_2(brand, category, specific_item):
 
     current_date = datetime.now().strftime('%Y-%d-%m')
@@ -48,7 +55,7 @@ def scrape_process_2(brand, category, specific_item):
     }
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message
-    wait_until_process_complete(query_hash, "SCRAPE_COMPLETE")
+    wait_until_process_complete(query_hash, "SCRAPE")
 
     if specific_item is not None:
 
@@ -57,12 +64,13 @@ def scrape_process_2(brand, category, specific_item):
         for root, subdir, files in os.walk(output_dir):
             for raw_file in files:
                 raw_file_path = os.path.join(root, raw_file)
-                utils.filter_specific(raw_file_path, specific_item, filtered_subdir, query_hash)
+                #if spec_item, filter raw scrapa down to spec item only, save as file inside provided output_dir
+                utils.filter_by_specific_item(raw_file_path, specific_item, filtered_subdir, query_hash)
         return query_hash, filtered_subdir
 
     return query_hash, output_dir
 
-def wait_until_process_complete(query_hash=None, expected_type=None):
+def wait_until_process_complete(query_hash=None, expected_subprocess=None):
     """
     Waits for a specific message type for the given query_hash.
     """
@@ -80,6 +88,7 @@ def wait_until_process_complete(query_hash=None, expected_type=None):
     start_time = time.time()
     
     def callback(ch, method, properties, body):
+        
         try:
             message = json.loads(body)
             print(chalk.blue(f"Received message: {message}"))
@@ -90,28 +99,42 @@ def wait_until_process_complete(query_hash=None, expected_type=None):
             msg_type = message.get('type')
             msg_query_hash = message.get('query_hash')
 
-            # Check if this is the message we're waiting for
+            # Check if msg matches query response we're waiting for
             if msg_query_hash == query_hash:
-                if msg_type == expected_type:
-                    print(chalk.green(f":::Received {expected_type} for query_hash: {query_hash}"))
+                
+                #check if msg exprected type is what we're waiting for Ex. SCRAPE,COMPARE etc..
+                if msg_type == expected_subprocess:
+                    print(chalk.green(f":::Received {expected_subprocess} for query_hash: {query_hash}"))
                     channel.stop_consuming()
-                elif msg_type == 'ERROR':
-                    print(chalk.red(f"Error occurred for query_hash: {query_hash}"))
+
+                    #check status of subprocess, did it pass or fail? -. Ex. if SCRAPE has error - would be FAIL
+                    
+                    if message.get('status')== 'PASS':
+                        channel.stop_consuming()
+                        subprocess_status[expected_subprocess] = True
+
+                    elif message.get('status') == 'FAIL':
+                        channel.stop_consuming()
+                        subprocess_status[expected_subprocess] = False
+
+                #if msg not expected type for query hash
+                else:
+                    print(chalk.red(f"Recieved {msg_type} but Expected {expected_subprocess} for query_hash: {query_hash}"))
                     channel.stop_consuming()
                     raise Exception(message.get('error', 'Unknown error occurred'))
 
             # Check for timeout
             if time.time() - start_time > timeout:
-                print(chalk.yellow(f"Timeout waiting for {expected_type}"))
+                print(chalk.yellow(f"Timeout waiting for {expected_subprocess}"))
                 channel.stop_consuming()
-                raise TimeoutError(f"Timeout waiting for {expected_type}")
+                raise TimeoutError(f"Timeout waiting for {expected_subprocess}")
 
         except Exception as e:
             print(chalk.red(f"Error processing message: {e}"))
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
     try:
-        print(chalk.blue(f":::Waiting for {expected_type} message for query_hash: {query_hash}"))
+        print(chalk.blue(f":::Waiting for {expected_subprocess} message for query_hash: {query_hash}"))
         channel.basic_consume(queue='process_queue', on_message_callback=callback)
         channel.start_consuming()
     except Exception as e:
@@ -183,29 +206,68 @@ def driver_function_from_search_form(msg):
 
     query_hash,output_dir = scrape_process_2(brand,category,spec_item)
 
-     # After scrape is complete, publish compare message
-    COMPARE_publish_to_queue({
-        'type': 'POPULATED_OUTPUT_DIR', 
-        'output_dir': output_dir,
-        'query_hash': query_hash,
-        'specific_item': spec_item
-    })
-    
-    # Wait for compare completion
-    wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
-    
-    # Signal price worker that all files are processed
-    PRICE_publish_to_queue({
-        "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
-        "query_hash": query_hash,
-        "brand": brand,
-        "category": category,
-        "specific_item": spec_item,
-        "email":requester_email,
-    })
-    
-    # Wait for email confirmation
-    wait_until_process_complete(query_hash, "EMAIL_SENT")
+    if subprocess_status['SCRAPE'] == False:
+         # Signal price worker that all files are processed
+        PRICE_publish_to_queue({
+            "type": "PROCESS_FAILED",
+            "sub_process":"SCRAPE",
+            "query_hash": query_hash,
+            "brand": brand,
+            "category": category,
+            "specific_item": spec_item,
+            "email":requester_email,
+        })
+        return
+
+    elif subprocess_status['FILTER'] == False:
+        # Signal price worker that all files are processed
+        PRICE_publish_to_queue({
+            "type": "PROCESS_FAILED",
+            "sub_process":"FILTER",
+            "query_hash": query_hash,
+            "brand": brand,
+            "category": category,
+            "specific_item": spec_item,
+            "email":requester_email,
+        })
+        return
+    elif subprocess_status['COMPARE'] == False:
+         # Signal price worker that all files are processed
+        PRICE_publish_to_queue({
+            "type": "PROCESS_FAILED",
+            "sub_process":"COMPARE",
+            "query_hash": query_hash,
+            "brand": brand,
+            "category": category,
+            "specific_item": spec_item,
+            "email":requester_email,
+        })
+        return
+    else:
+
+        # After scrape is complete, publish compare message
+        COMPARE_publish_to_queue({
+            'type': 'POPULATED_OUTPUT_DIR', 
+            'output_dir': output_dir,
+            'query_hash': query_hash,
+            'specific_item': spec_item
+        })
+        
+        # Wait for compare completion
+        wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+        
+        # Signal price worker that all files are processed
+        PRICE_publish_to_queue({
+            "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
+            "query_hash": query_hash,
+            "brand": brand,
+            "category": category,
+            "specific_item": spec_item,
+            "email":requester_email,
+        })
+        
+        # Wait for email confirmation
+        wait_until_process_complete(query_hash, "EMAIL_SENT")
 
 
 # Example usage in your code

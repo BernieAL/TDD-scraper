@@ -21,6 +21,7 @@ from db.db_utils import (
     DB_get_sold_daily
 )
 from rbmq.price_change_producer import PRICE_publish_to_queue
+from rbmq.price_change_producer import PROCESS_publish_to_queue
 
 # Directory setup for input/output
 curr_dir = os.path.dirname(os.path.abspath(__file__))

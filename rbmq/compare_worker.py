@@ -65,6 +65,7 @@ def main():
                         successful_files = 0
                         total_files = 0
                         
+                        #read files in output dir
                         for root, _, files in os.walk(process_info['output_dir']):
                             for file in files:
                                 total_files += 1
@@ -91,9 +92,13 @@ def main():
                                 })
                             
                             PROCESS_publish_to_queue({
-                                'type': 'COMPARE_COMPLETE',
-                                'query_hash': process_info['query_hash']
+                                'type': 'COMPARE',
+                                'status':'PASS',
+                                'query_hash': process_info['query_hash'],
+                                'output_dir': process_info['output_dir'],
+                                'specific_item': msg.get('specific_item'),  # Forward specific_item if present
                             })
+                            
                         else:
                             raise Exception("No files were processed successfully")
                     else:
@@ -103,11 +108,16 @@ def main():
                     print(chalk.red(f"Error processing POPULATED_OUTPUT_DIR message: {e}"))
                     # Send error message
                     if process_info['query_hash']:
-                        PROCESS_publish_to_queue({
-                            'type': 'ERROR',
+                        fail_msg = {
+                            'type': 'COMPARE',
+                            'status':'FAIL',
                             'query_hash': process_info['query_hash'],
-                            'error': str(e)
-                        })
+                            'output_dir': process_info['output_dir'],
+                            'specific_item': msg.get('specific_item'),  # Forward specific_item if present
+                        }
+                        PROCESS_publish_to_queue(fail_msg)
+
+                        
 
             elif msg.get('type') == 'PRICE_WORKER_COMPLETE':
                 print(chalk.green("Received PRICE_WORKER_COMPLETE confirmation \n --------------- "))

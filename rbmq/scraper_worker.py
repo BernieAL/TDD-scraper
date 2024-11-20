@@ -47,21 +47,38 @@ def main():
             scraped_file = run_italist_scraper(brand, category, output_dir, query_hash,msg.get('local_test'))
             
             complete_msg = {
-                'type': 'SCRAPE_COMPLETE',
+                'type': 'SCRAPE',
+                'status':'PASS',
                 'query_hash': query_hash,
                 'output_dir': output_dir,
                 'specific_item': msg.get('specific_item'),  # Forward specific_item if present
                 'scraped_file': scraped_file
             }
             
-            print(chalk.blue(f"Publishing completion message: {complete_msg}"))
+            print(chalk.blue(f"Publishing Scrape SUCCESS Msg: {complete_msg}"))
             PROCESS_publish_to_queue(complete_msg)
             print(chalk.green("SCRAPE_COMPLETE message sent to process_queue."))
 
         except Exception as e:
+
+            fail_msg = {
+                'type': 'SCRAPE',
+                'status':'FAIL',
+                'query_hash': query_hash,
+                'output_dir': output_dir,
+                'specific_item': msg.get('specific_item'),  # Forward specific_item if present
+                'scraped_file': scraped_file
+            }
+            
+           
+            print(chalk.blue(f"Publishing Scrape FAIL Msg: {fail_msg}"))
+            PROCESS_publish_to_queue(fail_msg)
+            print(chalk.green("SCRAPE_COMPLETE message sent to process_queue."))
+
             print(chalk.red(f"Error processing message: {e}"))
             import traceback
             print(chalk.red(f"Traceback: {traceback.format_exc()}"))
+            
         finally:
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
