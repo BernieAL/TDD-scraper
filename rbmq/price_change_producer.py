@@ -67,11 +67,13 @@ def PRICE_publish_to_queue(product_msg):
         #                         properties=pika.BasicProperties(delivery_mode=pika.DeliveryMode.Persistent))
 
         #if not end signal message - convert dates to strings to not throw serialization error cause of datetime format
-        if product_msg.get('type') not in ['NEW_QUERY','PROCESSING_SOLD_ITEMS_COMPLETE','PROCESSING_SCRAPED_FILE_COMPLETE','PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY']:
+        # if product_msg.get('type') not in ['NEW_QUERY','PROCESSING_SOLD_ITEMS_COMPLETE','PROCESSING_SCRAPED_FILE_COMPLETE','PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY']:
+        #     product_msg['curr_scrape_date'] = (product_msg['curr_scrape_date']).strftime('%Y-%m-%d')
+        #     product_msg['prev_scrape_date'] = (product_msg['prev_scrape_date']).strftime('%Y-%m-%d')
+
+        if product_msg.get('type') == ['PRODUCT_PRICE_CHANGE']:
             product_msg['curr_scrape_date'] = (product_msg['curr_scrape_date']).strftime('%Y-%m-%d')
             product_msg['prev_scrape_date'] = (product_msg['prev_scrape_date']).strftime('%Y-%m-%d')
-
-        
     
         # publish product to quueue
         channel.basic_publish(exchange='', 

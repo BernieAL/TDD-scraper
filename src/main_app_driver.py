@@ -71,8 +71,8 @@ def empty_file_check(output_dir,file,query_hash):
 
 
 
-def scrape_process_2(brand, category, specific_item):
 
+def scrape_process_2(brand, category, specific_item):
     current_date = datetime.now().strftime('%Y-%d-%m')
     query = f"{brand}_{category}"  # e.g., Prada_bags, Gucci_shirts
     query_hash = utils.generate_hash(query, specific_item, current_date)
@@ -85,34 +85,34 @@ def scrape_process_2(brand, category, specific_item):
         'output_dir': output_dir,
         'specific_item': specific_item,
         'query_hash': query_hash,
-        'local_test':False #set to True to use locally saved copy, False to use live site
+        'local_test': True #set to True to use locally saved copy, False to use live site
     }
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message
     wait_until_process_complete(query_hash, "SCRAPE")
 
     if subprocess_status['SCRAPE'] == False:
-        return query_hash,None
+        return query_hash, None
 
     if specific_item is not None:
-
-        
         filtered_subdir = utils.make_filtered_sub_dir(brand, category, scraped_data_dir_filtered, query_hash)
         for root, subdir, files in os.walk(output_dir):
             for raw_file in files:
                 raw_file_path = os.path.join(root, raw_file)
-                #if spec_item, filter raw scrapa down to spec item only, save as file inside provided output_dir
+                #if spec_item, filter raw scrape down to spec item only, save as file inside provided output_dir
                 filtered_file = utils.filter_by_specific_item(raw_file_path, specific_item, filtered_subdir, query_hash)
                 
-                empty_check_result = empty_file_check(filtered_file)
+                # Pass all required arguments to empty_file_check
+                empty_check_result = empty_file_check(filtered_subdir, filtered_file, query_hash)
                 if empty_check_result != "SUCCESS":
-                        subprocess_status['FILTER'] = False
-                        return query_hash,None
+                    subprocess_status['FILTER'] = False
+                    return query_hash, None
 
         subprocess_status['FILTER'] = True
         return query_hash, filtered_subdir
 
     return query_hash, output_dir
+
 
 def wait_until_process_complete(query_hash=None, expected_subprocess=None):
     """
@@ -176,7 +176,7 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
                 channel.stop_consuming()
                 raise Exception(message.get('error', 'Unknown error occurred'))
 
-            # Check for timeout
+            # Check for timeout on current subprocess
             if time.time() - start_time > timeout:
                 print(chalk.yellow(f"Timeout waiting for {expected_subprocess}"))
                 channel.stop_consuming()
@@ -197,10 +197,8 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
             connection.close()
         except Exception as e:
             print(chalk.red(f"Error closing connection: {e}"))
+
 def driver_function_from_input_file():
-
-
-    
     with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
         csv_reader = csv.reader(file)
         next(csv_reader)  # Skip header line
@@ -229,7 +227,7 @@ def driver_function_from_input_file():
                 })
                 
                 # Wait for compare completion
-                wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+                wait_until_process_complete(query_hash, "COMPARE")
                 
                 # Signal price worker that all files are processed
                 PRICE_publish_to_queue({
@@ -242,14 +240,15 @@ def driver_function_from_input_file():
                 })
                 
                 # Wait for email confirmation
-                wait_until_process_complete(query_hash, "EMAIL_SENT")
+                wait_until_process_complete(query_hash, "EMAIL")
 
             except Exception as e:
                 print(chalk.red(f"Scrape process failure: {e}"))
 
         print("Processed all rows in input file")
+
 def driver_function_from_input_file_2():
-    def driver_function_from_input_file():
+
     with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
         csv_reader = csv.reader(file)
         next(csv_reader)  # Skip header line
@@ -270,29 +269,11 @@ def driver_function_from_input_file_2():
                 query_hash, output_dir = scrape_process_2(brand, category, specific_item)
 
                 if subprocess_status['SCRAPE'] == False:
-                    print(chalk.red("Scrape process failed"))
-                    PRICE_publish_to_queue({
-                        "type": "PROCESS_FAILED",
-                        "sub_process": "SCRAPE",
-                        "query_hash": query_hash,
-                        "brand": brand,
-                        "category": category,
-                        "specific_item": specific_item,
-                        "email": email,
-                    })
+                    print(chalk.red(f"[ERROR] Scrape failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {specific_item}"))
                     continue
                 
                 elif subprocess_status['FILTER'] == False:
-                    print(chalk.red("Filter process failed"))
-                    PRICE_publish_to_queue({
-                        "type": "PROCESS_FAILED",
-                        "sub_process": "FILTER",
-                        "query_hash": query_hash,
-                        "brand": brand,
-                        "category": category,
-                        "specific_item": specific_item,
-                        "email": email,
-                    })
+                    print(chalk.red(f"[ERROR] Filter failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {specific_item}"))
                     continue
 
                 # After scrape is complete, publish compare message
@@ -304,19 +285,10 @@ def driver_function_from_input_file_2():
                 })
                 
                 # Wait for compare completion
-                wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+                wait_until_process_complete(query_hash, "COMPARE")
                 
                 if subprocess_status['COMPARE'] == False:
-                    print(chalk.red("Compare process failed"))
-                    PRICE_publish_to_queue({
-                        "type": "PROCESS_FAILED",
-                        "sub_process": "COMPARE",
-                        "query_hash": query_hash,
-                        "brand": brand,
-                        "category": category,
-                        "specific_item": specific_item,
-                        "email": email,
-                    })
+                    print(chalk.red(f"[ERROR] Compare failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {specific_item}"))
                     continue
                 
                 # Signal price worker that all files are processed
@@ -330,12 +302,18 @@ def driver_function_from_input_file_2():
                 })
                 
                 # Wait for email confirmation
-                wait_until_process_complete(query_hash, "EMAIL_SENT")
+                wait_until_process_complete(query_hash, "EMAIL")
+                
+                if subprocess_status['EMAIL'] == False:
+                    print(chalk.red(f"[ERROR] Email failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {specific_item}"))
+                    continue
+                
+                print(chalk.green(f"[SUCCESS] Complete process successful for query {query_hash}"))
 
             except Exception as e:
-                print(chalk.red(f"Scrape process failure: {e}"))
+                print(chalk.red(f"[ERROR] Process failure for query {query_hash}: {e}"))
 
-        print("Processed all rows in input file")
+        print(chalk.green("Processed all rows in input file"))
 
 def driver_function_from_search_form(msg):
 
@@ -345,37 +323,15 @@ def driver_function_from_search_form(msg):
     requester_email = msg['user_email']
     search_id = msg['search_id']
 
-    query_hash,output_dir =  scrape_process_2(brand,category,spec_item)
+    query_hash, output_dir = scrape_process_2(brand, category, spec_item)
 
     if subprocess_status['SCRAPE'] == False:
-    
-         # Signal price worker that all files are processed
-        PRICE_publish_to_queue({
-            "type": "PROCESS_FAILED",
-            "sub_process":"SCRAPE",
-            "query_hash": query_hash,
-            "brand": brand,
-            "category": category,
-            "specific_item": spec_item,
-            "email":requester_email,
-        })
+        print(chalk.red(f"[ERROR] Scrape failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {spec_item}"))
         return
 
     elif subprocess_status['FILTER'] == False:
-        # Signal price worker that all files are processed
-        PRICE_publish_to_queue({
-            "type": "PROCESS_FAILED",
-            "sub_process":"FILTER",
-            "query_hash": query_hash,
-            "brand": brand,
-            "category": category,
-            "specific_item": spec_item,
-            "email":requester_email,
-        })
+        print(chalk.red(f"[ERROR] Filter failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {spec_item}"))
         return
-    
-   
-  
 
     # After scrape is complete, publish compare message
     COMPARE_publish_to_queue({
@@ -386,35 +342,30 @@ def driver_function_from_search_form(msg):
     })
     
     # Wait for compare completion
-    wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+    wait_until_process_complete(query_hash, "COMPARE")
     
     if subprocess_status['COMPARE'] == False:
-        # Signal price worker that all files are processed
-        PRICE_publish_to_queue({
-            "type": "PROCESS_FAILED",
-            "sub_process":"COMPARE",
-            "query_hash": query_hash,
-            "brand": brand,
-            "category": category,
-            "specific_item": spec_item,
-            "email":requester_email,
-        })
+        print(chalk.red(f"[ERROR] Compare failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {spec_item}"))
         return
 
-    # Signal price worker that all files are processed
+    # Signal price worker that all files for current query are processed
     PRICE_publish_to_queue({
         "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
         "query_hash": query_hash,
         "brand": brand,
         "category": category,
         "specific_item": spec_item,
-        "email":requester_email,
+        "email": requester_email,
     })
     
-    # Wait for email confirmation
-    wait_until_process_complete(query_hash, "EMAIL_SENT")
-
-
+    # Wait for email process to complete
+    wait_until_process_complete(query_hash, "EMAIL")
+    
+    if subprocess_status['EMAIL'] == False:
+        print(chalk.red(f"[ERROR] Email failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {spec_item}"))
+        return
+    
+    print(chalk.green(f"[SUCCESS] Complete process successful for query {query_hash}"))
 # Example usage in your code
 if __name__ == "__main__":
     driver_function_from_search_form()

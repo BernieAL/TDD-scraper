@@ -419,8 +419,24 @@ def main():
                                 no_change_sources,
                                 empty_scrape_files
                             )
+                       
+                        PROCESS_publish_to_queue({
+                            'type': 'EMAIL',
+                            'status': 'PASS' if email_sent else 'FAIL',
+                            'query_hash': curr_query_info['query_hash']
+                        })
+
+                        if not email_sent:
+                            print(chalk.red("[ERROR] Email failed to send"))
+                        
                     except Exception as e:
                         exit_with_error(f"Error during email sending: {e}")
+                        PROCESS_publish_to_queue({
+                            'type': 'EMAIL',
+                            'status': 'FAIL', 
+                            'query_hash': query_hash
+                        })
+                    
                     finally:
                         no_change_sources.clear()
                         reset_query_info()
