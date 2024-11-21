@@ -72,7 +72,7 @@ def empty_file_check(output_dir,file,query_hash):
 
 
 
-def scrape_process_2(brand, category, specific_item):
+def scrape_process_2(brand, category, specific_item,local_test=True):
     current_date = datetime.now().strftime('%Y-%d-%m')
     query = f"{brand}_{category}"  # e.g., Prada_bags, Gucci_shirts
     query_hash = utils.generate_hash(query, specific_item, current_date)
@@ -85,7 +85,7 @@ def scrape_process_2(brand, category, specific_item):
         'output_dir': output_dir,
         'specific_item': specific_item,
         'query_hash': query_hash,
-        'local_test': True #set to True to use locally saved copy, False to use live site
+        'local_test': local_test #set to True to use locally saved copy, False to use live site
     }
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message
@@ -323,7 +323,8 @@ def driver_function_from_search_form(msg):
     requester_email = msg['user_email']
     search_id = msg['search_id']
 
-    query_hash, output_dir = scrape_process_2(brand, category, spec_item)
+    LOCAL_TEST = False
+    query_hash, output_dir = scrape_process_2(brand, category, spec_item,LOCAL_TEST)
 
     if subprocess_status['SCRAPE'] == False:
         print(chalk.red(f"[ERROR] Scrape failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {spec_item}"))

@@ -71,9 +71,14 @@ def PRICE_publish_to_queue(product_msg):
         #     product_msg['curr_scrape_date'] = (product_msg['curr_scrape_date']).strftime('%Y-%m-%d')
         #     product_msg['prev_scrape_date'] = (product_msg['prev_scrape_date']).strftime('%Y-%m-%d')
 
-        if product_msg.get('type') == ['PRODUCT_PRICE_CHANGE']:
-            product_msg['curr_scrape_date'] = (product_msg['curr_scrape_date']).strftime('%Y-%m-%d')
-            product_msg['prev_scrape_date'] = (product_msg['prev_scrape_date']).strftime('%Y-%m-%d')
+
+        #convert date objects retrieved from db to strings only for product price changes
+        if product_msg.get('type') == 'PRODUCT_PRICE_CHANGE':
+            if 'curr_scrape_date' in product_msg:
+                product_msg['curr_scrape_date'] = product_msg['curr_scrape_date'].strftime('%Y-%m-%d')
+            if 'prev_scrape_date' in product_msg:
+                product_msg['prev_scrape_date'] = product_msg['prev_scrape_date'].strftime('%Y-%m-%d')
+
     
         # publish product to quueue
         channel.basic_publish(exchange='', 
