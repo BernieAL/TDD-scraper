@@ -37,6 +37,40 @@ subprocess_status = {
     'EMAIL' : False
 }
 
+
+def empty_file_check(output_dir,file,query_hash):
+
+    """
+    checks if given file has no content other than headers
+    """
+    
+    
+    try:
+        with open(file) as f:
+            reader = csv.reader(f)
+
+            #skip headers
+            next(reader) #date
+            next(reader) # query
+            next(reader) #headers
+            next(reader) #delimiter
+
+            #check for any addtl rows besides headers
+            if not list(reader):
+                return "EMPTY_FILE"
+            
+            return "SUCCESS"
+        
+    except Exception as e:
+        print(chalk.red(f"Error checking file:{e}"))
+        return "FILE_CHECK_ERROR"
+
+    
+
+
+
+
+
 def scrape_process_2(brand, category, specific_item):
 
     current_date = datetime.now().strftime('%Y-%d-%m')
@@ -57,6 +91,9 @@ def scrape_process_2(brand, category, specific_item):
     # Wait specifically for SCRAPE_COMPLETE message
     wait_until_process_complete(query_hash, "SCRAPE")
 
+    if subprocess_status['SCRAPE'] == False:
+        return query_hash,None
+
     if specific_item is not None:
 
         
@@ -65,7 +102,14 @@ def scrape_process_2(brand, category, specific_item):
             for raw_file in files:
                 raw_file_path = os.path.join(root, raw_file)
                 #if spec_item, filter raw scrapa down to spec item only, save as file inside provided output_dir
-                utils.filter_by_specific_item(raw_file_path, specific_item, filtered_subdir, query_hash)
+                filtered_file = utils.filter_by_specific_item(raw_file_path, specific_item, filtered_subdir, query_hash)
+                
+                empty_check_result = empty_file_check(filtered_file)
+                if empty_check_result != "SUCCESS":
+                        subprocess_status['FILTER'] = False
+                        return query_hash,None
+
+        subprocess_status['FILTER'] = True
         return query_hash, filtered_subdir
 
     return query_hash, output_dir
@@ -100,15 +144,24 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
             msg_query_hash = message.get('query_hash')
 
             # Check if msg matches query response we're waiting for
-            if msg_query_hash == query_hash:
-                
-                #check if msg exprected type is what we're waiting for Ex. SCRAPE,COMPARE etc..
-                if msg_type == expected_subprocess:
+            if msg_query_hash == query_hash and msg_type == expected_subprocess:
                     print(chalk.green(f":::Received {expected_subprocess} for query_hash: {query_hash}"))
-                    channel.stop_consuming()
-
+                
+                    if expected_subprocess == "SCRAPE" and message.get('status') == 'PASS':
                     #check status of subprocess, did it pass or fail? -. Ex. if SCRAPE has error - would be FAIL
-                    
+
+                        #check if scraped file is empty
+                        scraped_file = message.get('scraped_file')
+                        if scraped_file:
+                            empty_check_result = empty_file_check(message.get('output_dir'),scraped_file,query_hash)
+                            
+                            if empty_check_result != "SUCCESS":
+                                subprocess_status[expected_subprocess] = False
+                                channel.stop_consuming()
+                                return
+                            
+                            
+                            
                     if message.get('status')== 'PASS':
                         channel.stop_consuming()
                         subprocess_status[expected_subprocess] = True
@@ -117,11 +170,11 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
                         channel.stop_consuming()
                         subprocess_status[expected_subprocess] = False
 
-                #if msg not expected type for query hash
-                else:
-                    print(chalk.red(f"Recieved {msg_type} but Expected {expected_subprocess} for query_hash: {query_hash}"))
-                    channel.stop_consuming()
-                    raise Exception(message.get('error', 'Unknown error occurred'))
+            #if msg not expected type for query hash
+            else:
+                print(chalk.red(f"Recieved {msg_type} but Expected {expected_subprocess} for query_hash: {query_hash}"))
+                channel.stop_consuming()
+                raise Exception(message.get('error', 'Unknown error occurred'))
 
             # Check for timeout
             if time.time() - start_time > timeout:
@@ -195,6 +248,94 @@ def driver_function_from_input_file():
                 print(chalk.red(f"Scrape process failure: {e}"))
 
         print("Processed all rows in input file")
+def driver_function_from_input_file_2():
+    def driver_function_from_input_file():
+    with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)  # Skip header line
+
+        email = 'balmanzar883@gmail.com'
+
+        for file_row in csv_reader:
+            if not file_row or not any(file_row):
+                continue
+            
+            try:
+                brand = file_row[0].strip().upper()
+                category = file_row[1].strip().upper()
+                specific_item = file_row[2].strip().upper() if len(file_row) > 2 else None
+                print(chalk.red(f"(MAIN) SPECIFIC ITEM - {specific_item}"))
+
+                # First run scraping process and wait for completion
+                query_hash, output_dir = scrape_process_2(brand, category, specific_item)
+
+                if subprocess_status['SCRAPE'] == False:
+                    print(chalk.red("Scrape process failed"))
+                    PRICE_publish_to_queue({
+                        "type": "PROCESS_FAILED",
+                        "sub_process": "SCRAPE",
+                        "query_hash": query_hash,
+                        "brand": brand,
+                        "category": category,
+                        "specific_item": specific_item,
+                        "email": email,
+                    })
+                    continue
+                
+                elif subprocess_status['FILTER'] == False:
+                    print(chalk.red("Filter process failed"))
+                    PRICE_publish_to_queue({
+                        "type": "PROCESS_FAILED",
+                        "sub_process": "FILTER",
+                        "query_hash": query_hash,
+                        "brand": brand,
+                        "category": category,
+                        "specific_item": specific_item,
+                        "email": email,
+                    })
+                    continue
+
+                # After scrape is complete, publish compare message
+                COMPARE_publish_to_queue({
+                    'type': 'POPULATED_OUTPUT_DIR', 
+                    'output_dir': output_dir,
+                    'query_hash': query_hash,
+                    'specific_item': specific_item
+                })
+                
+                # Wait for compare completion
+                wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+                
+                if subprocess_status['COMPARE'] == False:
+                    print(chalk.red("Compare process failed"))
+                    PRICE_publish_to_queue({
+                        "type": "PROCESS_FAILED",
+                        "sub_process": "COMPARE",
+                        "query_hash": query_hash,
+                        "brand": brand,
+                        "category": category,
+                        "specific_item": specific_item,
+                        "email": email,
+                    })
+                    continue
+                
+                # Signal price worker that all files are processed
+                PRICE_publish_to_queue({
+                    "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
+                    "query_hash": query_hash,
+                    "brand": brand,
+                    "category": category,
+                    "specific_item": specific_item,
+                    "email": email
+                })
+                
+                # Wait for email confirmation
+                wait_until_process_complete(query_hash, "EMAIL_SENT")
+
+            except Exception as e:
+                print(chalk.red(f"Scrape process failure: {e}"))
+
+        print("Processed all rows in input file")
 
 def driver_function_from_search_form(msg):
 
@@ -204,9 +345,10 @@ def driver_function_from_search_form(msg):
     requester_email = msg['user_email']
     search_id = msg['search_id']
 
-    query_hash,output_dir = scrape_process_2(brand,category,spec_item)
+    query_hash,output_dir =  scrape_process_2(brand,category,spec_item)
 
     if subprocess_status['SCRAPE'] == False:
+    
          # Signal price worker that all files are processed
         PRICE_publish_to_queue({
             "type": "PROCESS_FAILED",
@@ -231,8 +373,23 @@ def driver_function_from_search_form(msg):
             "email":requester_email,
         })
         return
-    elif subprocess_status['COMPARE'] == False:
-         # Signal price worker that all files are processed
+    
+   
+  
+
+    # After scrape is complete, publish compare message
+    COMPARE_publish_to_queue({
+        'type': 'POPULATED_OUTPUT_DIR', 
+        'output_dir': output_dir,
+        'query_hash': query_hash,
+        'specific_item': spec_item
+    })
+    
+    # Wait for compare completion
+    wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
+    
+    if subprocess_status['COMPARE'] == False:
+        # Signal price worker that all files are processed
         PRICE_publish_to_queue({
             "type": "PROCESS_FAILED",
             "sub_process":"COMPARE",
@@ -243,31 +400,19 @@ def driver_function_from_search_form(msg):
             "email":requester_email,
         })
         return
-    else:
 
-        # After scrape is complete, publish compare message
-        COMPARE_publish_to_queue({
-            'type': 'POPULATED_OUTPUT_DIR', 
-            'output_dir': output_dir,
-            'query_hash': query_hash,
-            'specific_item': spec_item
-        })
-        
-        # Wait for compare completion
-        wait_until_process_complete(query_hash, "COMPARE_COMPLETE")
-        
-        # Signal price worker that all files are processed
-        PRICE_publish_to_queue({
-            "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
-            "query_hash": query_hash,
-            "brand": brand,
-            "category": category,
-            "specific_item": spec_item,
-            "email":requester_email,
-        })
-        
-        # Wait for email confirmation
-        wait_until_process_complete(query_hash, "EMAIL_SENT")
+    # Signal price worker that all files are processed
+    PRICE_publish_to_queue({
+        "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
+        "query_hash": query_hash,
+        "brand": brand,
+        "category": category,
+        "specific_item": spec_item,
+        "email":requester_email,
+    })
+    
+    # Wait for email confirmation
+    wait_until_process_complete(query_hash, "EMAIL_SENT")
 
 
 # Example usage in your code
