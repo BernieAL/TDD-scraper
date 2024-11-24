@@ -52,6 +52,10 @@ def new_search():
     if form.validate_on_submit():
         cur = g.db.cursor()
         try:
+            
+            #receive cleaned and prepped form data 
+            clean_data = form.get_data()
+
             #returns id of newly created search record - s
             # search_id is used in triggering scrape function to associate task with specific search record
             cur.execute("""
@@ -61,9 +65,9 @@ def new_search():
                 RETURNING id 
                 """, 
                 (current_user.id, 
-                 form.brand.data,
-                 form.category.data,
-                 form.spec_item.data,
+                 clean_data['brand'],
+                 clean_data['category'],
+                 clean_data['spec_item'],
                  datetime.utcnow()
                 )
             )
@@ -77,9 +81,9 @@ def new_search():
             trigger_scrape(
                 search_id,
                 current_user.email,
-                form.brand.data,
-                form.category.data,
-                form.spec_item.data
+                clean_data['brand'],
+                clean_data['category'],
+                clean_data['spec_item'],
             )
 
             flash('Search request submitted successfully')

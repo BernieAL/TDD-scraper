@@ -15,6 +15,17 @@ class SearchForm(FlaskForm):
     spec_item = StringField('Specific Item')  
     submit = SubmitField('Search')
 
+
+    #form data prep function - remove white space, capitalize, substitute None
+    def get_data(self):
+        """Clean and prepare form data"""
+        return {
+            'brand': self.brand.data.strip(),
+            'category': self.category.data.strip(),
+            #if no spec item specified
+            'spec_item': self.spec_item.data.strip() if self.spec_item.data else None
+    }
+
 class RegistrationForm(FlaskForm):
     email = EmailField('Email', validators=[
         DataRequired(message="Email is required"),

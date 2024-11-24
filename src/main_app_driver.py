@@ -94,7 +94,7 @@ def scrape_process_2(brand, category, specific_item,local_test=True):
     if subprocess_status['SCRAPE'] == False:
         return query_hash, None
 
-    if specific_item is not None:
+    if specific_item is not None and specific_item.strip():  # Check if it's not None AND not empty string
         filtered_subdir = utils.make_filtered_sub_dir(brand, category, scraped_data_dir_filtered, query_hash)
         for root, subdir, files in os.walk(output_dir):
             for raw_file in files:
@@ -111,6 +111,8 @@ def scrape_process_2(brand, category, specific_item,local_test=True):
         subprocess_status['FILTER'] = True
         return query_hash, filtered_subdir
 
+    # If no specific_item, skip filtering and set FILTER status to True
+    subprocess_status['FILTER'] = True
     return query_hash, output_dir
 
 
@@ -323,7 +325,7 @@ def driver_function_from_search_form(msg):
     requester_email = msg['user_email']
     search_id = msg['search_id']
 
-    LOCAL_TEST = False
+    LOCAL_TEST = True
     query_hash, output_dir = scrape_process_2(brand, category, spec_item,LOCAL_TEST)
 
     if subprocess_status['SCRAPE'] == False:
