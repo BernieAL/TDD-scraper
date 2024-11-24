@@ -325,7 +325,7 @@ def driver_function_from_search_form(msg):
     requester_email = msg['user_email']
     search_id = msg['search_id']
 
-    LOCAL_TEST = True
+    LOCAL_TEST = False
     query_hash, output_dir = scrape_process_2(brand, category, spec_item,LOCAL_TEST)
 
     if subprocess_status['SCRAPE'] == False:
