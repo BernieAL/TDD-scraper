@@ -14,8 +14,21 @@ sys.path.append(parent_dir)
 
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 user_category_data_file = os.path.join(curr_dir, 'input_data', 'search_criteria.csv')
-scraped_data_dir_raw = os.path.join(curr_dir, 'scrape_file_output', 'raw')
-scraped_data_dir_filtered = os.path.join(curr_dir, 'scrape_file_output', 'filtered')
+
+# scraped_data_dir_raw = os.path.join(curr_dir, 'scrape_file_output', 'raw')
+# scraped_data_dir_filtered = os.path.join(curr_dir, 'scrape_file_output', 'filtered')
+
+
+from shared_paths import RAW_SCRAPE_DIR,FILTERED_DATA_DIR,REPORTS_ROOT_DIR,SOLD_REPORTS_DIR,PRICE_REPORTS_DIR,ARCHIVE_DIR
+
+# shared_data_dir = os.path.join(curr_dir,'..','shared_data')
+# project_root = os.path.dirname(os.path.abspath(__file__))
+
+scraped_data_dir_raw = RAW_SCRAPE_DIR
+scraped_data_dir_filtered = FILTERED_DATA_DIR
+
+
+
 
 # Import the ScraperUtils class from utils
 from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
@@ -85,8 +98,19 @@ def scrape_process_2(brand, category, specific_item,local_test=True):
         'output_dir': output_dir,
         'specific_item': specific_item,
         'query_hash': query_hash,
-        'local_test': local_test #set to True to use locally saved copy, False to use live site
+        'local_test': local_test,  #set to True to use locally saved copy, False to use live site
+        'paths':{
+            'paths': {
+            'raw_scrape_dir': RAW_SCRAPE_DIR,
+            'filtered_data_dir': FILTERED_DATA_DIR,
+            'reports_dir': REPORTS_ROOT_DIR,
+            'sold_reports_dir': SOLD_REPORTS_DIR,
+            'price_reports_dir': PRICE_REPORTS_DIR,
+            'archive_dir': ARCHIVE_DIR
+            }
+        }
     }
+
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message
     wait_until_process_complete(query_hash, "SCRAPE")
@@ -325,7 +349,7 @@ def driver_function_from_search_form(msg):
     requester_email = msg['user_email']
     search_id = msg['search_id']
 
-    LOCAL_TEST = False
+    LOCAL_TEST = True
     query_hash, output_dir = scrape_process_2(brand, category, spec_item,LOCAL_TEST)
 
     if subprocess_status['SCRAPE'] == False:
@@ -341,7 +365,15 @@ def driver_function_from_search_form(msg):
         'type': 'POPULATED_OUTPUT_DIR', 
         'output_dir': output_dir,
         'query_hash': query_hash,
-        'specific_item': spec_item
+        'specific_item': spec_item,
+        'paths': {
+            'raw_scrape_dir': RAW_SCRAPE_DIR,
+            'filtered_data_dir': FILTERED_DATA_DIR,
+            'reports_dir': REPORTS_ROOT_DIR,
+            'sold_reports_dir': SOLD_REPORTS_DIR,
+            'price_reports_dir': PRICE_REPORTS_DIR,
+            'archive_dir': ARCHIVE_DIR
+        }
     })
     
     # Wait for compare completion

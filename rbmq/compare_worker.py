@@ -16,12 +16,18 @@ from rbmq.process_producer import PROCESS_publish_to_queue
 process_info = {
     "query_hash": None,
     "output_dir": None,
-    "specific_item": None
+    "specific_item": None,
+    "paths":{}
 }
 
 def reset_process_info():
-    for key in process_info:
-        process_info[key] = None
+     process_info.update({
+        "query_hash": None,
+        "output_dir": None,
+        "specific_item": None,
+        "price_changes": [],
+        "paths": {}
+    })
 
 def safe_compare_driver(file_path, query_hash, specific_item):
     """Wrapper function to handle database errors gracefully"""
@@ -45,24 +51,29 @@ def main():
     def callback(ch, method, properties, body):  # Make sure body is included as parameter
         try:
             print(chalk.yellow("Received message on compare_queue"))
-            msg = json.loads(body)  # Now body will be defined
+            msg = json.loads(body)  
             print(chalk.yellow(f"Message content: {msg}"))
             
             if msg.get('type') == 'POPULATED_OUTPUT_DIR':
                 try:
+                    paths = msg.get('paths', {})
                     reset_process_info()
                     
                     process_info.update({
                         'output_dir': msg['output_dir'],
                         'query_hash': msg['query_hash'],
                         'specific_item': msg.get('specific_item'),
-                        'price_changes': []  # Add tracking for price changes
+                        'price_changes': [],
+                        'paths':msg.get('paths',{})
                     })
 
                     print(chalk.blue(f"Processing output directory: {process_info['output_dir']}"))
                     
+                    #if provided output_dir is valid
                     if os.path.isdir(process_info['output_dir']):
+                        #count of successfully processed files
                         successful_files = 0
+                        #total count of files
                         total_files = 0
                         
                         #read files in output dir
@@ -88,7 +99,8 @@ def main():
                                 PRICE_publish_to_queue({
                                     'type': 'PRICE_CHANGES_SUMMARY',
                                     'query_hash': process_info['query_hash'],
-                                    'changes': process_info['price_changes']
+                                    'changes': process_info['price_changes'],
+                                    'paths':paths
                                 })
                             
                             PROCESS_publish_to_queue({
@@ -96,7 +108,8 @@ def main():
                                 'status':'PASS',
                                 'query_hash': process_info['query_hash'],
                                 'output_dir': process_info['output_dir'],
-                                'specific_item': msg.get('specific_item'),  # Forward specific_item if present
+                                'specific_item': msg.get('specific_item'), 
+                                'paths':paths
                             })
                             
                         else:
@@ -113,7 +126,8 @@ def main():
                             'status':'FAIL',
                             'query_hash': process_info['query_hash'],
                             'output_dir': process_info['output_dir'],
-                            'specific_item': msg.get('specific_item'),  # Forward specific_item if present
+                            'specific_item': msg.get('specific_item'), 
+                             'paths':paths
                         }
                         PROCESS_publish_to_queue(fail_msg)
 

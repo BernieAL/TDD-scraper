@@ -19,7 +19,8 @@ def run_italist_scraper(brand,category,output_dir,query_hash,local):
     print(chalk.blue(f"Category: {category}"))
     print(chalk.blue(f"Output Dir: {output_dir}"))
     print(chalk.blue(f"Query Hash: {query_hash}"))
-    
+
+   
     italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,local)
     scraped_file = italist_scraper.run()
     print(chalk.green(f"Scraper completed. Output file: {scraped_file}"))
@@ -27,32 +28,52 @@ def run_italist_scraper(brand,category,output_dir,query_hash,local):
 
 def main():
     def callback(ch, method, properties, body):
+        #declaring early in case scraper fails
+        scraped_file = None
         try:
             print(chalk.yellow("Received message on scrape_queue"))
             msg = json.loads(body)
             print(chalk.yellow(f"Message content: {msg}"))
+
+            #use global shared paths provided in message 
+            paths = msg.get('paths',{}) #empty dict if no 'paths'
+            output_dir = msg['output_dir'] 
+
             
-            # Extract and verify all required fields
+            
+            # Extract and verify all required fields included in msg
             required_fields = ['query_hash', 'brand', 'category', 'output_dir']
             for field in required_fields:
+                #if missing reqd field = fail and notify
                 if field not in msg:
+
                     raise KeyError(f"Missing required field: {field}")
             
-            query_hash = msg['query_hash']
-            brand = msg['brand']
-            category = msg['category']
-            output_dir = msg['output_dir']
             
             print(chalk.blue("Starting scrape process..."))
-            scraped_file = run_italist_scraper(brand, category, output_dir, query_hash,msg.get('local_test'))
+            scraped_file = run_italist_scraper(
+                msg['brand'],
+                msg['category'],
+                output_dir, 
+                msg['query_hash'],
+                msg.get('local_test'))
             
+            #if scraped file is none, scraper didnt produce file
+            if not scraped_file:
+                raise Exception ("Scraper failed to produce output file")
+            
+            #if scraped_file path DNE 
+            if not os.path.exists(scraped_file):
+                raise Exception (f"Scraper output file not found: {scraped_file}")
+
             complete_msg = {
                 'type': 'SCRAPE',
                 'status':'PASS',
-                'query_hash': query_hash,
+                'query_hash': msg.get('query_hash'),
                 'output_dir': output_dir,
                 'specific_item': msg.get('specific_item'),  # Forward specific_item if present
-                'scraped_file': scraped_file
+                'scraped_file': scraped_file,
+                'paths':paths #include paths in msg to next worker
             }
             
             print(chalk.blue(f"Publishing Scrape SUCCESS Msg: {complete_msg}"))
@@ -64,10 +85,12 @@ def main():
             fail_msg = {
                 'type': 'SCRAPE',
                 'status':'FAIL',
-                'query_hash': query_hash,
+                'query_hash': msg.get('query_hash'),
                 'output_dir': output_dir,
-                'specific_item': msg.get('specific_item'),  # Forward specific_item if present
-                'scraped_file': scraped_file
+                'specific_item': msg.get('specific_item'), 
+                'scraped_file': scraped_file,
+                'error': str(e),
+                'paths': paths
             }
             
            
