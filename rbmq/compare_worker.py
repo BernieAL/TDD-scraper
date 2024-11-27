@@ -1,3 +1,4 @@
+
 import pika
 import os
 import sys
@@ -12,16 +13,16 @@ from analysis.compare_data import compare_driver
 from rbmq.price_change_producer import PRICE_publish_to_queue
 from rbmq.process_producer import PROCESS_publish_to_queue
 
-# Global state management
 process_info = {
     "query_hash": None,
     "output_dir": None,
     "specific_item": None,
-    "paths":{}
+    "paths": {},
+    "price_changes": []
 }
 
 def reset_process_info():
-     process_info.update({
+    process_info.update({
         "query_hash": None,
         "output_dir": None,
         "specific_item": None,
@@ -29,18 +30,16 @@ def reset_process_info():
         "paths": {}
     })
 
-def safe_compare_driver(file_path, query_hash, specific_item):
+def safe_compare_driver(file_path, query_hash, msg, specific_item):
     """Wrapper function to handle database errors gracefully"""
     try:
-        compare_driver(file_path, query_hash, specific_item)
+        compare_driver(file_path, query_hash, msg, specific_item)
         return True
     except Exception as e:
         if "duplicate key value" in str(e):
-            # Log but don't fail on duplicate keys
             print(chalk.yellow(f"Skipping duplicate product in {file_path}"))
             return True
         elif "cur referenced before assignment" in str(e):
-            # Database connection issue
             print(chalk.red(f"Database connection error: {e}"))
             return False
         else:
@@ -48,96 +47,84 @@ def safe_compare_driver(file_path, query_hash, specific_item):
             return False
 
 def main():
-    def callback(ch, method, properties, body):  # Make sure body is included as parameter
+    def callback(ch, method, properties, body):
         try:
             print(chalk.yellow("Received message on compare_queue"))
-            msg = json.loads(body)  
+            msg = json.loads(body)
             print(chalk.yellow(f"Message content: {msg}"))
-            
+            paths = msg.get('paths', {})
+
             if msg.get('type') == 'POPULATED_OUTPUT_DIR':
                 try:
-                    paths = msg.get('paths', {})
                     reset_process_info()
-                    
                     process_info.update({
                         'output_dir': msg['output_dir'],
                         'query_hash': msg['query_hash'],
                         'specific_item': msg.get('specific_item'),
                         'price_changes': [],
-                        'paths':msg.get('paths',{})
+                        'paths': paths
                     })
 
                     print(chalk.blue(f"Processing output directory: {process_info['output_dir']}"))
-                    
-                    #if provided output_dir is valid
-                    if os.path.isdir(process_info['output_dir']):
-                        #count of successfully processed files
-                        successful_files = 0
-                        #total count of files
-                        total_files = 0
-                        
-                        #read files in output dir
-                        for root, _, files in os.walk(process_info['output_dir']):
-                            for file in files:
-                                total_files += 1
-                                file_path = os.path.join(root, file)
-                                print(chalk.blue(f"Processing file: {file_path}"))
-                                
-                                if safe_compare_driver(
-                                    file_path,
-                                    process_info['query_hash'],
-                                    process_info['specific_item']
-                                ):
-                                    successful_files += 1
-                        
-                        # Only send COMPARE_COMPLETE if processing was successful
-                        if successful_files > 0:
-                            print(chalk.green(f"Successfully processed {successful_files} out of {total_files} files"))
-                            
-                            # Send price changes summary if any were detected
-                            if process_info['price_changes']:
-                                PRICE_publish_to_queue({
-                                    'type': 'PRICE_CHANGES_SUMMARY',
-                                    'query_hash': process_info['query_hash'],
-                                    'changes': process_info['price_changes'],
-                                    'paths':paths
-                                })
-                            
-                            PROCESS_publish_to_queue({
-                                'type': 'COMPARE',
-                                'status':'PASS',
-                                'query_hash': process_info['query_hash'],
-                                'output_dir': process_info['output_dir'],
-                                'specific_item': msg.get('specific_item'), 
-                                'paths':paths
-                            })
-                            
-                        else:
-                            raise Exception("No files were processed successfully")
-                    else:
+
+                    if not os.path.isdir(process_info['output_dir']):
                         raise Exception(f"Directory not found: {process_info['output_dir']}")
+
+                    successful_files = 0
+                    total_files = 0
+
+                    for root, _, files in os.walk(process_info['output_dir']):
+                        for file in files:
+                            total_files += 1
+                            file_path = os.path.join(root, file)
+                            print(chalk.blue(f"Processing file: {file_path}"))
+
+                            if safe_compare_driver(
+                                file_path,
+                                process_info['query_hash'],
+                                {'paths': paths},
+                                process_info['specific_item']
+                            ):
+                                successful_files += 1
+
+                    if successful_files == 0:
+                        raise Exception("No files were processed successfully")
+
+                    print(chalk.green(f"Successfully processed {successful_files} out of {total_files} files"))
+
+                    if process_info['price_changes']:
+                        PRICE_publish_to_queue({
+                            'type': 'PRICE_CHANGES_SUMMARY',
+                            'query_hash': process_info['query_hash'],
+                            'changes': process_info['price_changes'],
+                            'paths': paths
+                        })
+
+                    PROCESS_publish_to_queue({
+                        'type': 'COMPARE',
+                        'status': 'PASS',
+                        'query_hash': process_info['query_hash'],
+                        'output_dir': process_info['output_dir'],
+                        'specific_item': msg.get('specific_item'),
+                        'paths': paths
+                    })
 
                 except Exception as e:
                     print(chalk.red(f"Error processing POPULATED_OUTPUT_DIR message: {e}"))
-                    # Send error message
                     if process_info['query_hash']:
-                        fail_msg = {
+                        PROCESS_publish_to_queue({
                             'type': 'COMPARE',
-                            'status':'FAIL',
+                            'status': 'FAIL',
                             'query_hash': process_info['query_hash'],
                             'output_dir': process_info['output_dir'],
-                            'specific_item': msg.get('specific_item'), 
-                             'paths':paths
-                        }
-                        PROCESS_publish_to_queue(fail_msg)
-
-                        
+                            'specific_item': msg.get('specific_item'),
+                            'paths': paths
+                        })
 
             elif msg.get('type') == 'PRICE_WORKER_COMPLETE':
                 print(chalk.green("Received PRICE_WORKER_COMPLETE confirmation \n --------------- "))
 
             elif msg.get('type') == 'PRODUCT_PRICE_CHANGE':
-                # Track price changes
                 if process_info['query_hash']:
                     process_info['price_changes'].append(msg)
                     print(chalk.green(f"Added price change for product: {msg.get('product_id')}"))
@@ -147,7 +134,6 @@ def main():
         finally:
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    # RabbitMQ setup
     connection = None
     try:
         connection_params = pika.ConnectionParameters(
@@ -158,17 +144,15 @@ def main():
         )
         connection = pika.BlockingConnection(connection_params)
         channel = connection.channel()
-        
         channel.queue_declare(queue='compare_queue', durable=True)
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='compare_queue', on_message_callback=callback)
-        
+
         print(chalk.green("Clearing queue"))
         channel.queue_purge(queue='compare_queue')
-        
         print(chalk.blue('(COMPARE_WORKER)[*] Waiting for messages. To exit press CTRL+C'))
         channel.start_consuming()
-        
+
     except Exception as e:
         print(chalk.red(f"Error in RabbitMQ setup: {e}"))
     finally:
@@ -177,5 +161,6 @@ def main():
                 connection.close()
             except Exception as e:
                 print(chalk.red(f"Error closing connection: {e}"))
+
 if __name__ == "__main__":
     main()

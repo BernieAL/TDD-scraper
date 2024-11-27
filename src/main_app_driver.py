@@ -100,7 +100,6 @@ def scrape_process_2(brand, category, specific_item,local_test=True):
         'query_hash': query_hash,
         'local_test': local_test,  #set to True to use locally saved copy, False to use live site
         'paths':{
-            'paths': {
             'raw_scrape_dir': RAW_SCRAPE_DIR,
             'filtered_data_dir': FILTERED_DATA_DIR,
             'reports_dir': REPORTS_ROOT_DIR,
@@ -108,8 +107,8 @@ def scrape_process_2(brand, category, specific_item,local_test=True):
             'price_reports_dir': PRICE_REPORTS_DIR,
             'archive_dir': ARCHIVE_DIR
             }
-        }
     }
+    
 
     SCRAPE_publish_to_queue(msg)
     # Wait specifically for SCRAPE_COMPLETE message
@@ -391,6 +390,14 @@ def driver_function_from_search_form(msg):
         "category": category,
         "specific_item": spec_item,
         "email": requester_email,
+        'paths':{
+            'raw_scrape_dir': RAW_SCRAPE_DIR,
+            'filtered_data_dir': FILTERED_DATA_DIR,
+            'reports_dir': REPORTS_ROOT_DIR,
+            'sold_reports_dir': SOLD_REPORTS_DIR,
+            'price_reports_dir': PRICE_REPORTS_DIR,
+            'archive_dir': ARCHIVE_DIR
+            }
     })
     
     # Wait for email process to complete

@@ -207,6 +207,8 @@ def main():
                     try:
                         print(chalk.blue(f"[INFO] Preparing email report. Products processed: {len(recd_products)}"))
                         
+                        
+
                         email_sent = send_email_with_report(
                             {'email': msg.get('email')},
                             curr_query_info['paths']['price_reports_dir'],
