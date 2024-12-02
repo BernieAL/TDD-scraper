@@ -4,8 +4,8 @@ WORKDIR /src
 
 
 # COPY src/.env /src/.env
-COPY src/bot_main_driver.py /src/bot_main_driver.py 
-
+COPY src/ /src/ 
+    
 # Copy the wait-for-it script
 COPY wait-for-it-master/wait-for-it.sh /usr/local/bin/wait-for-it.sh
 RUN chmod +x /usr/local/bin/wait-for-it.sh

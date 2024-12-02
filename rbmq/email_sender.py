@@ -16,27 +16,36 @@ app_password = os.getenv("GOOGLE_APP_PW")
 sender_email = os.getenv("GOOGLE_SENDER_EMAIL")
 subject = "Daily Price Change + Sold Reports"
 
-def attach_file_from_sub_directory(message, report_subdir):
+def attach_file_from_sub_directory(message, report_subdir,query_hash):
+    
+    """
+    only attaching files that match current query hash
+    """
     if os.path.exists(report_subdir):
         try:
             for dirpath, _, files in os.walk(report_subdir):
                 for report_file in files:
-                    file_path = os.path.join(dirpath, report_file)
-                    with open(file_path, 'rb') as attachment:
-                        part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(attachment.read())
-                        encoders.encode_base64(part)
-                        part.add_header(
-                            'Content-Disposition',
-                            f'attachment; filename={os.path.basename(report_file)}'
-                        )
-                        message.attach(part)
+
+                    if query_hash in report_file:
+
+                        file_path = os.path.join(dirpath, report_file)
+                        print(chalk.blue(f"[INFO] Attaching file: {report_file}"))
+                        
+                        with open(file_path, 'rb') as attachment:
+                            part = MIMEBase('application', 'octet-stream')
+                            part.set_payload(attachment.read())
+                            encoders.encode_base64(part)
+                            part.add_header(
+                                'Content-Disposition',
+                                f'attachment; filename={os.path.basename(report_file)}'
+                            )
+                            message.attach(part)
         except Exception as e:
             print(chalk.red(f"Email Attachment error: {e}"))
     else:
         print(chalk.yellow(f"No report directory provided or it does not exist: {report_subdir}"))
 
-def send_email_with_report(msg, price_report_subdir, sold_report_subdir, query, no_price_change_sources=None, empty_scrape_files=None):
+def send_email_with_report(msg,query_hash, price_report_subdir, sold_report_subdir, query, no_price_change_sources=None, empty_scrape_files=None):
     # paths shouldnt actually be written to the report being sent in the email. right now theres a column that says 'paths' in the report to the user.
     if 'email' not in msg:
         print(chalk.red("Error: No email address provided in message"))
@@ -68,8 +77,8 @@ def send_email_with_report(msg, price_report_subdir, sold_report_subdir, query, 
 
     message.attach(MIMEText(body, 'plain'))
 
-    attach_file_from_sub_directory(message, price_report_subdir)
-    attach_file_from_sub_directory(message, sold_report_subdir)
+    attach_file_from_sub_directory(message, price_report_subdir,query_hash)
+    attach_file_from_sub_directory(message, sold_report_subdir,query_hash)
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:

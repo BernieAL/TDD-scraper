@@ -143,7 +143,7 @@ def main():
 
             elif msg.get('type') == 'PROCESSING_SCRAPED_FILE_COMPLETE':
                 try:
-                    if msg.get('scrape_file_empty'):
+                    if msg.get('scrape_file_empty') or msg.get('filter_file_empty'):
                         print(chalk.yellow("[INFO] Scraped file was empty"))
                         empty_scrape_files.append(msg.get('source'))
                     else:
@@ -207,10 +207,11 @@ def main():
                     try:
                         print(chalk.blue(f"[INFO] Preparing email report. Products processed: {len(recd_products)}"))
                         
-                        
+
 
                         email_sent = send_email_with_report(
-                            {'email': msg.get('email')},
+                            msg,
+                            curr_query_info['query_hash'],
                             curr_query_info['paths']['price_reports_dir'],
                             curr_query_info['paths']['sold_reports_dir'],
                             f"{curr_query_info['brand']}_{curr_query_info['category']}_{curr_query_info['product_name']}",
