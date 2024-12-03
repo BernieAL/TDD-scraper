@@ -96,31 +96,31 @@ def filter_percent_changes(df, threshold=5):
     """
     return df[abs(df['price_change_percent_signed'].str.rstrip('%').astype(float)) >= threshold]
 
-def reorder_columns(df):
-    """
-    Reorders the DataFrame columns so that 'price_change_percent_signed' is first.
+# def reorder_columns(df):
+#     """
+#     Reorders the DataFrame columns so that 'price_change_percent_signed' is first.
 
-    :param df: DataFrame containing product data.
-    :return: DataFrame with reordered columns.
-    """
-    try:
-        # Drop the original price_change_percent column
-        df = df.drop(columns=['price_change_percent'])
+#     :param df: DataFrame containing product data.
+#     :return: DataFrame with reordered columns.
+#     """
+#     try:
+#         # Drop the original price_change_percent column
+#         df = df.drop(columns=['price_change_percent'])
 
 
-        desired_order = ['price_change_percent_signed', 'product_id', 'product_name']
-        remaining_columns = [col for col in df.columns if col not in desired_order]
-        new_order = desired_order + remaining_columns
+#         desired_order = ['price_change_percent_signed', 'product_id', 'product_name']
+#         remaining_columns = [col for col in df.columns if col not in desired_order]
+#         new_order = desired_order + remaining_columns
         
         
-        # #restructure cols to be new col + all old cols
-        # cols = ['price_change_percent_signed'] +  [col for col in df.columns if col != 'price_change_percent_signed']
+#         # #restructure cols to be new col + all old cols
+#         # cols = ['price_change_percent_signed'] +  [col for col in df.columns if col != 'price_change_percent_signed']
 
-        print(df[new_order])
+#         print(df[new_order])
 
-        return df[new_order]
-    except Exception as e:
-        print(chalk.red(f"Error reordering columns: {e}"))
+#         return df[new_order]
+#     except Exception as e:
+#         print(chalk.red(f"Error reordering columns: {e}"))
         
 
 
@@ -130,57 +130,66 @@ def reorder_columns(df):
 #     print(f"Filtered DataFrame saved to '{filename}'")
 
 # Main function to run the process
-def calc_percentage_diff_driver(output_dir,product_data,source_file):
-    
-
+ 
+def calc_percentage_diff_driver(output_dir, product_data, source_file, category):
     """
     Main driver to calculate percentage difference and save to report csv
     
-    
-    :param output_dir: Directory where output files are stored.
-    :param product_data: List of product data for price comparison.
-    :param source_file: The original file being processed.
-    :return: None
-
+    :param output_dir: Directory where output files are stored
+    :param product_data: List of product data for price comparison
+    :param source_file: The original file being processed
+    :param category: Product category from the query (e.g., 'BAGS')
     """
-    # #create output dir doesnt exist
-    # output_dir = make_output_dir()
     try:
-        #make output file path
-        output_file = make_output_filename(output_dir,source_file)
-    
+        # Make output file path
+        output_file = make_output_filename(output_dir, source_file)
         
-        # Step 1: Get the data
+        # Get the data
         products = get_all_messages(product_data)
-
-        #extract src site from first message in list of messages - using source property
+        
+        # Add category to each product
+        for product in products:
+            product['category'] = category
+            # Remove unwanted fields if they exist
+            product.pop('type', None)
+            product.pop('paths', None)
+        
+        # Extract source from first message
         source = products[0]['source']
-        # print (source)
-        print(chalk.yellow(f"(CALC DRIVER){source_file})"))
-        print(chalk.green(f"(CALC DRIVER){products})"))
+        print(chalk.yellow(f"(CALC DRIVER){source_file}"))
+        print(chalk.green(f"(CALC DRIVER){products}"))
         
-        # Step 2: Create DataFrame
+        # Create DataFrame and process
         df = pd.DataFrame(products)
-        
-
-        # Step 3: Calculate the price change and drop the original percentage column
         df = calculate_price_change(df)
         
-        # Step 4: Reorder columns
-        df = reorder_columns(df)
+        # Define the exact columns we want and their order
+        columns_order = [
+            'price_change_percent_signed',
+            'product_id',
+            'product_name',
+            'category',
+            'curr_price',
+            'curr_scrape_date',
+            'prev_price',
+            'prev_scrape_date',
+            'listing_url',
+            'source'
+        ]
         
-        # Step 5: Filter out changes less than 5%
+        # Keep only desired columns in specified order
+        df = df.reindex(columns=columns_order)
+        
+        # Filter changes above threshold
         df_filtered = filter_percent_changes(df, threshold=5)
         
-        # Step 6: Save the filtered DataFrame to CSV
-        report_file_path = output_file
-        df_filtered.to_csv(report_file_path,index=False)
+        # Save to CSV
+        df_filtered.to_csv(output_file, index=False)
+        print(chalk.green(f"Price change report saved to: {output_file}"))
         
-        # print(f"Filtered DataFrame saved to '{report_file_path}'")
     except Exception as e:
         print(chalk.red(f"Error in the price difference calculation process: {e}"))
-       
-
+        raise
 # if __name__ == "__main__":
 
 #     temp_data = [

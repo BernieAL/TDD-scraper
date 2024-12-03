@@ -279,7 +279,8 @@ def compare_driver(scraped_data_file_path, query_hash, msg, spec_item=None):
         PRICE_publish_to_queue({
             "type": "NEW_QUERY",
             "source_file": scraped_data_file_path,
-            "paths": paths
+            "paths": paths,
+            "spec_item":spec_item
         })
 
         db_data = DB_fetch_product_ids_prices_dates(brand, source, spec_item)

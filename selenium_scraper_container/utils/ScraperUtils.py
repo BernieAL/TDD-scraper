@@ -151,7 +151,7 @@ class ScraperUtils:
             return None
 
 
-    def make_filtered_sub_dir(self, brand, category,filtered_data_root_dir,query_hash,query_date):
+    def make_filtered_sub_dir(self, brand, category,filtered_data_root_dir,query_hash,query_date=None):
         """
         Makes a new subdir in scrape_file_output/filtered root for this specific item
     

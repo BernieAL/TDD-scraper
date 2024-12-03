@@ -119,6 +119,7 @@ def main():
                             'brand': brand,
                             'query_hash': query_hash,
                             'source_file': source_file,
+                            'product_name':msg.get('spec_item'),
                             'paths': msg.get('paths', {})  # Store shared paths from message
                         })
                         print(chalk.blue(f"[INFO] Process info updated for file"))
@@ -135,7 +136,7 @@ def main():
             elif msg.get('type') == 'PRODUCT_PRICE_CHANGE':
                 try:
                     recd_products.append(msg)
-                    curr_query_info['product_name'] = msg.get('product_name')
+                    # curr_query_info['product_name'] = msg.get('product_name')
                     print(f"[PROCESSING] Added product price change. Total items: {len(recd_products)}")
                 except Exception as e:
                     print(chalk.red(f"Error processing PRODUCT_PRICE_CHANGE: {e}"))
@@ -148,14 +149,15 @@ def main():
                         empty_scrape_files.append(msg.get('source'))
                     else:
                         print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS"))
-                        curr_query_info['product_name'] = msg.get('product_name')
+                        # curr_query_info['product_name'] = msg.get('product_name')
                         
                         if recd_products:
                             price_report_dir = curr_query_info['paths']['price_reports_dir']
                             calc_percentage_diff_driver(
                                 price_report_dir,
                                 recd_products,
-                                curr_query_info['source_file']
+                                curr_query_info['source_file'],
+                                curr_query_info['category']
                             )
                             print(chalk.green(f"[SUCCESS] Report generated in {price_report_dir}"))
                         else:
@@ -207,14 +209,19 @@ def main():
                     try:
                         print(chalk.blue(f"[INFO] Preparing email report. Products processed: {len(recd_products)}"))
                         
-
+                        #build query string, use _GENERAL is spec product_name not provided
+                        query_string = (
+                            f"{curr_query_info['brand']}_{curr_query_info['category']}"
+                            + (f"_{curr_query_info['product_name']}" if curr_query_info['product_name'] else "_GENERAL")
+                        )
 
                         email_sent = send_email_with_report(
                             msg,
                             curr_query_info['query_hash'],
                             curr_query_info['paths']['price_reports_dir'],
                             curr_query_info['paths']['sold_reports_dir'],
-                            f"{curr_query_info['brand']}_{curr_query_info['category']}_{curr_query_info['product_name']}",
+                            #only include product_name if it exists
+                            query_string,
                             no_change_sources,
                             empty_scrape_files
                         )
