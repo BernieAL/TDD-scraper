@@ -148,8 +148,11 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
         new_products = []
         scrape_date = None
 
+
         with open(input_file, mode='r') as file:
             csv_reader = csv.reader(file)
+
+            #get scrape date
             scrape_date_line = next(csv_reader)
             scrape_date = scrape_date_line[0].split(':')[1].strip()
             scrape_date = datetime.strptime(scrape_date, '%Y-%d-%m').date()
@@ -157,10 +160,12 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
             FILE_SCRAPE_DATE = scrape_date
             print(f"Scrape Date: {scrape_date}")
 
+            #get query line 
             query_line = next(csv_reader)
             query = query_line[0].split(':')[1].strip()
             print(f"Query: {query}")
 
+            #get csv headers
             headers = next(csv_reader)
             next(csv_reader)
             csv_reader = csv.DictReader(file, fieldnames=headers)
@@ -203,30 +208,41 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
 
             db_success = True
             try:
+                #if db op failed
                 if updated_products and not DB_bulk_update_existing(updated_products):
                     raise Exception("DB update operation failed")
 
+                #if db op failed
                 if new_products and not DB_bulk_insert_new(new_products):
                     raise Exception("DB insert operation failed")
 
+                #else db ops successful
                 print(chalk.green("[SUCCESS] DB operations were successful."))
 
+                #remaining items in dict are SOLD - they were not found in curr date scrape - if found, they were popped
                 items_not_found = existing_product_data_dict
                 print(chalk.cyan(f"db items not found in current scrape file {items_not_found}"))
 
+                #if items_not_found not empty, mark items as sold in db
                 if items_not_found:
+                    
+                    #if db op failed
                     if not DB_bulk_update_sold(items_not_found):
                         raise Exception("Sold status update failed")
-                
+
+                    #get sold items that match curr query date ONLY
                     sold_items_dict = DB_get_sold_daily(source, items_not_found, FILE_SCRAPE_DATE, spec_item)
                     print(chalk.green(f"SOLD ITEMS: {sold_items_dict}\n ---------------"))
                     
+                    #publish sold items PRICE queue
                     PRICE_publish_to_queue({
                         "type": "PROCESSING_SOLD_ITEMS_COMPLETE",
                         "sold_items_dict": sold_items_dict,
                         "query_hash": query_hash,
                         "paths": paths
                     })
+
+                #no sold items, publish empty dict to PRICE queue
                 else:
                     PRICE_publish_to_queue({
                         "type": "PROCESSING_SOLD_ITEMS_COMPLETE",
@@ -235,12 +251,15 @@ def compare_scraped_data_to_db(input_file, existing_product_data_dict, source, q
                         "paths": paths
                     })
 
+                #processing of sold and price changes for this file are complete
                 PRICE_publish_to_queue({
                     "type": "PROCESSING_SCRAPED_FILE_COMPLETE",
                     "query_hash": query_hash,
                     "product_name": data[-1]['product_name'],
                     "paths": paths
                 })
+
+        
             except Exception as db_error:
                 db_success = False
                 print(chalk.red(f"DB operation failed: {db_error}"))

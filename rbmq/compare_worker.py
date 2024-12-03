@@ -1,7 +1,7 @@
 
 import pika
 import os
-import sys
+import sys,csv
 import json
 from simple_chalk import chalk
 
@@ -33,6 +33,37 @@ def reset_process_info():
 def safe_compare_driver(file_path, query_hash, msg, specific_item):
     """Wrapper function to handle database errors gracefully"""
     try:
+        #check if file is empty first 
+        with open(file_path,'r') as f:
+            reader = csv.reader(f)
+
+            #skip header lines
+            next(reader) #skipping date
+            next(reader) #skipping query
+            next(reader) #skipping headers
+            next(reader) #skipping delim
+
+            #check for data in file
+            if not list(reader):
+                print(chalk.yellow(f"File {file_path} is empty (only contains headers)"))
+                # Send appropriate messages for empty file
+
+                #mark empty file as processed
+                source = file_path.split('_')[1]
+                PRICE_publish_to_queue({
+                    "type": "PROCESSING_SCRAPED_FILE_COMPLETE",
+                    "query_hash": query_hash,
+                    "product_name": specific_item,
+                    "scrape_file_empty": True,
+                    "source": source,
+                    "empty_file_details": {
+                        "source": source,
+                        "search_term": specific_item
+                    },
+                    "paths": msg.get('paths', {})
+                })
+                return True  # Count empty file as successfully processed
+
         compare_driver(file_path, query_hash, msg, specific_item)
         return True
     except Exception as e:

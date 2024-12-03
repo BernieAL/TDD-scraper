@@ -210,6 +210,14 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
                             channel.stop_consuming()
                             subprocess_status[expected_subprocess] = False
 
+                    else:
+                        if message.get('status')=='PASS':
+                            subprocess_status[expected_subprocess]= True
+                            channel.stop_consuming()
+                        elif message.get('status') == 'FAIL':
+                            channel.stop_consuming()
+                            subprocess_status[expected_subprocess]= False
+
             #if msg not expected type for query hash
             else:
                 print(chalk.red(f"Recieved {msg_type} but Expected {expected_subprocess} for query_hash: {query_hash}"))
@@ -232,7 +240,7 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
         channel.start_consuming()
 
 
-        return scraped_file
+        return [scraped_file] if scraped_file else None
     except Exception as e:
         print(chalk.red(f"Error in message consumption: {e}"))
     finally:

@@ -36,7 +36,18 @@ class ScraperUtils:
 
 
     def save_to_file(self, data,brand,category,source,output_dir,query_hash,data_type):
-        """Save the scraped data to a CSV file in the given directory."""
+        """
+        Save the scraped data to a CSV file with consistent formatting and no empty lines.
+        
+        Args:
+            data: List of data rows to write
+            brand: Brand name
+            category: Product category
+            source: Data source
+            output_dir: Output directory path
+            query_hash: Query hash identifier
+            data_type: 0 for raw data, 1 for filtered data
+        """
         current_date = datetime.now().strftime('%Y-%d-%m')
 
         
@@ -57,14 +68,28 @@ class ScraperUtils:
             with open(output_file, mode='w', newline='', encoding='utf-8') as file:
                     writer = csv.writer(file)
                     
-                    file.write(f"Scraped: {current_date} \n")
-                    file.write(f"category: {brand}-{category} \n")
+                    writer.writerow([f"Scraped: {current_date}"])
+                    writer.writerow([f"category: {brand}-{category}"])
                     writer.writerow(['product_id','brand','product_name','curr_price','listing_url','source'])
-                    file.write('---------------------- \n')
+                    writer.writerow(['----------------------'])
+    
+                    #filter out empty rows and write data
                     for row in data:
-                        #ensure capitalization of eligible values for case standardization
-                        writer.writerow([str(element).upper() if isinstance(element,str) else element for element in row])
-                                
+
+                        """
+                        if any(element meets condition for elements in iterable)
+                        converts each x to str
+                        strip whitespace from both ends
+                        any() returns true if any of the values are non empty strings after stripping
+                        """
+                        if any(str(x).strip() for x in row):
+
+                            #standardize string vals to uppercase                       
+                            processed_row = [
+                                str(element).upper() if isinstance(element,str) else element
+                                for element in row
+                            ]
+                            writer.writerow(processed_row)
                     print(f"Data successfully saved to {output_file}")
                     return output_file
         else:
@@ -126,7 +151,7 @@ class ScraperUtils:
             return None
 
 
-    def make_filtered_sub_dir(self, brand, category,filtered_data_root_dir,query_hash):
+    def make_filtered_sub_dir(self, brand, category,filtered_data_root_dir,query_hash,query_date):
         """
         Makes a new subdir in scrape_file_output/filtered root for this specific item
     
@@ -135,7 +160,7 @@ class ScraperUtils:
         :param: filtered_data_root_dir is subdir in scrape_file_output/filtered
         
         """
-        current_date = datetime.now().strftime('%Y-%d-%m') 
+        current_date = datetime.now().strftime('%Y-%d-%m') if not query_date else query_date
         
         try:
             # category_hash = self.generate_hash(category, current_date)
@@ -177,9 +202,18 @@ class ScraperUtils:
    
     def filter_by_specific_item(self, scraped_data_file, specific_item, filtered_subdir, query_hash):
        
-
+        """
+        Filter scraped data by specific item and create a clean filtered file.
+        
+        Args:
+            scraped_data_file: Path to raw scraped data file
+            specific_item: Item name to filter by
+            filtered_subdir: Output directory for filtered file
+            query_hash: Query hash identifier
+        """
         # Convert file to DataFrame
         try:
+            #read csv file with custom header handling
             df = pd.read_csv(scraped_data_file, skiprows=2)
             df = df.dropna()
 
@@ -205,48 +239,99 @@ class ScraperUtils:
                 return output_file_path
 
 
-            except Exception as e:
-                print(chalk.red(f"FAILED: converting file to df + filtering {e}"))
+            except pd.errors.EmptyDataError:
+                print(chalk.red("Input file is empty"))
+                raise
 
         except Exception as e:
-            print(chalk.red(f"FAILED: converting file to df + filtering {e}"))
+            print(chalk.red(f"Error in filter_by_specific_item: {e}"))
+            raise
 
         
 if __name__ == "__main__":
 
 
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    scraped_data_dir_raw = os.path.join(curr_dir,'..','scrape_file_output','raw')
-    # print(os.path.isdir(scraped_data_dir_raw))
-    scraped_data_dir_filtered = os.path.join(curr_dir,'..','scrape_file_output','filtered')
-    # print(os.path.isdir(scraped_data_dir_filtered))
+    def find_project_root():
+        """
+        Function searches for proj root dir
 
-    filtered_subdir = os.path.join(scraped_data_dir_filtered,"FILTERED_PRADA_2024-24-10_BAGS_0c87ba98")
-    # print(os.path.isdir(filtered_subdir))
-  
-    utils = ScraperUtils(scraped_data_dir_raw,scraped_data_dir_filtered)
+        Using already created .marker file '.PROJECT_ROOT' at project root level
+        we look for this marker file
+        when we find it, we know we are at proj root level
+        
+        """
+
+        #get curr dir of this abs path of file
+        curr_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        #init proj root to start at curr dir - temporarily
+        #will be updated as we search upwards
+        proj_root = curr_dir
+
+        
+        #we continue searching until we find dir containing .PROJECT_ROOT or we hit filesystem root '/'
+        while True:
+            
+            #combine curr dir with .PROJECT_ROOT, check if file exists in this curr proj_root
+            if os.path.exists(os.path.join(proj_root,'.PROJECT_ROOT')):
+                #if exists, means we found it, return curr dir as proj root
+                return proj_root
+            
+
+            #if not found yet, get parent of curr proj root value 
+            parent = os.path.dirname(proj_root)
+
+            #reached fileystem root '/'
+            if parent == proj_root:
+                raise RuntimeError("Could not find project root")
+            
+
+            #If we haven't found the marker and haven't hit filesystem root
+            #update proj root to be curr parent value and keep searching
+            proj_root = parent
+
+
+
+    proj_root = find_project_root()
+    print(proj_root)
+
+    # Ensure the project root is accessible
+    sys.path.append(proj_root)
+
     
+    from shared_paths import RAW_SCRAPE_DIR,FILTERED_DATA_DIR,REPORTS_ROOT_DIR,SOLD_REPORTS_DIR,PRICE_REPORTS_DIR,ARCHIVE_DIR
 
-    input_file = f"RAW_SCRAPE_PRADA_2024-24-10_BAGS_0c87ba98/RAW_ITALIST_PRADA_2024-24-10_BAGS_0c87ba98.csv"
-    input_file_path = os.path.join(scraped_data_dir_raw,input_file)
-    # print(os.path.isfile(input_file_path))
+
+    PARENT_scraped_data_dir_raw = RAW_SCRAPE_DIR
+    PARENT_scraped_data_dir_filtered = FILTERED_DATA_DIR
+  
+    utils = ScraperUtils(PARENT_scraped_data_dir_raw,PARENT_scraped_data_dir_filtered)
+    
+    
+    test_input_RAW_file = f"RAW_SCRAPE_PRADA_2024-01-12_BAGS_027c1ceb/RAW_ITALIST_PRADA_2024-01-12_BAGS_027c1ceb.csv"
+    test_input_RAW_file_path = os.path.join(PARENT_scraped_data_dir_raw,test_input_RAW_file)
+    print(os.path.isfile(test_input_RAW_file_path))
 
 
     # current_date = datetime.now().strftime('%Y-%d-%m')
-    spec_item = 'BROWN SUEDE PRADA BUCKLE LARGE HANDBAG'
-    # brand = 'PRADA'
-    # category = 'BAGS'
-    # query = f"{brand}_{category}" #Prada_bags , Gucci_shirts
+    current_date = '2024-01-12'
+    spec_item = 'TOTE'
+    
+    brand = 'PRADA'
+    category = 'BAGS'
+    query = f"{brand}_{category}" #Prada_bags , Gucci_shirts
     # query_hash = utils.generate_hash(query,spec_item,current_date)
+    query_hash = '0271ceb'
 
-    # # utils.make_scraped_sub_dir_raw(brand,category,query_hash)
+    # # # # utils.make_scraped_sub_dir_raw(brand,category,query_hash)
+    filtered_subdir = utils.make_filtered_sub_dir(brand,category,PARENT_scraped_data_dir_filtered,query_hash,current_date)
+    # print(os.path.exists(filtered_subdir))
+ 
 
-    # print(utils.parse_file_name(input_file_path))
 
-
-    source,date,brand,category,query_hash = utils.parse_file_name(input_file_path)
+    # # source,date,brand,category,query_hash = utils.parse_file_name(input_file_path)
     
    
 
-    utils.filter_by_specific_item(input_file_path,spec_item,filtered_subdir,query_hash)
+    utils.filter_by_specific_item(test_input_RAW_file_path,spec_item,filtered_subdir,query_hash)
 
