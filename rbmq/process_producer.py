@@ -3,7 +3,7 @@ import os,sys
 from dotenv import load_dotenv,find_dotenv
 from simple_chalk import chalk
 import json
-
+from config.config import RABBITMQ_HOST
 
 
 #get parent dir 'backend_copy' from current script dir - append to sys.path to be searched for modules we import
@@ -13,22 +13,17 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
 
 def PROCESS_publish_to_queue(msg):
     
     
     
     try:
-        # Set up the connection parameters (use correct RabbitMQ host and credentials)
-        connection_params = pika.ConnectionParameters(
-            host='localhost',  # Ensure this is the correct host, change if necessary
-            port=5672,          # Default RabbitMQ port
-            credentials=pika.PlainCredentials('guest', 'guest')
-        )
-
-        # Establish the connection using the connection_params object directly
-        connection = pika.BlockingConnection(connection_params)
+        connection = create_rabbitmq_connection()
         channel = connection.channel()
+        
         channel.queue_declare(queue='process_queue',durable=True)
 
         print(msg)

@@ -1,19 +1,12 @@
 import pika
 from simple_chalk import chalk
-
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
 
 
 def check_queue_empty(queue_name):
     try:
-        # Set up the connection parameters
-        connection_params = pika.ConnectionParameters(
-            host='localhost',
-            port=5672,
-            credentials=pika.PlainCredentials('guest', 'guest')
-        )
-
-        # Establish connection and channel
-        connection = pika.BlockingConnection(connection_params)
+        connection = create_rabbitmq_connection()
         channel = connection.channel()
 
 

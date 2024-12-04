@@ -11,6 +11,8 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from src.main_app_driver import driver_function_from_search_form
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
 
 def exit_with_error(msg):
     print(chalk.red(f"[CRITICAL ERROR] {msg}"))
@@ -30,14 +32,9 @@ def main():
 
     # RabbitMQ setup
     try:
-        connection_params = pika.ConnectionParameters( 
-            host='rbmq', #change to localhost if running on localmachine, rbmq if running in docker env,
-            port=5672,
-            credentials=pika.PlainCredentials('guest', 'guest')  
-        )
-
-        connection = pika.BlockingConnection(connection_params)
+        connection = create_rabbitmq_connection()
         channel = connection.channel()
+
         channel.queue_declare(queue='user_search_requests', durable=True)  
         channel.basic_qos(prefetch_count=1) 
         channel.basic_consume(

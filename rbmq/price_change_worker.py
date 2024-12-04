@@ -13,6 +13,9 @@ from analysis.percent_change_analysis import calc_percentage_diff_driver
 from rbmq.compare_producer import COMPARE_publish_to_queue
 from rbmq.process_producer import PROCESS_publish_to_queue
 from email_sender import send_email_with_report
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
+
 
 # Globals to hold current query data in mem
 curr_query_info = {
@@ -262,13 +265,10 @@ def main():
     # RabbitMQ setup
     connection = None
     try:
-        connection_params = pika.ConnectionParameters(
-            host='localhost',
-            port=5672,
-            credentials=pika.PlainCredentials('guest', 'guest')
-        )
-        connection = pika.BlockingConnection(connection_params)
+ 
+        connection = create_rabbitmq_connection()
         channel = connection.channel()
+        
         channel.queue_declare(queue='price_change_queue', durable=True)
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='price_change_queue', on_message_callback=callback)

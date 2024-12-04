@@ -1,14 +1,14 @@
-import pika
+import pika,os,sys
 
-# Set up the connection parameters
-connection_params = pika.ConnectionParameters(
-    host='localhost',
-    port=5672,
-    credentials=pika.PlainCredentials('guest', 'guest')
-)
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
-# Establish connection and channel
-connection = pika.BlockingConnection(connection_params)
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
+
+
+connection = create_rabbitmq_connection()
 channel = connection.channel()
 
 # Purge the queue

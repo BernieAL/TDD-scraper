@@ -12,6 +12,9 @@ from rbmq.scrape_producer import SCRAPE_publish_to_queue
 from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
 from rbmq.process_producer import PROCESS_publish_to_queue
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
+
 
 def run_italist_scraper(brand,category,output_dir,query_hash,local):
     print(chalk.blue(f"Starting Italist scraper with params:"))
@@ -107,16 +110,9 @@ def main():
 
     # RabbitMQ setup
     try:
-        print(chalk.blue("Setting up RabbitMQ connection..."))
-        connection_params = pika.ConnectionParameters(
-            host='localhost', 
-            port=5672,
-            credentials=pika.PlainCredentials('guest', 'guest'),
-            heartbeat=600  # Increase heartbeat timeout
-        )
-        connection = pika.BlockingConnection(connection_params)
+        connection = create_rabbitmq_connection()
         channel = connection.channel()
-        
+
         # Declare queue with all parameters explicit
         channel.queue_declare(
             queue='scrape_queue',

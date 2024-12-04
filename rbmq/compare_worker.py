@@ -9,9 +9,14 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
+from config.config import RABBITMQ_HOST
+
+
 from analysis.compare_data import compare_driver
 from rbmq.price_change_producer import PRICE_publish_to_queue
 from rbmq.process_producer import PROCESS_publish_to_queue
+from config.connections import create_rabbitmq_connection
+
 
 process_info = {
     "query_hash": None,
@@ -167,14 +172,10 @@ def main():
 
     connection = None
     try:
-        connection_params = pika.ConnectionParameters(
-            host='localhost',
-            port=5672,
-            credentials=pika.PlainCredentials('guest', 'guest'),
-            heartbeat=600
-        )
-        connection = pika.BlockingConnection(connection_params)
+        
+        connection = create_rabbitmq_connection()
         channel = connection.channel()
+        
         channel.queue_declare(queue='compare_queue', durable=True)
         channel.basic_qos(prefetch_count=1)
         channel.basic_consume(queue='compare_queue', on_message_callback=callback)

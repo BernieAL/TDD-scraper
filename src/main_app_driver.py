@@ -27,9 +27,6 @@ from shared_paths import RAW_SCRAPE_DIR,FILTERED_DATA_DIR,REPORTS_ROOT_DIR,SOLD_
 scraped_data_dir_raw = RAW_SCRAPE_DIR
 scraped_data_dir_filtered = FILTERED_DATA_DIR
 
-
-
-
 # Import the ScraperUtils class from utils
 from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 
@@ -39,6 +36,9 @@ from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 from rbmq.price_change_producer import PRICE_publish_to_queue
 from rbmq.scrape_producer import SCRAPE_publish_to_queue
 from rbmq.compare_producer import COMPARE_publish_to_queue
+
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
 
 # Initialize the ScraperUtils instance
 utils = ScraperUtils(scraped_data_dir_raw, scraped_data_dir_filtered)
@@ -167,13 +167,9 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
     """
     Waits for a specific message type for the given query_hash.
     """
-    connection_params = pika.ConnectionParameters(
-        host='localhost', 
-        port=5672, 
-        credentials=pika.PlainCredentials('guest', 'guest')
-    )
-    connection = pika.BlockingConnection(connection_params)
+    connection = create_rabbitmq_connection()
     channel = connection.channel()
+
     channel.queue_declare(queue='process_queue', durable=True)
 
     scraped_file = None

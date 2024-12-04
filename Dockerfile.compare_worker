@@ -1,0 +1,27 @@
+FROM python:3.9
+
+WORKDIR /app
+
+#install dependencies for psycopg2
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev \
+    libpq-dev \ 
+    && rm -rf /var/lib/apt/lists*
+
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
+
+#copying req first to leverage docker cache
+COPY requirements.txt ./requirements.txt
+
+
+COPY rbmq/compare_worker.py ./rbmq/compare_worker.py
+COPY rbmq/price_change_producer.py ./rbmq/price_change_producer
+COPY rbmq/process_producer.py ./rbmq/process_producer.py
+COPY analysis/compare_data.py ./analysis/compare_data.py
+COPY db/db_utils.py ./db/db_utils.py
+
+COPY shared_paths.py ./
+
+CMD ["python","app/rbmq/compare_worker.py"]
+

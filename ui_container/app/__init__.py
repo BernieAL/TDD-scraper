@@ -3,7 +3,7 @@ from flask import Flask, g  # Added g import
 from flask_login import LoginManager
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from config import Config
+from config.config import Config
 from app.models import User  # Add this import
 
 login_manager = LoginManager()
