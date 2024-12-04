@@ -34,8 +34,8 @@ scraped_data_dir_filtered = FILTERED_DATA_DIR
 from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 
 # Import the scraper classes to construct instances of 
-from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
-from analysis.compare_data import compare_driver
+# from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
+# from analysis.compare_data import compare_driver
 from rbmq.price_change_producer import PRICE_publish_to_queue
 from rbmq.scrape_producer import SCRAPE_publish_to_queue
 from rbmq.compare_producer import COMPARE_publish_to_queue

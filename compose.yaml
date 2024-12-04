@@ -36,12 +36,12 @@ services:
       environment:
         - RUNNING_IN_DOCKER=1
 
-    container_main: 
-      container_name: container_main
-      hostname: container_main
+    search_request_worker: 
+      container_name: search_request_worker
+      hostname: search_request_worker 
       build: 
         context: ./
-        dockerfile: Dockerfile.main
+        dockerfile: Dockerfile.search_request_worker
       ports:
         - "7777:7777"
       networks:
@@ -55,26 +55,28 @@ services:
       #   - backend_copy/.env.docker
       environment:
         - RABBITMQ_HOST=rbmq
-      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/src/bot_main_driver.py"]
+        - RABBITMQ_PORT=5672
+        - RUNNING_IN_DOCKER=1
+      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/rbmq/search_request_worker.py"]
 
-    container_selenium_worker:
-      hostname: selenium_worker
-      container_name: selenium_worker
-      build:
-          context: ./
-          dockerfile: Dockerfile.selenium_worker
-      depends_on:
-        - container_rbmq
-      networks:
-        - my-network
-      restart: on-failure
-      tty: true
-      stdin_open: true
-      # env_file:
-      #   - backend_copy/.env.docker
-      environment:
-        - RABBITMQ_HOST=rbmq
-      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/scrape_worker.py"]
+    # container_selenium_worker:
+    #   hostname: selenium_worker
+    #   container_name: selenium_worker
+    #   build:
+    #       context: ./
+    #       dockerfile: Dockerfile.selenium_worker
+    #   depends_on:
+    #     - container_rbmq
+    #   networks:
+    #     - my-network
+    #   restart: on-failure
+    #   tty: true
+    #   stdin_open: true
+    #   # env_file:
+    #   #   - backend_copy/.env.docker
+    #   environment:
+    #     - RABBITMQ_HOST=rbmq
+    #   command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/scrape_worker.py"]
      
 
     # email_worker:
