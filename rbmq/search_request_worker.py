@@ -31,7 +31,7 @@ def main():
     # RabbitMQ setup
     try:
         connection_params = pika.ConnectionParameters( 
-            host='localhost',
+            host='rbmq', #change to localhost if running on localmachine, rbmq if running in docker env,
             port=5672,
             credentials=pika.PlainCredentials('guest', 'guest')  
         )
