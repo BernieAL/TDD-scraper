@@ -1,7 +1,7 @@
 import pika
 import os
 
-RABBITMQ_HOST = os.getenv('RABBITMQ_HOST','localhost')
+RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
 
 def get_rabbitmq_connection_params():
     return pika.ConnectionParameters(
@@ -14,3 +14,9 @@ def get_rabbitmq_connection_params():
 def create_rabbitmq_connection():
     #creates new rbmq connnection using std params
     return pika.BlockingConnection(get_rabbitmq_connection_params())
+
+
+
+
+if __name__ == "__main__":
+    create_rabbitmq_connection()
