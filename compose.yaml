@@ -1,23 +1,23 @@
 version: '3.8'
 services:
 
-    # container_pgsql:
-    #   hostname: pgsql
-    #   container_name: pgsql
-    #   restart: always
-    #   build: 
-    #     context: ./
-    #     dockerfile: Dockerfile.container_psql
-    #   ports:
-    #       - "5433:5432"
-    #   networks:
-    #     - my-network
-    #   volumes:
-    #     - ./sql_init_scripts:/docker-entrypoint-initdb.d
-    #   env_file:
-    #     - backend_copy/.env.docker
-    #   environment:
-    #     - RUNNING_IN_DOCKER=1
+    container_pgsql:
+      hostname: pgsql
+      container_name: pgsql
+      restart: always
+      build: 
+        context: ./
+        dockerfile: Dockerfile.pgsql
+      ports:
+          - "5433:5432"
+      networks:
+        - my-network
+      # volumes:
+      #   - ./sql_init_scripts:/docker-entrypoint-initdb.d
+      # env_file:
+      #   - 
+      environment:
+        - RUNNING_IN_DOCKER=1
 
     container_rbmq:
       hostname: rbmq
@@ -76,26 +76,31 @@ services:
       #   - backend_copy/.env.docker
       environment:
         - RABBITMQ_HOST=rbmq
+        - RABBITMQ_PORT=5672
+        - RUNNING_IN_DOCKER=1
       command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--","python3","/app/rbmq/scraper_worker.py"]
      
 
-    # email_worker:
-    #   hostname: email_worker
-    #   container_name: email_worker
-    #   build:
-    #       context: ./
-    #       dockerfile: Dockerfile.container_email_worker
-    #   depends_on:
-    #     - container_rbmq
-    #   networks:
-    #     - my-network
-    #   restart: on-failure
-    #   tty: true
-    #   stdin_open: true
-    #   env_file:
-    #     - backend_copy/.env.docker
-    #   environment:
-    #     - RUNNING_IN_DOCKER=1
+    compare_worker:
+      hostname: compare_worker
+      container_name: compare_worker
+      build:
+          context: ./
+          dockerfile: Dockerfile.compare_worker
+      depends_on:
+        - container_rbmq
+      networks:
+        - my-network
+      restart: on-failure
+      tty: true
+      stdin_open: true
+      # env_file:
+      #   - 
+      environment:
+        - RABBITMQ_HOST=rbmq
+        - RABBITMQ_PORT=5672
+        - RUNNING_IN_DOCKER=1
+      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--","python3","/app/rbmq/compare_worker.py"]
 
 
 

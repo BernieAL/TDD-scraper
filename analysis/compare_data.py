@@ -7,11 +7,22 @@ import psycopg2
 from datetime import datetime,date
 from simple_chalk import chalk
 
+#get parent dir 'backend_copy' from current script dir - append to sys.path to be searched for modules we import
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FILE_SCRAPE_DATE = None
 
+# Add the directory to sys.path
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
+    
+# For Docker
+if os.getenv('RUNNING_IN_DOCKER') == '1' and '/app' not in sys.path:
+    sys.path.insert(0, '/app')
+
+
+
+
+FILE_SCRAPE_DATE = None
+
 
 from db.db_utils import (
     DB_fetch_product_ids_prices_dates, 

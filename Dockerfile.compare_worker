@@ -9,19 +9,31 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \ 
     && rm -rf /var/lib/apt/lists*
 
-RUN pip install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
-
 #copying req first to leverage docker cache
 COPY requirements.txt ./requirements.txt
+COPY analysis/db-requirements.txt ./db-requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r db-requirements.txt
 
 
 COPY rbmq/compare_worker.py ./rbmq/compare_worker.py
-COPY rbmq/price_change_producer.py ./rbmq/price_change_producer
+COPY rbmq/compare_producer.py ./rbmq/compare_producer.py
+COPY rbmq/price_change_producer.py ./rbmq/price_change_producer.py
 COPY rbmq/process_producer.py ./rbmq/process_producer.py
+
 COPY analysis/compare_data.py ./analysis/compare_data.py
 COPY db/db_utils.py ./db/db_utils.py
 
 COPY shared_paths.py ./
+COPY config ./config
 
-CMD ["python","app/rbmq/compare_worker.py"]
+
+# Copy project files
+COPY wait-for-it-master/wait-for-it.sh /usr/local/bin/
+#make wait-for-it script executable
+RUN chmod +x /usr/local/bin/wait-for-it.sh
+
+ENV RUNNING_IN_DOCKER=1
+CMD ["wait-for-it.sh","rbmq:5672","--timeout=30","--","python3","/app/rbmq/compare_worker.py"]
+
 

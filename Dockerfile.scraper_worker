@@ -32,6 +32,7 @@ COPY rbmq/scrape_producer.py ./rbmq/scrape_producer.py
 
 COPY selenium_scraper_container/utils ./selenium_scraper_container/utils
 COPY selenium_scraper_container/scrapers ./selenium_scraper_container/scrapers
+
 COPY shared_paths.py ./
 COPY config ./config
 

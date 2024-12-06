@@ -15,18 +15,18 @@ if parent_dir not in sys.path:
 if os.getenv('RUNNING_IN_DOCKER') == '1' and '/app' not in sys.path:
     sys.path.insert(0, '/app')
 
-"""
-for each dir in list dir, 
-check if each dir has __init__.py,
-if not make one. 
 
-This avoids the module not found issue that results
-from copying specific files without including __init__.py
-
-"""
 
 def ensure_init_files():
+    """
+    for each dir in list dir, 
+    check if each dir has __init__.py,
+    if not make one. 
 
+    This avoids the module not found issue that results
+    from copying specific files without including __init__.py
+
+    """
     #get current dir contents
     dirs = os.listdir()
 
