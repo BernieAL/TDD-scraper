@@ -59,24 +59,24 @@ services:
         - RUNNING_IN_DOCKER=1
       command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/rbmq/search_request_worker.py"]
 
-    # container_selenium_worker:
-    #   hostname: selenium_worker
-    #   container_name: selenium_worker
-    #   build:
-    #       context: ./
-    #       dockerfile: Dockerfile.selenium_worker
-    #   depends_on:
-    #     - container_rbmq
-    #   networks:
-    #     - my-network
-    #   restart: on-failure
-    #   tty: true
-    #   stdin_open: true
-    #   # env_file:
-    #   #   - backend_copy/.env.docker
-    #   environment:
-    #     - RABBITMQ_HOST=rbmq
-    #   command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/scrape_worker.py"]
+    container_scraper_worker:
+      hostname: scraper_worker
+      container_name: scraper_worker
+      build:
+          context: ./
+          dockerfile: Dockerfile.scraper_worker
+      depends_on:
+        - container_rbmq
+      networks:
+        - my-network
+      restart: on-failure
+      tty: true
+      stdin_open: true
+      # env_file:
+      #   - backend_copy/.env.docker
+      environment:
+        - RABBITMQ_HOST=rbmq
+      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--","python3","/app/rbmq/scraper_worker.py"]
      
 
     # email_worker:

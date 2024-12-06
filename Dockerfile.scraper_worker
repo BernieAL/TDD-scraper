@@ -1,0 +1,52 @@
+FROM python:3.9
+
+WORKDIR /app
+
+#install chrome for scrape process
+RUN apt-get update && apt-get install -y wget unzip && \
+    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt install -y ./google-chrome-stable_current_amd64.deb && \
+    rm google-chrome-stable_current_amd64.deb && \
+    apt-get clean
+
+# Chrome-specific environment variables
+# ENV CHROME_BIN=/usr/bin/google-chrome-stable
+# ENV CHROME_PATH=/usr/lib/chromium/
+# ENV CHROME_DRIVER_PATH=/usr/local/bin/chromedriver
+# ENV DISPLAY=:99
+
+#copy and install main reqs
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
+
+#copy and install scraper-specific reqs
+COPY selenium_scraper_container/requirements.txt ./scraper-requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r scraper-requirements.txt
+
+
+#copy application files
+# Copy application files
+COPY rbmq/scraper_worker.py ./rbmq/scraper_worker.py
+COPY rbmq/process_producer.py ./rbmq/process_producer.py
+COPY rbmq/scrape_producer.py ./rbmq/scrape_producer.py
+
+COPY selenium_scraper_container/utils ./selenium_scraper_container/utils
+COPY selenium_scraper_container/scrapers ./selenium_scraper_container/scrapers
+COPY shared_paths.py ./
+COPY config ./config
+
+# RUN touch /app/rbmq/__init__.py
+
+# Copy project files
+COPY wait-for-it-master/wait-for-it.sh /usr/local/bin/
+#make wait-for-it script executable
+RUN chmod +x /usr/local/bin/wait-for-it.sh
+
+
+# RUN apt-get update && apt-get install -y wget nano
+
+
+# CMD ['python3','app/rbmq/scrape
+
+ENV RUNNING_IN_DOCKER=1
+CMD ["wait-for-it.sh","rbmq:5672","--timeout=30","--","python3","/app/rbmq/scraper_worker.py"]

@@ -1,15 +1,31 @@
-import os
-import stat
+import os,sys
 from simple_chalk import chalk
 from dotenv import load_dotenv,find_dotenv
+
 
 if os.getenv('RUNNING_IN_DOCKER') == '1':
 	load_dotenv(find_dotenv('.env.docker'))   
 	print(chalk.green(f"CONFIG - USING - .env.docker"))
+	BASE_DIR = '/app' #docker base path
 else:
 	load_dotenv(find_dotenv('.env.local'))   
 	print(chalk.green(f"CONFIG - USING - .env.local"))
+	BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Local base path
+	
 
+#addd to python path 
+# Add to Python path
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+
+
+RBMQ_DIR = os.path.join(BASE_DIR, 'rbmq')
+SCRAPER_DIR = os.path.join(BASE_DIR, 'selenium_scraper_container')
+OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
+
+
+
+#env vars
 APPLICATION_SECRET_KEY = os.getenv('APPLICATION_SECRET_KEY')
 DB_URI = os.getenv('DB_URI')
 PROXY_HTTPS = os.getenv('PROXY_HTTPS')

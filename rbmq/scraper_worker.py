@@ -1,19 +1,71 @@
 import sys,csv,json,os
 import pika
+from dotenv import load_dotenv,find_dotenv
 from simple_chalk import chalk
 from datetime import datetime
 from shutil import rmtree  # For removing directories
 
+
+# For local development
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
+# For Docker
+if os.getenv('RUNNING_IN_DOCKER') == '1' and '/app' not in sys.path:
+    sys.path.insert(0, '/app')
+
+"""
+for each dir in list dir, 
+check if each dir has __init__.py,
+if not make one. 
+
+This avoids the module not found issue that results
+from copying specific files without including __init__.py
+
+"""
+
+def ensure_init_files():
+
+    #get current dir contents
+    dirs = os.listdir()
+
+    for dir in dirs:
+
+        #get full path
+        full_path = os.path.abspath(dir)
+
+        #check if its a dir
+        if os.path.isdir(full_path):
+            
+            #build path for __init__ file in curr dir
+            init_file_path = os.path.join(full_path,'__init__.py')
+
+            #check if init file exists
+            if not os.path.exists(init_file_path):
+                print(f"Creating __init__.py file for dir: {dir}")
+
+                with open(init_file_path, 'w') as f:
+                    pass
+            else:
+                print(f"__init__.py already exists for {dir}")
+
+ensure_init_files()  
+
+
+
+from config.config import BASE_DIR, RBMQ_DIR  
 from rbmq.scrape_producer import SCRAPE_publish_to_queue
 from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
 from rbmq.process_producer import PROCESS_publish_to_queue
+
 from config.config import RABBITMQ_HOST
 from config.connections import create_rabbitmq_connection
+
+
+
+
 
 
 def run_italist_scraper(brand,category,output_dir,query_hash,local):
