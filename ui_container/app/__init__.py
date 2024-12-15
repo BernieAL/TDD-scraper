@@ -10,17 +10,21 @@ login_manager = LoginManager()
 
 def get_db_connection():
     """Create a database connection"""
+    # return psycopg2.connect(
+    #     host=Config.DB_HOST,
+    #     port=Config.DB_PORT,
+    #     database=Config.DB_NAME,
+    #     user=Config.DB_USER,
+    #     password=Config.DB_PASSWORD,
+    #     cursor_factory=RealDictCursor  # Returns results as dictionaries
+    # )
     return psycopg2.connect(
-        host=Config.DB_HOST,
-        port=Config.DB_PORT,
-        database=Config.DB_NAME,
-        user=Config.DB_USER,
-        password=Config.DB_PASSWORD,
-        cursor_factory=RealDictCursor  # Returns results as dictionaries
+        Config.DB_URI,
+        cursor_factory=RealDictCursor
     )
-
 def create_app():
     app = Flask(__name__)
+
     app.config.from_object(Config)
 
     # Initialize login manager

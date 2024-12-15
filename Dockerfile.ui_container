@@ -1,0 +1,29 @@
+# Base image
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+#install dependencies for psycopg2
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev \
+    libpq-dev \ 
+    && rm -rf /var/lib/apt/lists*
+
+
+# Install dependencies
+COPY ui_container/requirements.txt ./requirements.txt
+RUN pip install -r requirements.txt
+
+# Copy application code
+COPY config ./config
+COPY ui_container/ . 
+
+COPY db/db_utils.py ./db/db_utils.py
+
+# Expose the application port
+EXPOSE 8000
+
+# Command to start the application
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "run:app"]

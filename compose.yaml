@@ -1,106 +1,121 @@
 version: '3.8'
 services:
 
-    container_pgsql:
-      hostname: pgsql
-      container_name: pgsql
-      restart: always
-      build: 
-        context: ./
-        dockerfile: Dockerfile.pgsql
-      ports:
-          - "5433:5432"
-      networks:
-        - my-network
-      # volumes:
-      #   - ./sql_init_scripts:/docker-entrypoint-initdb.d
-      # env_file:
-      #   - 
-      environment:
-        - RUNNING_IN_DOCKER=1
+  container_pgsql:
+    hostname: pgsql
+    container_name: pgsql
+    restart: always
+    build: 
+      context: ./
+      dockerfile: Dockerfile.pgsql
+    ports:
+        - "5433:5432"
+    networks:
+      - my-network
+    environment:
+      - RUNNING_IN_DOCKER=1
 
-    container_rbmq:
-      hostname: rbmq
-      container_name: rbmq
-      build:
-        context: ./
-        dockerfile: Dockerfile.rbmq
-      ports: 
-          - "15672:15672"
-      networks:
-        - my-network
-      stdin_open: true
-      tty: true
-      # env_file:
-      #   - backend_copy/.env.docker
-      environment:
-        - RUNNING_IN_DOCKER=1
+  ui_container:
+    hostname: ui_container
+    container_name: ui_container
+    # restart: always
+    build: 
+      context: ./
+      dockerfile: Dockerfile.ui_container
+    ports:
+        - "8000:8000"
+    restart: on-failure
+    tty: true
+    stdin_open: true
+    depends_on: 
+      - container_rbmq
+      - container_pgsql
+    networks:
+      - my-network
+    environment:
+      - RUNNING_IN_DOCKER=1
+      - FLASK_ENV=development
+    env_file:
+      - .env.docker
 
-    search_request_worker: 
-      container_name: search_request_worker
-      hostname: search_request_worker 
-      build: 
-        context: ./
-        dockerfile: Dockerfile.search_request_worker
-      ports:
-        - "7777:7777"
-      networks:
-        - my-network     
-      restart: on-failure
-      tty: true
-      stdin_open: true
-      depends_on: 
-        - container_rbmq
-      # env_file:
-      #   - backend_copy/.env.docker
-      environment:
-        - RABBITMQ_HOST=rbmq
-        - RABBITMQ_PORT=5672
-        - RUNNING_IN_DOCKER=1
-      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/rbmq/search_request_worker.py"]
+  container_rbmq:
+    hostname: rbmq
+    container_name: rbmq
+    build:
+      context: ./
+      dockerfile: Dockerfile.rbmq
+    ports: 
+        - "15672:15672"
+    networks:
+      - my-network
+    environment:
+      - RUNNING_IN_DOCKER=1
+      
+    # search_request_worker: 
+    #   container_name: search_request_worker
+    #   hostname: search_request_worker 
+    #   build: 
+    #     context: ./
+    #     dockerfile: Dockerfile.search_request_worker
+    #   ports:
+    #     - "7777:7777"
+    #   networks:
+    #     - my-network     
+    #   restart: on-failure
+    #   tty: true
+    #   stdin_open: true
+    #   depends_on: 
+    #     - container_rbmq
+    #   # env_file:
+    #   #   - backend_copy/.env.docker
+    #   environment:
+    #     - RABBITMQ_HOST=rbmq
+    #     - RABBITMQ_PORT=5672
+    #     - RUNNING_IN_DOCKER=1
+    #   command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--", "python", "/app/rbmq/search_request_worker.py"]
 
-    container_scraper_worker:
-      hostname: scraper_worker
-      container_name: scraper_worker
-      build:
-          context: ./
-          dockerfile: Dockerfile.scraper_worker
-      depends_on:
-        - container_rbmq
-      networks:
-        - my-network
-      restart: on-failure
-      tty: true
-      stdin_open: true
-      # env_file:
-      #   - backend_copy/.env.docker
-      environment:
-        - RABBITMQ_HOST=rbmq
-        - RABBITMQ_PORT=5672
-        - RUNNING_IN_DOCKER=1
-      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--","python3","/app/rbmq/scraper_worker.py"]
+    # container_scraper_worker:
+    #   hostname: scraper_worker
+    #   container_name: scraper_worker
+    #   build:
+    #       context: ./
+    #       dockerfile: Dockerfile.scraper_worker
+    #   depends_on:
+    #     - container_rbmq
+    #   networks:
+    #     - my-network
+    #   restart: on-failure
+    #   tty: true
+    #   stdin_open: true
+    #   # env_file:
+    #   #   - backend_copy/.env.docker
+    #   environment:
+    #     - RABBITMQ_HOST=rbmq
+    #     - RABBITMQ_PORT=5672
+    #     - RUNNING_IN_DOCKER=1
+    #   command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--","python3","/app/rbmq/scraper_worker.py"]
      
 
-    compare_worker:
-      hostname: compare_worker
-      container_name: compare_worker
-      build:
-          context: ./
-          dockerfile: Dockerfile.compare_worker
-      depends_on:
-        - container_rbmq
-      networks:
-        - my-network
-      restart: on-failure
-      tty: true
-      stdin_open: true
-      # env_file:
-      #   - 
-      environment:
-        - RABBITMQ_HOST=rbmq
-        - RABBITMQ_PORT=5672
-        - RUNNING_IN_DOCKER=1
-      command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--","python3","/app/rbmq/compare_worker.py"]
+    # compare_worker:
+    #   hostname: compare_worker
+    #   container_name: compare_worker
+    #   build:
+    #       context: ./
+    #       dockerfile: Dockerfile.compare_worker
+    #   depends_on:
+    #     - container_rbmq
+    #   networks:
+    #     - my-network
+    #   restart: on-failure
+    #   tty: true
+    #   stdin_open: true
+    #   # env_file:
+    #   #   - 
+    #   environment:
+    #     - RABBITMQ_HOST=rbmq
+    #     - RABBITMQ_PORT=5672
+    #     - RUNNING_IN_DOCKER=1
+    #   command: ["/usr/local/bin/wait-for-it.sh", "rbmq:5672", "--","python3","/app/rbmq/compare_worker.py"]
 
 
 
