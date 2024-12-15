@@ -3,17 +3,27 @@ FROM python:3.9
 WORKDIR /app
 
 #install chrome for scrape process
-RUN apt-get update && apt-get install -y wget unzip && \
-    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
-    apt install -y ./google-chrome-stable_current_amd64.deb && \
-    rm google-chrome-stable_current_amd64.deb && \
-    apt-get clean
+# RUN apt-get update && apt-get install -y wget unzip && \
+#     wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+#     apt install -y ./google-chrome-stable_current_amd64.deb && \
+#     rm google-chrome-stable_current_amd64.deb && \
+#     apt-get clean
 
 # Chrome-specific environment variables
 # ENV CHROME_BIN=/usr/bin/google-chrome-stable
 # ENV CHROME_PATH=/usr/lib/chromium/
 # ENV CHROME_DRIVER_PATH=/usr/local/bin/chromedriver
 # ENV DISPLAY=:99
+
+# Install Chrome and dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    gnupg \
+    && wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable
 
 #copy and install main reqs
 COPY requirements.txt ./requirements.txt
@@ -24,14 +34,15 @@ COPY selenium_scraper_container/requirements.txt ./scraper-requirements.txt
 RUN pip install --no-cache-dir --trusted-host pypi.python.org -r scraper-requirements.txt
 
 
-#copy application files
-# Copy application files
+#Copy application files
 COPY rbmq/scraper_worker.py ./rbmq/scraper_worker.py
 COPY rbmq/process_producer.py ./rbmq/process_producer.py
 COPY rbmq/scrape_producer.py ./rbmq/scrape_producer.py
 
+
 COPY selenium_scraper_container/utils ./selenium_scraper_container/utils
 COPY selenium_scraper_container/scrapers ./selenium_scraper_container/scrapers
+COPY src/local_websites ./src/local_websites
 
 COPY shared_paths.py ./
 COPY config ./config

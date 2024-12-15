@@ -1,0 +1,22 @@
+FROm python:3.9
+
+WORKDIR /app
+
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
+
+COPY rbmq/scraper_worker.py ./rbmq/scraper_worker.py
+COPY rbmq/process_producer.py ./rbmq/process_producer.py
+COPY rbmq/scrape_producer.py ./rbmq/scrape_producer.py
+
+COPY shared_paths.py ./
+COPY config ./config
+
+# Copy project files
+COPY wait-for-it-master/wait-for-it.sh /usr/local/bin/
+#make wait-for-it script executable
+RUN chmod +x /usr/local/bin/wait-for-it.sh
+
+
+ENV RUNNING_IN_DOCKER=1
+CMD ["wait-for-it.sh","rbmq:5672","--timeout=30","--","python3","/app/rbmq/price_change_worker.py"]

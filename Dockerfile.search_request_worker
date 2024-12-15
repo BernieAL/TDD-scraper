@@ -13,11 +13,12 @@ WORKDIR /app
 
 COPY src/requirements.txt ./src-requirements.txt
 COPY selenium_scraper_container/requirements.txt ./scraper-requirements.txt
-COPY rbmq ./rbmq/ 
+COPY rbmq/  ./rbmq/ 
 COPY shared_paths.py ./
+COPY shared_data/ ./shared_data
 COPY selenium_scraper_container/ ./selenium_scraper_container/
 copy src/ ./src/
-COPY config ./config
+COPY config/ ./config
 
 
 # Copy project files
@@ -36,3 +37,4 @@ ENV RUNNING_IN_DOCKER=1
 
 # CMD ["python", "app/rbmq/search_request_worker.py"]
 CMD ["wait-for-it.sh","rbmq:5672","--timeout=30","--","python3","rbmq/search_request_worker.py"]
+

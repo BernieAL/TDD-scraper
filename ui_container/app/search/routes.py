@@ -12,7 +12,7 @@ def trigger_scrape(search_id,user_email,brand,category,spec_item):
     Search criteria and user email are published to queue
     """
     connection_params = pika.ConnectionParameters(
-        host='localhost', 
+        host='rbmq', 
         port=5672, 
         credentials=pika.PlainCredentials('guest', 'guest')
     )
