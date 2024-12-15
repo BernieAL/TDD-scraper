@@ -1,5 +1,5 @@
 # app/__init__.py
-from flask import Flask, g  # Added g import
+from flask import Flask, g, redirect, url_for  # Added g import
 from flask_login import LoginManager
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -25,8 +25,9 @@ def get_db_connection():
 def create_app():
     app = Flask(__name__)
 
+   
     app.config.from_object(Config)
-
+    app.secret_key = Config.APPLICATION_SECRET_KEY  
     # Initialize login manager
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
@@ -47,6 +48,12 @@ def create_app():
         db = g.pop('db', None)
         if db is not None:
             db.close()
+
+
+
+    @app.route('/')
+    def index():
+        return redirect(url_for('auth.login')) #redirect to login
 
     # Register blueprints
     from app.auth.routes import auth_bp     # Updated import path

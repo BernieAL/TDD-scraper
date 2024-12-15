@@ -9,45 +9,40 @@ from datetime import datetime
 auth_bp = Blueprint('auth', __name__,
                    template_folder='templates')
 
+
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
+    print("Registration attempt started")  # Debug
 
     if form.validate_on_submit():
+        print(f"Form validated, email: {form.email.data}")  # Debug
+        
         # Check if email exists
-        cur = g.db.cursor()
-        cur.execute("SELECT * FROM users WHERE email = %s", (form.email.data,))
-        existing_user = cur.fetchone()
-        cur.close()
-
-        if existing_user:
+        if User.get_by_email(form.email.data):
+            print(f"Email {form.email.data} already exists")  # Debug
             flash('Email already registered')
             return redirect(url_for('auth.register'))
         
         try:
-            # Create new user
-            cur = g.db.cursor()
-            cur.execute("""
-                INSERT INTO users (email, password_hash, created_at) 
-                VALUES (%s, %s, %s) 
-                RETURNING id
-                """, 
-                (form.email.data, 
-                 User.generate_password_hash(form.password.data),
-                 datetime.utcnow()
-                )
+            print("Attempting to create new user")  # Debug
+            user = User.create_user(
+                email=form.email.data,
+                password=form.password.data
             )
-            user_id = cur.fetchone()['id']
-            g.db.commit()
-            cur.close()
-            
+            print(f"User created successfully with id: {user.id}")  # Debug
             flash('Registration successful')
             return redirect(url_for('auth.login'))
             
         except Exception as e:
-            g.db.rollback()
+            print(f"Registration failed with error: {str(e)}")  # Debug
             flash('Registration failed')
             return redirect(url_for('auth.register'))
+    else:
+        print("Form validation failed:")  # Debug
+        for field, errors in form.errors.items():
+            print(f"Field {field} has errors: {errors}")
     
     return render_template('register.html', form=form)
 
