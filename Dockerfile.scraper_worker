@@ -39,7 +39,6 @@ COPY rbmq/scraper_worker.py ./rbmq/scraper_worker.py
 COPY rbmq/process_producer.py ./rbmq/process_producer.py
 COPY rbmq/scrape_producer.py ./rbmq/scrape_producer.py
 
-
 COPY selenium_scraper_container/utils ./selenium_scraper_container/utils
 COPY selenium_scraper_container/scrapers ./selenium_scraper_container/scrapers
 COPY src/local_websites ./src/local_websites

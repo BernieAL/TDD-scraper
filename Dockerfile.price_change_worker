@@ -6,8 +6,13 @@ COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
 
 COPY rbmq/scraper_worker.py ./rbmq/scraper_worker.py
+COPY rbmq/price_change_worker.py ./rbmq/price_change_worker.py
 COPY rbmq/process_producer.py ./rbmq/process_producer.py
 COPY rbmq/scrape_producer.py ./rbmq/scrape_producer.py
+COPY rbmq/email_sender.py ./rbmq/email_sender.py
+COPY rbmq/compare_producer.py ./rbmq/compare_producer.py
+COPY analysis/percent_change_analysis.py ./analysis/percent_change_analysis.py
+
 
 COPY shared_paths.py ./
 COPY config ./config
@@ -18,5 +23,7 @@ COPY wait-for-it-master/wait-for-it.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/wait-for-it.sh
 
 
-ENV RUNNING_IN_DOCKER=1
+ENV RUNNING_IN_DOCKER=1 
 CMD ["wait-for-it.sh","rbmq:5672","--timeout=30","--","python3","/app/rbmq/price_change_worker.py"]
+
+
