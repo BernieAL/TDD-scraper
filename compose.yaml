@@ -15,6 +15,20 @@ services:
     environment:
       - RUNNING_IN_DOCKER=1
 
+  nginx:
+    build: 
+      context: ./
+      dockerfile: Dockerfile.nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - ui_container
+    networks:
+      - my-network
   
   container_rbmq:
     hostname: rbmq
@@ -36,8 +50,10 @@ services:
     build: 
       context: ./
       dockerfile: Dockerfile.ui_container
-    ports:
-        - "8000:8000"
+    # ports:
+    #     - "8000:8000"
+    expose: 
+      - "8000"
     restart: on-failure
     tty: true
     stdin_open: true
