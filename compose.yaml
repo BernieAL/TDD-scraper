@@ -14,6 +14,8 @@ services:
       - my-network
     environment:
       - RUNNING_IN_DOCKER=1
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   nginx:
     build: 
@@ -176,6 +178,8 @@ networks:
 volumes:
   shared_data:
     name: shared_data
+  postgres_data:
+    name: postgres_data
 
 
 
