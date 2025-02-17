@@ -1,4 +1,5 @@
 import sys,csv,json,os
+from typing import Dict, Set
 import pika
 from dotenv import load_dotenv,find_dotenv
 from simple_chalk import chalk
@@ -64,101 +65,183 @@ from config.config import RABBITMQ_HOST
 from config.connections import create_rabbitmq_connection
 
 
+import sys, csv, json, os
+import pika
+from simple_chalk import chalk
+from datetime import datetime
+from typing import Dict, List, Optional, Set
 
+# Import statements remain the same...
 
+class ScraperOrchestrator:
+    def __init__(self):
+        self.scrapers = {
+            'italist': ItalistScraper,
+            # Add other scrapers here
+        }
+        # Track failures per query hash
+        self.failed_scrapers: Dict[str, Set[str]] = {}
+        # Track error messages for failed scrapers
+        self.scraper_errors: Dict[str, Dict[str, str]] = {}
+        
+    def get_active_scrapers(self) -> List[str]:
+        """Returns list of currently active scraper names"""
+        return list(self.scrapers.keys())
+    
+    def record_failure(self, query_hash: str, scraper_name: str, error_msg: str):
+        """Record a scraper failure for a specific query"""
+        if query_hash not in self.failed_scrapers:
+            self.failed_scrapers[query_hash] = set()
+            self.scraper_errors[query_hash] = {}
+            
+        self.failed_scrapers[query_hash].add(scraper_name)
+        self.scraper_errors[query_hash][scraper_name] = error_msg
+    
+    def get_failed_scrapers(self, query_hash: str) -> List[str]:
+        """Get list of failed scrapers for a query"""
+        return list(self.failed_scrapers.get(query_hash, set()))
+    
+    def get_failure_details(self, query_hash: str) -> Dict[str, str]:
+        """Get error messages for failed scrapers"""
+        return self.scraper_errors.get(query_hash, {})
+    
+    def run_scraper(self, 
+                   scraper_name: str, 
+                   brand: str,
+                   category: str,
+                   output_dir: str,
+                   query_hash: str,
+                   local: bool) -> Optional[str]:
+        """
+        Runs a single scraper and returns the path to the scraped file
+        """
+        try:
+            if scraper_name not in self.scrapers:
+                raise ValueError(f"Unknown scraper: {scraper_name}")
+            
+            scraper_class = self.scrapers[scraper_name]
+            scraper = scraper_class(brand, category, output_dir, query_hash, local)
+            
+            print(chalk.blue(f"Running {scraper_name} scraper with:"))
+            print(chalk.blue(f"Brand: {brand}"))
+            print(chalk.blue(f"Category: {category}"))
+            print(chalk.blue(f"Output Dir: {output_dir}"))
+            
+            scraped_file = scraper.run()
+            
+            if scraped_file and os.path.exists(scraped_file):
+                print(chalk.green(f"{scraper_name} completed successfully: {scraped_file}"))
+                return scraped_file
+            else:
+                error_msg = f"{scraper_name} completed but produced no results"
+                print(chalk.yellow(error_msg))
+                self.record_failure(query_hash, scraper_name, error_msg)
+                return None
+                
+        except Exception as e:
+            error_msg = f"Error running {scraper_name}: {str(e)}"
+            print(chalk.red(error_msg))
+            self.record_failure(query_hash, scraper_name, error_msg)
+            return None
 
-
-def run_italist_scraper(brand,category,output_dir,query_hash,local):
-    print(chalk.blue(f"Starting Italist scraper with params:"))
-    print(chalk.blue(f"Brand: {brand}"))
-    print(chalk.blue(f"Category: {category}"))
-    print(chalk.blue(f"Output Dir: {output_dir}"))
-    print(chalk.blue(f"Query Hash: {query_hash}"))
-
-   
-    italist_scraper = ItalistScraper(brand,category,output_dir,query_hash,local)
-    scraped_file = italist_scraper.run()
-    print(chalk.green(f"Scraper completed. Output file: {scraped_file}"))
-    return scraped_file
+    def run_all_scrapers(self, 
+                        brand: str,
+                        category: str,
+                        output_dir: str,
+                        query_hash: str,
+                        local: bool) -> Dict[str, Optional[str]]:
+        """
+        Runs all active scrapers and returns a dictionary of results
+        """
+        results = {}
+        
+        for scraper_name in self.get_active_scrapers():
+            scraped_file = self.run_scraper(
+                scraper_name, brand, category, output_dir, query_hash, local
+            )
+            if scraped_file:
+                results[scraper_name] = scraped_file
+                
+        return results
 
 def main():
+    orchestrator = ScraperOrchestrator()
+    
     def callback(ch, method, properties, body):
-        #declaring early in case scraper fails
-        scraped_file = None
         try:
             print(chalk.yellow("Received message on scrape_queue"))
             msg = json.loads(body)
-            print(chalk.yellow(f"Message content: {msg}"))
-
-            #use global shared paths provided in message 
-            paths = msg.get('paths',{}) #empty dict if no 'paths'
-            output_dir = msg['output_dir'] 
-
             
-            
-            # Extract and verify all required fields included in msg
+            # Verify required fields
             required_fields = ['query_hash', 'brand', 'category', 'output_dir']
             for field in required_fields:
-                #if missing reqd field = fail and notify
                 if field not in msg:
-
                     raise KeyError(f"Missing required field: {field}")
             
+            paths = msg.get('paths', {})
+            output_dir = msg['output_dir']
+            query_hash = msg['query_hash']
             
-            print(chalk.blue("Starting scrape process..."))
-            scraped_file = run_italist_scraper(
+            print(chalk.blue("Starting scrape processes..."))
+            
+            # Run all scrapers
+            scraped_files = orchestrator.run_all_scrapers(
                 msg['brand'],
                 msg['category'],
-                output_dir, 
-                msg['query_hash'],
-                msg.get('local_test'))
+                output_dir,
+                query_hash,
+                msg.get('local_test', True)
+            )
             
-            #if scraped file is none, scraper didnt produce file
-            if not scraped_file:
-                raise Exception ("Scraper failed to produce output file")
+            # Get failure information
+            failed_scrapers = orchestrator.get_failed_scrapers(query_hash)
+            failure_details = orchestrator.get_failure_details(query_hash)
             
-            #if scraped_file path DNE 
-            if not os.path.exists(scraped_file):
-                raise Exception (f"Scraper output file not found: {scraped_file}")
-
+            # Check if any scrapers succeeded
+            if not scraped_files:
+                raise Exception(f"All scrapers failed. Failures: {failure_details}")
+            
+            # Send success message with all scraped files and failure info
             complete_msg = {
                 'type': 'SCRAPE',
-                'status':'PASS',
-                'query_hash': msg.get('query_hash'),
+                'status': 'PASS',
+                'query_hash': query_hash,
                 'output_dir': output_dir,
-                'specific_item': msg.get('specific_item'),  # Forward specific_item if present
-                'scraped_file': scraped_file,
-                'paths':paths #include paths in msg to next worker
+                'specific_item': msg.get('specific_item'),
+                'scraped_files': scraped_files,
+                'failed_scrapers': list(failed_scrapers),
+                'failure_details': failure_details,
+                'paths': paths
             }
             
             print(chalk.blue(f"Publishing Scrape SUCCESS Msg: {complete_msg}"))
             PROCESS_publish_to_queue(complete_msg)
-            print(chalk.green("SCRAPE_COMPLETE message sent to process_queue."))
-
+            
         except Exception as e:
-
             fail_msg = {
                 'type': 'SCRAPE',
-                'status':'FAIL',
+                'status': 'FAIL',
                 'query_hash': msg.get('query_hash'),
-                'output_dir': output_dir,
-                'specific_item': msg.get('specific_item'), 
-                'scraped_file': scraped_file,
+                'output_dir': msg.get('output_dir'),
+                'specific_item': msg.get('specific_item'),
+                'scraped_files': {},
+                'failed_scrapers': orchestrator.get_failed_scrapers(query_hash),
+                'failure_details': orchestrator.get_failure_details(query_hash),
                 'error': str(e),
-                'paths': paths
+                'paths': msg.get('paths', {})
             }
             
-           
             print(chalk.blue(f"Publishing Scrape FAIL Msg: {fail_msg}"))
             PROCESS_publish_to_queue(fail_msg)
-            print(chalk.green("SCRAPE_COMPLETE message sent to process_queue."))
-
+            
             print(chalk.red(f"Error processing message: {e}"))
             import traceback
             print(chalk.red(f"Traceback: {traceback.format_exc()}"))
             
         finally:
             ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    # RabbitMQ setup remains the same...
 
     # RabbitMQ setup
     try:

@@ -208,8 +208,53 @@ def main():
                     raise
 
             elif msg.get('type') == 'PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY':
+                # Get filter status information from message
+                filter_status = msg.get('filter_status', {})
+
+
                 if processes_up_to_end_signal():
                     try:
+                        
+                        # Check if filtering was attempted and if we have results
+                        if filter_status.get('filter_attempted'):
+                            if not filter_status.get('has_filtered_results'):
+                                print(chalk.yellow(f"[INFO] No filtered results found for specific item search"))
+                                
+                                # Send email about no filtered results
+                                query_string = (
+                                    f"{curr_query_info['brand']}_{curr_query_info['category']}"
+                                    + (f"_{curr_query_info['product_name']}" if curr_query_info['product_name'] else "_GENERAL")
+                                )
+
+                                # Add filter failure information to empty_scrape_files
+                                empty_scrape_files.extend(filter_status.get('sources_with_no_filtered_data', []))
+                                
+                                # Send email with no results information
+                                email_sent = send_email_with_report(
+                                    msg,
+                                    curr_query_info['query_hash'],
+                                    curr_query_info['paths']['price_reports_dir'],
+                                    curr_query_info['paths']['sold_reports_dir'],
+                                    query_string,
+                                    no_change_sources,
+                                    empty_scrape_files,
+                                    filter_failed=True  # New parameter to indicate filter failure
+                                )
+
+                                # Send process complete message
+                                PROCESS_publish_to_queue({
+                                    'type': 'EMAIL',
+                                    'status': 'PASS' if email_sent else 'FAIL',
+                                    'query_hash': curr_query_info['query_hash'],
+                                    'paths': curr_query_info['paths']
+                                })
+                                
+                                # Reset state since we're done
+                                no_change_sources.clear()
+                                reset_query_info()
+                                reset_process_status()
+                                return  # Exit early since we have no results to process
+
                         print(chalk.blue(f"[INFO] Preparing email report. Products processed: {len(recd_products)}"))
                         
                         #build query string, use _GENERAL is spec product_name not provided

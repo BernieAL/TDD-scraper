@@ -2,7 +2,7 @@
 # deploy-with-invalidation.sh
 
 BUCKET_NAME="price-tracker-landing"
-DISTRIBUTION_ID="your-cloudfront-distribution-id"
+DISTRIBUTION_ID="E1PXQKR3Y874T0"
 
 # Upload files to S3
 aws s3 sync . s3://$BUCKET_NAME \

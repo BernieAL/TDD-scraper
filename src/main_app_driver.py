@@ -84,86 +84,8 @@ def empty_file_check(output_dir,file,query_hash):
 
 
 
-def scrape_process_2(brand, category, specific_item, local_test=True):
-    current_date = datetime.now().strftime('%Y-%d-%m')
-    query = f"{brand}_{category}"
-    query_hash = utils.generate_hash(query, specific_item, current_date)
-    output_dir = utils.make_scraped_sub_dir_raw(brand, category, query_hash)
-    print(output_dir)
 
-    msg = {
-        'brand': brand,
-        'category': category,
-        'output_dir': output_dir,
-        'specific_item': specific_item,
-        'query_hash': query_hash,
-        'local_test': local_test,
-        'paths': {
-            'raw_scrape_dir': RAW_SCRAPE_DIR,
-            'filtered_data_dir': FILTERED_DATA_DIR,
-            'reports_dir': REPORTS_ROOT_DIR,
-            'sold_reports_dir': SOLD_REPORTS_DIR,
-            'price_reports_dir': PRICE_REPORTS_DIR,
-            'archive_dir': ARCHIVE_DIR
-        }  # Your paths dict
-    }
-
-    # Track results for each source
-    sources_with_no_raw_data = []      # Sources that produced no raw data
-    sources_with_no_filtered_data = []  # Sources that had raw data but no filtered matches
-    sources_with_results = []          # Sources that succeeded (either raw or filtered depending on spec_item)
-
-    SCRAPE_publish_to_queue(msg)
-    
-    # Get scrape results from all sources
-    scraped_files = wait_until_process_complete(query_hash, "SCRAPE")
-    
-    if subprocess_status['SCRAPE'] == False or not scraped_files:
-        print(chalk.red(f"[ERROR] Scrape failed for query {query_hash}"))
-        return query_hash, None
-
-    # Process each source's raw file
-    for scraped_file in scraped_files:
-        source = scraped_file.split('_')[1]
-        
-        # Check raw scrape results
-        raw_check_result = empty_file_check(output_dir, scraped_file, query_hash)
-        if raw_check_result != "NOT_EMPTY":
-            print(chalk.yellow(f"[INFO] Raw scrape produced no results for {source}"))
-            sources_with_no_raw_data.append(source)
-            continue
-        
-        # If we need to filter
-        if specific_item is not None and specific_item.strip():
-            filtered_subdir = utils.make_filtered_sub_dir(brand, category, scraped_data_dir_filtered, query_hash)
-            filtered_file = utils.filter_by_specific_item(scraped_file, specific_item, filtered_subdir, query_hash)
-            
-            filtered_check_result = empty_file_check(filtered_subdir, filtered_file, query_hash)
-            if filtered_check_result != "NOT_EMPTY":
-                print(chalk.yellow(f"[INFO] No filtered results for {source}"))
-                sources_with_no_filtered_data.append(source)
-                continue
-            
-            sources_with_results.append(source)
-        else:
-            # No filtering needed, raw data is sufficient
-            sources_with_results.append(source)
-
-    # Process is successful if any source provided usable results
-    subprocess_status['FILTER'] = len(sources_with_results) > 0
-
-    print(chalk.blue("Processing Summary:"))
-    print(chalk.blue(f"Sources with no raw data: {', '.join(sources_with_no_raw_data)}"))
-    print(chalk.blue(f"Sources with no filtered matches: {', '.join(sources_with_no_filtered_data)}"))
-    print(chalk.blue(f"Sources with usable results: {', '.join(sources_with_results)}"))
-
-    if not sources_with_results:
-        print(chalk.yellow(f"[INFO] No results from any source"))
-        return query_hash, filtered_subdir if specific_item else output_dir
-
-    return query_hash, filtered_subdir if specific_item else output_dir
-
-def wait_until_process_complete(query_hash=None, expected_subprocess=None):
+def wait_until_process_complete2(query_hash=None, expected_subprocess=None):
     """
     Waits for a specific message type for the given query_hash.
     """
@@ -245,6 +167,197 @@ def wait_until_process_complete(query_hash=None, expected_subprocess=None):
         except Exception as e:
             print(chalk.red(f"Error closing connection: {e}"))
 
+def wait_until_process_complete(query_hash=None, expected_subprocess=None):
+    """
+    Waits for a specific message type for the given query_hash.
+    Now handles multiple scraped files from different sources.
+    """
+    connection = create_rabbitmq_connection()
+    channel = connection.channel()
+
+    channel.queue_declare(queue='process_queue', durable=True)
+
+    scraped_files = None  # Changed from single file to multiple files
+    
+    timeout = 300  # 5 minutes timeout
+    start_time = time.time()
+    
+    def callback(ch, method, properties, body):
+        try:
+            message = json.loads(body)
+            print(chalk.blue(f"Received message: {message}"))
+
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+            msg_type = message.get('type')
+            msg_query_hash = message.get('query_hash')
+
+            if msg_query_hash == query_hash and msg_type == expected_subprocess:
+                print(chalk.green(f":::Received {expected_subprocess} for query_hash: {query_hash}"))
+                
+                if expected_subprocess == "SCRAPE":
+                    if message.get('status') == 'PASS':
+                        nonlocal scraped_files
+                        # Now getting dictionary of files instead of single file
+                        scraped_files = message.get('scraped_files', {})
+                        subprocess_status[expected_subprocess] = True
+                        channel.stop_consuming()
+                    elif message.get('status') == 'FAIL':
+                        channel.stop_consuming()
+                        subprocess_status[expected_subprocess] = False
+                else:
+                    if message.get('status') == 'PASS':
+                        subprocess_status[expected_subprocess] = True
+                        channel.stop_consuming()
+                    elif message.get('status') == 'FAIL':
+                        channel.stop_consuming()
+                        subprocess_status[expected_subprocess] = False
+            else:
+                print(chalk.red(f"Received {msg_type} but Expected {expected_subprocess} for query_hash: {query_hash}"))
+                channel.stop_consuming()
+                raise Exception(message.get('error', 'Unknown error occurred'))
+
+            if time.time() - start_time > timeout:
+                print(chalk.yellow(f"Timeout waiting for {expected_subprocess}"))
+                channel.stop_consuming()
+                raise TimeoutError(f"Timeout waiting for {expected_subprocess}")
+
+        except Exception as e:
+            print(chalk.red(f"Error processing message: {e}"))
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    try:
+        print(chalk.blue(f":::Waiting for {expected_subprocess} message for query_hash: {query_hash}"))
+        channel.basic_consume(queue='process_queue', on_message_callback=callback)
+        channel.start_consuming()
+
+        # Convert scraped_files dict to list of files for backward compatibility
+        if scraped_files:
+            return list(scraped_files.values())
+        return None
+    except Exception as e:
+        print(chalk.red(f"Error in message consumption: {e}"))
+        return None
+    finally:
+        try:
+            connection.close()
+        except Exception as e:
+            print(chalk.red(f"Error closing connection: {e}"))
+
+def scrape_process_2(brand, category, specific_item, local_test=True):
+    current_date = datetime.now().strftime('%Y-%d-%m')
+    query = f"{brand}_{category}"
+    query_hash = utils.generate_hash(query, specific_item, current_date)
+    output_dir = utils.make_scraped_sub_dir_raw(brand, category, query_hash)
+    print(output_dir)
+
+    msg = {
+        'brand': brand,
+        'category': category,
+        'output_dir': output_dir,
+        'specific_item': specific_item,
+        'query_hash': query_hash,
+        'local_test': local_test,
+        'paths': {
+            'raw_scrape_dir': RAW_SCRAPE_DIR,
+            'filtered_data_dir': FILTERED_DATA_DIR,
+            'reports_dir': REPORTS_ROOT_DIR,
+            'sold_reports_dir': SOLD_REPORTS_DIR,
+            'price_reports_dir': PRICE_REPORTS_DIR,
+            'archive_dir': ARCHIVE_DIR
+        }
+    }
+
+    # Track results for each source
+    sources_with_no_raw_data = []
+    sources_with_no_filtered_data = []
+    sources_with_results = []
+
+    SCRAPE_publish_to_queue(msg)
+    
+    # Get scrape results from all sources
+    scraped_files = wait_until_process_complete(query_hash, "SCRAPE")
+    
+    if subprocess_status['SCRAPE'] == False or not scraped_files:
+        print(chalk.red(f"[ERROR] Scrape failed for query {query_hash}"))
+        return query_hash, None
+
+    filtered_subdir = None
+    # Process each source's raw file
+    for scraped_file in scraped_files:
+        try:
+            # Extract source from filename
+            source = scraped_file.split('_')[1]
+            
+            # Check raw scrape results
+            raw_check_result = empty_file_check(output_dir, scraped_file, query_hash)
+            if raw_check_result != "NOT_EMPTY":
+                print(chalk.yellow(f"[INFO] Raw scrape produced no results for {source}"))
+                sources_with_no_raw_data.append(source)
+                continue
+            
+            # If we need to filter
+            if specific_item is not None and specific_item.strip():
+                try:
+                    filtered_subdir = utils.make_filtered_sub_dir(brand, category, scraped_data_dir_filtered, query_hash)
+                    filtered_file = utils.filter_by_specific_item(scraped_file, specific_item, filtered_subdir, query_hash)
+                    
+                    filtered_check_result = empty_file_check(filtered_subdir, filtered_file, query_hash)
+                    if filtered_check_result != "NOT_EMPTY":
+                        print(chalk.yellow(f"[INFO] No filtered results for {source}"))
+                        sources_with_no_filtered_data.append(source)
+                        continue
+                    
+                    sources_with_results.append(source)
+                except Exception as filter_error:
+                    print(chalk.yellow(f"[INFO] Filter failed for {source}: {filter_error}"))
+                    sources_with_no_filtered_data.append(source)
+                    continue
+            else:
+                # No filtering needed, raw data is sufficient
+                sources_with_results.append(source)
+                
+        except Exception as e:
+            print(chalk.red(f"Error processing file from {source}: {e}"))
+            continue
+
+    # Create filter status information
+    filter_status = {
+        "has_filtered_results": len(sources_with_results) > 0,
+        "sources_with_no_filtered_data": sources_with_no_filtered_data,
+        "sources_with_results": sources_with_results,
+        "filter_attempted": specific_item is not None and specific_item.strip(),
+        "sources_with_no_raw_data": sources_with_no_raw_data
+    }
+
+    # Process is successful if any source provided usable results
+    subprocess_status['FILTER'] = len(sources_with_results) > 0
+
+    print(chalk.blue("Processing Summary:"))
+    print(chalk.blue(f"Sources with no raw data: {', '.join(sources_with_no_raw_data)}"))
+    print(chalk.blue(f"Sources with no filtered matches: {', '.join(sources_with_no_filtered_data)}"))
+    print(chalk.blue(f"Sources with usable results: {', '.join(sources_with_results)}"))
+
+    # Update the message to price worker with filter status
+    PRICE_publish_to_queue({
+        "type": "PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY",
+        "query_hash": query_hash,
+        "brand": brand,
+        "category": category,
+        "specific_item": specific_item,
+        "filter_status": filter_status,
+        'paths': {
+            'raw_scrape_dir': RAW_SCRAPE_DIR,
+            'filtered_data_dir': FILTERED_DATA_DIR,
+            'reports_dir': REPORTS_ROOT_DIR,
+            'sold_reports_dir': SOLD_REPORTS_DIR,
+            'price_reports_dir': PRICE_REPORTS_DIR,
+            'archive_dir': ARCHIVE_DIR
+        }
+    })
+
+    # Return appropriate directories even if we have no results
+    return query_hash, filtered_subdir if specific_item else output_dir
 def driver_function_from_input_file():
     with open(user_category_data_file, 'r', newline='', encoding='utf-8') as file:
         csv_reader = csv.reader(file)
@@ -375,12 +488,6 @@ def driver_function_from_search_form(msg):
 
     if subprocess_status['SCRAPE'] == False:
         print(chalk.red(f"[ERROR] Scrape failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {spec_item}"))
-        
-        
-        return
-
-    elif subprocess_status['FILTER'] == False:
-        print(chalk.red(f"[ERROR] Filter failed for query {query_hash} - Brand: {brand}, Category: {category}, Item: {spec_item}"))
         
         
         return

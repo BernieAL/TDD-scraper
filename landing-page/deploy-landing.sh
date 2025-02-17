@@ -1,4 +1,9 @@
 #!/bin/bash
+set -e  # Exit on error
+
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd $SCRIPT_DIR  # Change to landing-page directory
 
 BUCKET_NAME="price-tracker-landing"
 REGION="us-east-1"
@@ -36,8 +41,10 @@ aws s3api put-bucket-policy \
 
 # Upload files
 aws s3 sync . s3://$BUCKET_NAME \
-    --exclude "*.sh" \
-    --exclude "*.json" \
+    --exclude "*" \
+    --include "index.html" \
+    --include "styles.css" \
+    --include "config.js" \
     --cache-control "max-age=3600"
 
 # Create CloudFront distribution and capture the ID
@@ -54,7 +61,7 @@ if [ -n "$DISTRIBUTION_ID" ]; then
     echo "Waiting for CloudFront distribution to deploy..."
     aws cloudfront wait distribution-deployed --id "$DISTRIBUTION_ID"
     
-    # Get the domain name
+    # Get and display the domain name
     DOMAIN_NAME=$(aws cloudfront get-distribution \
         --id "$DISTRIBUTION_ID" \
         --query 'Distribution.DomainName' \
