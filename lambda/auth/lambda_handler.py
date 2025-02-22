@@ -14,6 +14,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+from simple_chalk import chalk
 
 load_dotenv(find_dotenv())
 
@@ -63,13 +64,17 @@ def login(event, context):
         'body': json.dumps({'token': token})
     }
 
-def signup(event, context):
+def signup(event, context,regenerate_code=False):
     body = json.loads(event['body'])
     email = body['email']
     password = body['password']
     
     verification_code = generate_verification_code()
     expiration_time = int((datetime.utcnow() + timedelta(minutes=15)).timestamp())
+    
+    if regenerate_code == True:
+        verification_code = generate_verification_code()
+        expiration_time = int((datetime.utcnow() + timedelta(minutes=15)).timestamp())
     
     # Store unverified user with verification code
     dynamodb.put_item(
@@ -118,7 +123,7 @@ def send_verification_email(email, code):
         with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
             server.login(sender_email, app_password)
             server.sendmail(sender_email, email, message.as_string())
-        print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {msg['email']} - FOR QUERY: {query}"))
+        print(chalk.green(f"SUCCESSFULLY SENT MESSAGE TO EMAIL: {email}"))
         return True
     except Exception as e:
         print(chalk.red(f"There was an error sending the email: {e}"))
@@ -150,18 +155,17 @@ def verify_email(event,context):
     #update user to verified status if no error thrown
     user_id=str(uuid.uuid4())
     dynamodb.update_item(
-        TableName='users'
-        Key={'email':{'S':email}}
-        UpdateExpression='SET verified = :v, user_id =:u',
+        TableName='users',
+        Key={'email':{'S':email}},
+        UpdateExpression='SET verified = :v, user_id = :u',
         ExpressionAttributeValues={
-            ':v': {'BOOL': True}
+            ':v': {'BOOL': True},
             ':u': {'S': user_id}
         }
-        )
+    )
     
 
     return {
         'statusCode':200,
         'body':json.dumps({'message':'Email verified successfully'})
     }
-    
