@@ -25,13 +25,13 @@ echo "Created temp dir: $TEMP_DIR"
 # Install only boto3 for Lambda
 pip install boto3==1.26.137 -t $TEMP_DIR
 
-# Copy lambda handler to temp dir (using absolute path)
-echo "Copying lambda handler from: ${SCRIPT_DIR}/app_starter/lambda_handler.py"
-if [ ! -f "${SCRIPT_DIR}/app_starter/lambda_handler.py" ]; then
-    echo "Error: lambda_handler.py not found at ${SCRIPT_DIR}/app_starter/lambda_handler.py"
+# Copy lambda handler to temp dir
+echo "Copying lambda handler from: ${SCRIPT_DIR}/auth/lambda_auth_routes.py"
+if [ ! -f "${SCRIPT_DIR}/auth/lambda_auth_routes.py" ]; then
+    echo "Error: lambda_auth_routes.py not found at ${SCRIPT_DIR}/auth/lambda_auth_routes.py"
     exit 1
 fi
-cp "${SCRIPT_DIR}/app_starter/lambda_handler.py" "$TEMP_DIR/"
+cp "${SCRIPT_DIR}/auth/lambda_auth_routes.py" "$TEMP_DIR/"
 
 # Create zip file
 cd $TEMP_DIR

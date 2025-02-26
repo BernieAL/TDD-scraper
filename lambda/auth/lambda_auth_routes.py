@@ -113,9 +113,9 @@ def send_verification_email(email, code):
             code back on code verification page
             to confirm your email: CODE  - {code}
             """
-    body.append(f"""
+    body+=f"""
             IMPORTANT: CODE EXPIRES IN 15 MINUTES, YOU WILL NEED TO REQUEST A NEW ONE.
-            """)
+            """
         
     message.attach(MIMEText(body, 'plain'))
 
@@ -136,7 +136,7 @@ def verify_email(event,context):
     email = body['email']
     code = body['code']
 
-    #check code and expiration
+    #check code and expiration in db
     response = dynamodb.get_item(
         TableName='users',
         Key={'email':{'S':email}}

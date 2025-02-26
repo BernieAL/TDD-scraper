@@ -157,8 +157,8 @@
             });
             const data = await response.json();
             if (response.status === 200) {
-                alert('Email verified! Please login.');
-                window.location.href = 'login.html';
+                alert('Email verified! Taking you to dashboard.');
+                window.location.href = 'dashboard.html';
             } else {
                 alert('Verification failed: ' + data.message);
             }

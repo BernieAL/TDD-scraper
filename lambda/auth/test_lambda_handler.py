@@ -6,7 +6,7 @@ import os
 os.environ['JWT_SECRET'] = 'test-secret'
 
 from moto import mock_dynamodb
-from lambda_handler import login, signup
+from lambda_auth_routes import login, signup
 
 @mock_dynamodb
 def test_login():

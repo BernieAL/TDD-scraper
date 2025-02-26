@@ -172,3 +172,44 @@ cython_debug/
 
 .env.docker
 .env.docker
+
+# Environment variables and secrets
+.env
+**/config.js
+**/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+
+# AWS
+.aws/
+aws-credentials
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Temporary files
+*.zip
+temp/
+tmp/
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

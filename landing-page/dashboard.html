@@ -1,0 +1,43 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Price Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Price Tracker</h1>
+        <p>Track designer product prices across multiple retailers</p>
+        <div class="button-container">
+            <button onclick="window.location.href='new_search.html'" class="btn">New Search</button>
+            <button onclick="window.location.href='search_history.html'" class="btn">Search History</button>
+            <button onclick="window.location.href='account.html'" class="btn">Account Mgmt</button>
+        </div>
+    </div>
+    <script>
+    // async function startApp() {
+    //     try {
+    //         const API_URL = `https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/prod/start-app`;
+    //         const response = await fetch(API_URL, {
+    //             method: 'POST',
+    //             body: JSON.stringify({
+    //                 user_id: 'user123' // You'll get this from your auth system
+    //             })
+    //         });
+    //         const data = await response.json();
+    //         if (data.status === 'starting' || data.status === 'active') {
+    //             console.log('App is starting/running');
+    //             // For now, just show a message
+    //             alert('App is starting!');
+    //         }
+    //     } catch (err) {
+    //         console.error('Failed to start app:', err);
+    //         alert('Failed to start app: ' + err.message);
+    //     }
+    // }
+    </script>
+</body>
+</html>
+
