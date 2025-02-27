@@ -87,3 +87,17 @@
 
 ## Cleanup
 Run `cleanup.sh` to remove all AWS resources when done developing 
+
+# Project Structure
+```
+project/
+├── frontend/         # Frontend static files
+│   ├── index.html
+│   ├── login.html
+│   └── dashboard.html
+│   └── backend/
+│       ├── lambda/    # Lambda functions
+│       ├── aws/      # AWS infrastructure scripts
+│       ├── auth/     # Authentication code
+│       └── config/   # Configuration files
+``` 

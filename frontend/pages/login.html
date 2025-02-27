@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Price Tracker</title>
+    <link rel="stylesheet" href="../styles/styles.css">
+    <script src="../config/config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
+        <p>Don't have an account? <a href="signup.html">Sign up</a></p>
+    </div>
+    <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch(`https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/prod/login`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            const data = await response.json();
+            if (data.token) {
+                // Store token and redirect
+                localStorage.setItem('userToken', data.token);
+                window.location.href = 'dashboard.html';
+            }
+        } catch (err) {
+            alert('Login failed: ' + err.message);
+        }
+    });
+    </script>
+</body>
+</html> 
