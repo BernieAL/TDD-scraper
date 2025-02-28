@@ -1,0 +1,18 @@
+{
+    "family": "scraper-task",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [{
+        "name": "scraper",
+        "image": "${ECR_REPO}/scraper_worker:latest",
+        "environment": [
+            {
+                "name": "S3_BUCKET",
+                "value": "scraper-data-bucket"
+            }
+        ],
+        "essential": true
+    }],
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512"
+} 

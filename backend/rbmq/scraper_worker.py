@@ -5,7 +5,7 @@ from dotenv import load_dotenv,find_dotenv
 from simple_chalk import chalk
 from datetime import datetime
 from shutil import rmtree  # For removing directories
-
+import boto3
 
 # For local development
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -170,8 +170,19 @@ def main():
     def callback(ch, method, properties, body):
         try:
             print(chalk.yellow("Received message on scrape_queue"))
-            msg = json.loads(body)
+            # msg = json.loads(body)
             
+
+            s3 = boto3.client('s3')
+            params = s3.get_object(
+                Bucket=s3.get_object(
+                    Bucket='scraper-data-bucket',
+                    Key=f'queries/{query_hash}/params.json'
+                )
+          
+            )
+            msg = json.loads(params['Body'].read())
+
             # Verify required fields
             required_fields = ['query_hash', 'brand', 'category', 'output_dir']
             for field in required_fields:

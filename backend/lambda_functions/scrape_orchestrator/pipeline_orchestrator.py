@@ -12,7 +12,15 @@ def orchestrate_scraping_pipeline(event, context):
     """
     try:
         ecs = boto3.client('ecs')
-        
+        s3 = boto3.client('s3')
+
+        s3.put_object(
+            Bucket='scraper-data-bucket'
+            Key=f'queries/{event["query_hash"]}/params.json',
+            Body=json.dumps(event)
+        )
+
+
         # Launch scraper task first
         scraper_response = launch_scraper_task(ecs)
         
@@ -43,13 +51,13 @@ def orchestrate_scraping_pipeline(event, context):
 
 def launch_scraper_task(ecs):
     return ecs.run_task(
-        cluster='your-ecs-cluster',
-        taskDefinition='scraper-task-definition',
+        cluster='scraper-cluster',
+        taskDefinition='scraper-task',
         launchType='FARGATE',
         networkConfiguration={
             'awsvpcConfiguration': {
-                'subnets': [os.environ['SUBNET_ID']],
-                'securityGroups': [os.environ['SECURITY_GROUP_ID']],
+                'subnets': [os.environ.get('SUBNET_ID', 'dummy-subnet')],
+                'securityGroups': [os.environ.get('SECURITY_GROUP_ID', 'dummy-sg')],
                 'assignPublicIp': 'ENABLED'
             }
         }
@@ -57,13 +65,13 @@ def launch_scraper_task(ecs):
 
 def launch_analysis_task(ecs):
     return ecs.run_task(
-        cluster='your-ecs-cluster',
-        taskDefinition='analysis-task-definition',
+        cluster='scraper-cluster',
+        taskDefinition='analysis-task',
         launchType='FARGATE',
         networkConfiguration={
             'awsvpcConfiguration': {
-                'subnets': [os.environ['SUBNET_ID']],
-                'securityGroups': [os.environ['SECURITY_GROUP_ID']],
+                'subnets': [os.environ.get('SUBNET_ID', 'dummy-subnet')],
+                'securityGroups': [os.environ.get('SECURITY_GROUP_ID', 'dummy-sg')],
                 'assignPublicIp': 'ENABLED'
             }
         }
@@ -71,13 +79,13 @@ def launch_analysis_task(ecs):
 
 def launch_report_task(ecs):
     return ecs.run_task(
-        cluster='your-ecs-cluster',
-        taskDefinition='report-task-definition',
+        cluster='scraper-cluster',
+        taskDefinition='report-task',
         launchType='FARGATE',
         networkConfiguration={
             'awsvpcConfiguration': {
-                'subnets': [os.environ['SUBNET_ID']],
-                'securityGroups': [os.environ['SECURITY_GROUP_ID']],
+                'subnets': [os.environ.get('SUBNET_ID', 'dummy-subnet')],
+                'securityGroups': [os.environ.get('SECURITY_GROUP_ID', 'dummy-sg')],
                 'assignPublicIp': 'ENABLED'
             }
         }
