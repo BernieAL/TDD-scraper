@@ -2,6 +2,8 @@ import boto3
 import json
 import os
 from datetime import datetime
+import hashlib
+
 
 def orchestrate_scraping_pipeline(event, context):
     """
@@ -14,13 +16,29 @@ def orchestrate_scraping_pipeline(event, context):
         ecs = boto3.client('ecs')
         s3 = boto3.client('s3')
 
+        query_hash = event['query_hash']
+        #retreive query from s3 bucket
+        res = s3.get_object(
+            Bucket='scraper-data-bucket',
+            Key=f'queries/{query_hash}/form-data.json'
+        )
+      
+
+        #path creation inside s3 bucket
+        paths = {
+            'raw': f'queries/{query_hash}/raw',
+            'filtered': f'queries/{query_hash}/filtered',
+            'analysis': f'queries/{query_hash}/analysis',
+            'reports': f'queries/{query_hash}/reports'
+        }
+
         s3.put_object(
             Bucket='scraper-data-bucket'
             Key=f'queries/{event["query_hash"]}/params.json',
             Body=json.dumps(event)
         )
 
-
+        #path creation 
         # Launch scraper task first
         scraper_response = launch_scraper_task(ecs)
         

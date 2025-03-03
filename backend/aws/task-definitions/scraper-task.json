@@ -10,7 +10,15 @@
                 "value": "scraper-data-bucket"
             }
         ],
-        "essential": true
+        "essential": true,
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "/ecs/scraper",
+                "awslogs-region": "${AWS_REGION}",
+                "awslogs-stream-prefix": "scraper"
+            }
+        }
     }],
     "requiresCompatibilities": ["FARGATE"],
     "cpu": "256",
