@@ -1,0 +1,364 @@
+import sys, csv, json, os
+import pika
+from simple_chalk import chalk
+from datetime import datetime
+from shutil import rmtree
+import boto3
+from io import StringIO
+
+# Initialize paths
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+from analysis.percent_change_analysis import calc_percentage_diff_driver
+from workers.compare_producer import COMPARE_publish_to_queue
+from workers.process_producer import PROCESS_publish_to_queue
+from email_sender import send_email_with_report
+from config.config import RABBITMQ_HOST
+from config.connections import create_rabbitmq_connection
+
+
+# Globals to hold current query data in mem
+curr_query_info = {
+    "brand": None,
+    "category": None,
+    "query_hash": None,
+    "product_name": None,
+    "date": None,
+    "source": None,
+    "source_file": None,
+    "paths": {}  # All shared paths will be stored here
+}
+
+process_status = {
+    'NEW_QUERY_MSG': False,
+    'PROCESSING_SOLD_ITEMS_COMPLETE': False,
+    'PROCESSING_SCRAPED_FILE_COMPLETE': False,
+}
+
+recd_products = []  # Global list to store products for each query
+empty_scrape_files = []  # to track sources with no results at all
+
+def reset_query_info():
+    """Reset all query info including paths"""
+    curr_query_info.update({
+        "brand": None,
+        "category": None,
+        "query_hash": None,
+        "product_name": None,
+        "date": None,
+        "source": None,
+        "source_file": None,
+        "paths": {}
+    })
+    global recd_products, empty_scrape_files
+    recd_products.clear()
+    empty_scrape_files.clear()
+    print(chalk.blue("[INFO] Reset query info and cleared product lists"))
+
+def reset_process_status():
+    for key in process_status:
+        process_status[key] = False
+
+def processes_up_to_end_signal():
+    """Check if all required processes are complete before sending email"""
+    required_statuses = {
+        'NEW_QUERY_MSG': True,
+        'PROCESSING_SCRAPED_FILE_COMPLETE': True,
+        'PROCESSING_SOLD_ITEMS_COMPLETE': True
+    }
+    
+    current_status = {k: process_status[k] for k in required_statuses.keys()}
+    is_ready = all(current_status.values())
+    
+    if not is_ready:
+        print(chalk.yellow("[INFO] Waiting for processes to complete. Current status:"))
+        for k, v in current_status.items():
+            print(chalk.yellow(f"  - {k}: {v}"))
+    
+    return is_ready
+
+def parse_file_name(file_key):
+    """Updated to handle S3 key paths"""
+    try:
+        # Get just the filename from the full S3 key
+        filename = file_key.split('/')[-1]
+        tokens = filename.split('_')
+        source, brand, date, category, query_hash = tokens[1], tokens[2], tokens[3], tokens[4], tokens[-1].split('.')[0]
+        print(chalk.blue(f"[INFO] Parsed filename tokens: {tokens}"))
+        return source, date, brand, category, query_hash
+    except IndexError as e:
+        print(chalk.red(f"Filename parsing error: {e}"))
+        raise
+
+def extract_query_hash(file_key):
+    """Extract query hash from S3 key"""
+    try:
+        filename = file_key.split('/')[-1]
+        return filename.split('_')[-1].split('.')[0]
+    except Exception as e:
+        print(chalk.red(f"Error extracting query hash: {e}"))
+        return None
+
+def main():
+    no_change_sources = []
+
+    def callback(ch, method, properties, body):
+        try:
+            msg = json.loads(body)
+            print(f"\n{chalk.green('[NEW MESSAGE]')} Received: {msg}")
+
+            # Get environment variables
+            bucket = os.environ['S3_BUCKET']
+            query_hash = os.environ['QUERY_HASH']
+            raw_path = os.environ['RAW_PATH']
+            analysis_path = os.environ['ANALYSIS_PATH']
+            reports_path = os.environ['REPORTS_PATH']
+
+            if msg.get('type') == "NEW_QUERY":
+                try:
+                    source_file = msg['source_file']
+                    current_query_hash = extract_query_hash(source_file)
+                    
+                    if current_query_hash != curr_query_info.get('query_hash'):
+                        print(chalk.yellow("[INFO] New query detected - resetting state"))
+                        reset_query_info()
+                        reset_process_status()
+                        
+                        source, date, brand, category, query_hash = parse_file_name(source_file)
+                        curr_query_info.update({
+                            'source': source,
+                            'date': date,
+                            'category': category,
+                            'brand': brand,
+                            'query_hash': query_hash,
+                            'source_file': source_file,
+                            'product_name': msg.get('spec_item'),
+                            'paths': {  # Use environment variables for paths
+                                'raw_path': raw_path,
+                                'analysis_path': analysis_path,
+                                'reports_path': reports_path,
+                                'price_reports_dir': f"{reports_path}/prices",
+                                'sold_reports_dir': f"{reports_path}/sold"
+                            }
+                        })
+                        print(chalk.blue(f"[INFO] Process info updated for file"))
+                    else:
+                        print(chalk.yellow(f"[INFO] Continuing existing query {current_query_hash} - maintaining state"))
+                        print(chalk.yellow(f"[INFO] Current received products count: {len(recd_products)}"))
+
+                    process_status['NEW_QUERY_MSG'] = True
+
+                except Exception as e:
+                    print(chalk.red(f"Error processing NEW_QUERY message: {e}"))
+                    raise
+
+            elif msg.get('type') == 'PRODUCT_PRICE_CHANGE':
+                try:
+                    recd_products.append(msg)
+                    print(f"[PROCESSING] Added product price change. Total items: {len(recd_products)}")
+
+                    # Write price changes to S3
+                    if recd_products:
+                        s3 = boto3.client('s3')
+                        filename = f"PRICE_CHANGES_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.json"
+                        try:
+                            s3.put_object(
+                                Bucket=bucket,
+                                Key=f"{reports_path}/prices/{filename}",
+                                Body=json.dumps(recd_products),
+                                ContentType='application/json'
+                            )
+                        except boto3.exceptions.S3UploadFailedError as e:
+                            print(chalk.red(f"Failed to upload to S3: {e}"))
+                            raise
+                        except boto3.exceptions.ClientError as e:
+                            print(chalk.red(f"S3 client error: {e}"))
+                            raise
+
+                except Exception as e:
+                    print(chalk.red(f"Error processing PRODUCT_PRICE_CHANGE: {e}"))
+                    raise
+
+            elif msg.get('type') == 'PROCESSING_SCRAPED_FILE_COMPLETE':
+                try:
+                    if msg.get('scrape_file_empty') or msg.get('filter_file_empty'):
+                        print(chalk.yellow("[INFO] Scraped file was empty"))
+                        empty_scrape_files.append(msg.get('source'))
+                    else:
+                        print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS"))
+                        
+                        if recd_products:
+                            # Use S3 paths for report generation
+                            s3 = boto3.client('s3')
+                            
+                            # Generate report data
+                            report_data = calc_percentage_diff_driver(
+                                recd_products,
+                                curr_query_info['source_file'],
+                                curr_query_info['category']
+                            )
+                            
+                            # Save report directly to S3
+                            filename = f"PRICE_ANALYSIS_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.json"
+                            try:
+                                s3.put_object(
+                                    Bucket=bucket,
+                                    Key=f"{analysis_path}/{filename}",
+                                    Body=json.dumps(report_data),
+                                    ContentType='application/json'
+                                )
+                            except boto3.exceptions.S3UploadFailedError as e:
+                                print(chalk.red(f"Failed to upload to S3: {e}"))
+                                raise
+                            except boto3.exceptions.ClientError as e:
+                                print(chalk.red(f"S3 client error: {e}"))
+                                raise
+                            print(chalk.green(f"[SUCCESS] Report generated at {analysis_path}/{filename}"))
+                        else:
+                            print(chalk.yellow("[INFO] No price changes detected"))
+                            no_change_sources.append(curr_query_info['source'])
+
+                    process_status['PROCESSING_SCRAPED_FILE_COMPLETE'] = True
+                    COMPARE_publish_to_queue({
+                        'type': 'PRICE_WORKER_COMPLETE',
+                        'query_hash': curr_query_info['query_hash'],
+                        'products_processed': len(recd_products)
+                    })
+
+                except Exception as e:
+                    print(chalk.red(f"Error processing SCRAPED_FILE_COMPLETE: {e}"))
+                    raise
+
+            elif msg.get('type') == 'PROCESSING_SOLD_ITEMS_COMPLETE':
+                try:
+                    print(chalk.green(f"[PROCESSING] SOLD ITEMS"))
+                    sold_items_dict = msg.get('sold_items_dict')
+                    
+                    if sold_items_dict:
+                        # Create CSV in memory
+                        output = StringIO()
+                        writer = csv.DictWriter(output, fieldnames=[
+                            'product_id', 'product_name', 'curr_price', 'curr_scrape_date',
+                            'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source'
+                        ])
+                        writer.writeheader()
+                        for product_id, product_data in sold_items_dict.items():
+                            writer.writerow({'product_id': product_id, **product_data})
+
+                        # Upload to S3
+                        s3 = boto3.client('s3')
+                        filename = f"SOLD_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.csv"
+                        try:
+                            s3.put_object(
+                                Bucket=bucket,
+                                Key=f"{reports_path}/sold/{filename}",
+                                Body=output.getvalue(),
+                                ContentType='text/csv'
+                            )
+                        except boto3.exceptions.S3UploadFailedError as e:
+                            print(chalk.red(f"Failed to upload to S3: {e}"))
+                            raise
+                        except boto3.exceptions.ClientError as e:
+                            print(chalk.red(f"S3 client error: {e}"))
+                            raise
+                        print(chalk.green(f"[SUCCESS] Sold items written to S3: {filename}"))
+                    else:
+                        print(chalk.magenta(f"[INFO] No sold items for query {curr_query_info['query_hash']}"))
+
+                    process_status['PROCESSING_SOLD_ITEMS_COMPLETE'] = True
+
+                except Exception as e:
+                    print(chalk.red(f"Error processing SOLD_ITEMS_COMPLETE: {e}"))
+                    raise
+
+            elif msg.get('type') == 'PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY':
+                if processes_up_to_end_signal():
+                    try:
+                        # Build query string
+                        query_string = (
+                            f"{curr_query_info['brand']}_{curr_query_info['category']}"
+                            + (f"_{curr_query_info['product_name']}" if curr_query_info['product_name'] else "_GENERAL")
+                        )
+
+                        # Send email with S3 paths
+                        email_sent = send_email_with_report(
+                            msg,
+                            curr_query_info['query_hash'],
+                            f"{reports_path}/prices",  # S3 paths
+                            f"{reports_path}/sold",    # S3 paths
+                            query_string,
+                            no_change_sources,
+                            empty_scrape_files
+                        )
+
+                        # Send process complete message
+                        PROCESS_publish_to_queue({
+                            'type': 'EMAIL',
+                            'status': 'PASS' if email_sent else 'FAIL',
+                            'query_hash': curr_query_info['query_hash'],
+                            'paths': {
+                                'raw_path': raw_path,
+                                'analysis_path': analysis_path,
+                                'reports_path': reports_path,
+                                'price_reports_dir': f"{reports_path}/prices",
+                                'sold_reports_dir': f"{reports_path}/sold"
+                            }
+                        })
+
+                        if not email_sent:
+                            print(chalk.red("[ERROR] Email failed to send"))
+                            
+                    except Exception as e:
+                        print(chalk.red(f"Error sending email: {e}"))
+                        PROCESS_publish_to_queue({
+                            'type': 'EMAIL',
+                            'status': 'FAIL',
+                            'query_hash': curr_query_info['query_hash'],
+                            'paths': {
+                                'raw_path': raw_path,
+                                'analysis_path': analysis_path,
+                                'reports_path': reports_path,
+                                'price_reports_dir': f"{reports_path}/prices",
+                                'sold_reports_dir': f"{reports_path}/sold"
+                            }
+                        })
+                        raise
+                    finally:
+                        no_change_sources.clear()
+                        reset_query_info()
+                        reset_process_status()
+                else:
+                    print(chalk.yellow("[WARNING] Not all processes complete for end signal"))
+                    process_status['PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY'] = True
+
+        except Exception as e:
+            print(chalk.red(f"[ERROR] Message processing failed: {e}"))
+            raise
+        finally:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    # RabbitMQ setup
+    connection = None
+    try:
+ 
+        connection = create_rabbitmq_connection()
+        channel = connection.channel()
+        
+        channel.queue_declare(queue='price_change_queue', durable=True)
+        channel.basic_qos(prefetch_count=1)
+        channel.basic_consume(queue='price_change_queue', on_message_callback=callback)
+        
+        print(chalk.green("Clearing queue"))
+        channel.queue_purge(queue='price_change_queue')
+        print(chalk.blue('[SYSTEM START] Waiting for messages. To exit press CTRL+C'))
+        channel.start_consuming()
+    except Exception as e:
+        print(chalk.red(f"[ERROR] RabbitMQ setup failed: {e}"))
+    finally:
+        if connection and connection.is_open:
+            connection.close()
+
+if __name__ == "__main__":
+    main()
