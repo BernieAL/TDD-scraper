@@ -8,6 +8,10 @@
             {
                 "name": "S3_BUCKET",
                 "value": "scraper-data-bucket"
+            },
+            {
+                "name": "AWS_REGION",
+                "value": "${AWS_REGION}"
             }
         ],
         "essential": true,

@@ -174,37 +174,44 @@ def main():
             
             #retrieve query from s3 bucket
             s3 = boto3.client('s3')
-            response = s3.get_object(
-                Bucket=s3.get_object(
-                    Bucket='scraper-data-bucket',
-                    Key=f'queries/{query_hash}/params.json'
-                )
-          
+            
+            # Get params with file keys
+            params = s3.get_object(
+                Bucket='scraper-data-bucket',
+                Key=f'queries/{query_hash}/params.json'
             )
-
-            #convery query data to json
-            msg = json.loads(response['Body'].read())
-
+            params_data = json.loads(params['Body'].read())
+            
+            # Scrape data
+            scraped_data = scrape_website()
+            
+            # Upload directly to final location
+            s3.put_object(
+                Bucket='scraper-data-bucket',
+                Key=params_data['file_keys']['raw'],  # Use predefined key
+                Body=scraped_data
+            )
+            
             # Verify required fields in 
             required_fields = ['query_hash', 'brand', 'category', 'output_dir']
             for field in required_fields:
-                if field not in msg:
+                if field not in params_data:
                     raise KeyError(f"Missing required field: {field}")
             
             #extract specific fields from query 
-            paths = msg.get('paths', {})
-            output_dir = msg['output_dir']
-            query_hash = msg['query_hash']
+            paths = params_data.get('paths', {})
+            output_dir = params_data['output_dir']
+            query_hash = params_data['query_hash']
             
             print(chalk.blue("Starting scrape processes..."))
             
             # Run all scrapers
             scraped_files = orchestrator.run_all_scrapers(
-                msg['brand'],
-                msg['category'],
+                params_data['brand'],
+                params_data['category'],
                 output_dir,
                 query_hash,
-                msg.get('local_test', True)
+                params_data.get('local_test', True)
             )
             
             # Get failure information
@@ -221,7 +228,7 @@ def main():
                 'status': 'PASS',
                 'query_hash': query_hash,
                 'output_dir': output_dir,
-                'specific_item': msg.get('specific_item'),
+                'specific_item': params_data.get('specific_item'),
                 'scraped_files': scraped_files,
                 'failed_scrapers': list(failed_scrapers),
                 'failure_details': failure_details,
@@ -235,14 +242,14 @@ def main():
             fail_msg = {
                 'type': 'SCRAPE',
                 'status': 'FAIL',
-                'query_hash': msg.get('query_hash'),
-                'output_dir': msg.get('output_dir'),
-                'specific_item': msg.get('specific_item'),
+                'query_hash': params_data.get('query_hash'),
+                'output_dir': params_data.get('output_dir'),
+                'specific_item': params_data.get('specific_item'),
                 'scraped_files': {},
                 'failed_scrapers': orchestrator.get_failed_scrapers(query_hash),
                 'failure_details': orchestrator.get_failure_details(query_hash),
                 'error': str(e),
-                'paths': msg.get('paths', {})
+                'paths': params_data.get('paths', {})
             }
             
             print(chalk.blue(f"Publishing Scrape FAIL Msg: {fail_msg}"))
@@ -299,3 +306,13 @@ def main():
 if __name__ == "__main__":
     print(chalk.green("Starting scrape worker..."))
     main()
+
+def scrape_and_upload(params_data):
+    scraped_data = scrape_website()  # Your scraping logic
+    
+    # Upload directly using the path pattern
+    s3.put_object(
+        Bucket='scraper-data-bucket',
+        Key=f'{params_data["paths"]["raw"]}/RAW_ITALIST_{params_data["brand"]}_{datetime.now():%Y-%d-%m}_{params_data["category"]}.csv',
+        Body=scraped_data
+    )

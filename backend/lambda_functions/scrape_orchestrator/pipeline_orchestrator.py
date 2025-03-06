@@ -7,36 +7,29 @@ import hashlib
 
 def orchestrate_scraping_pipeline(event, context):
     """
-    Main Lambda handler that orchestrates the complete scraping pipeline:
-    1. Launches scraper containers
-    2. Triggers price analysis
-    3. Generates reports
+    Main Lambda handler that orchestrates the complete scraping pipeline
     """
     try:
         ecs = boto3.client('ecs')
         s3 = boto3.client('s3')
-
-        query_hash = event['query_hash']
-        #retreive query from s3 bucket
-        res = s3.get_object(
+        query_hash  = event['query_hash']
+        # Get latest form submission from S3
+     
+        #get from data for this specific query
+        form_data = s3.get_object(
             Bucket='scraper-data-bucket',
-            Key=f'queries/{query_hash}/form-data.json'
+            Key=f'queries/{query_hash}/form-params.json'
         )
-      
 
-        #path creation inside s3 bucket
+        params = json.loads(form_data['Body'].read())
+
+        # Define S3 paths for this query
         paths = {
             'raw': f'queries/{query_hash}/raw',
             'filtered': f'queries/{query_hash}/filtered',
             'analysis': f'queries/{query_hash}/analysis',
             'reports': f'queries/{query_hash}/reports'
         }
-
-        s3.put_object(
-            Bucket='scraper-data-bucket'
-            Key=f'queries/{event["query_hash"]}/params.json',
-            Body=json.dumps(event)
-        )
 
         #path creation 
         # Launch scraper task first
@@ -52,6 +45,7 @@ def orchestrate_scraping_pipeline(event, context):
             'statusCode': 200,
             'body': json.dumps({
                 'message': 'Pipeline launched successfully',
+                'query_hash': query_hash,
                 'scraper_task': scraper_response['tasks'][0]['taskArn'],
                 'analysis_task': analysis_response['tasks'][0]['taskArn'],
                 'report_task': report_response['tasks'][0]['taskArn'],
