@@ -12,18 +12,16 @@ def orchestrate_scraping_pipeline(event, context):
     try:
         ecs = boto3.client('ecs')
         s3 = boto3.client('s3')
-        query_hash  = event['query_hash']
-        # Get latest form submission from S3
-     
-        #get from data for this specific query
+        query_hash = event['query_hash']
+
+        # Get form data
         form_data = s3.get_object(
             Bucket='scraper-data-bucket',
             Key=f'queries/{query_hash}/form-params.json'
         )
-
         params = json.loads(form_data['Body'].read())
 
-        # Define S3 paths for this query
+        # Define paths for this query_hash and store in s3
         paths = {
             'raw': f'queries/{query_hash}/raw',
             'filtered': f'queries/{query_hash}/filtered',
@@ -31,15 +29,21 @@ def orchestrate_scraping_pipeline(event, context):
             'reports': f'queries/{query_hash}/reports'
         }
 
-        #path creation 
-        # Launch scraper task first
-        scraper_response = launch_scraper_task(ecs)
-        
-        # Launch analysis task after scraper
-        analysis_response = launch_analysis_task(ecs)
-        
-        # Launch report generation task last
-        report_response = launch_report_task(ecs)
+        # Store paths in S3 for reference
+        s3.put_object(
+            Bucket='scraper-data-bucket',
+            Key=f'queries/{query_hash}/paths.json',
+            Body=json.dumps(paths)
+        )
+
+        # Launch tasks with paths in environment
+        scraper_response = launch_scraper_task(ecs, paths, query_hash)
+        wait_for_task(scraper_response['tasks'][0]['taskArn'])
+
+        analysis_response = launch_analysis_task(ecs, paths, query_hash)
+        wait_for_task(analysis_response['tasks'][0]['taskArn'])
+
+        report_response = launch_report_task(ecs, paths, query_hash)
         
         return {
             'statusCode': 200,
@@ -61,11 +65,22 @@ def orchestrate_scraping_pipeline(event, context):
             })
         }
 
-def launch_scraper_task(ecs):
+def launch_scraper_task(ecs, paths, query_hash):
     return ecs.run_task(
         cluster='scraper-cluster',
         taskDefinition='scraper-task',
         launchType='FARGATE',
+        overrides={
+            'containerOverrides': [{
+                'name': 'scraper',
+                'environment': [
+                    {'name': 'QUERY_HASH', 'value': query_hash},
+                    {'name': 'RAW_PATH', 'value': paths['raw']},
+                    {'name': 'FILTERED_PATH', 'value': paths['filtered']},
+                    {'name': 'S3_BUCKET', 'value': 'scraper-data-bucket'}
+                ]
+            }]
+        },
         networkConfiguration={
             'awsvpcConfiguration': {
                 'subnets': [os.environ.get('SUBNET_ID', 'dummy-subnet')],
@@ -75,7 +90,7 @@ def launch_scraper_task(ecs):
         }
     )
 
-def launch_analysis_task(ecs):
+def launch_analysis_task(ecs, paths, query_hash):
     return ecs.run_task(
         cluster='scraper-cluster',
         taskDefinition='analysis-task',
@@ -86,10 +101,17 @@ def launch_analysis_task(ecs):
                 'securityGroups': [os.environ.get('SECURITY_GROUP_ID', 'dummy-sg')],
                 'assignPublicIp': 'ENABLED'
             }
-        }
+        },
+        environment=[
+            {'name': 'QUERY_HASH', 'value': query_hash},
+            {'name': 'RAW_PATH', 'value': paths['raw']},
+            {'name': 'FILTERED_PATH', 'value': paths['filtered']},
+            {'name': 'ANALYSIS_PATH', 'value': paths['analysis']},
+            {'name': 'REPORTS_PATH', 'value': paths['reports']}
+        ]
     )
 
-def launch_report_task(ecs):
+def launch_report_task(ecs, paths, query_hash):
     return ecs.run_task(
         cluster='scraper-cluster',
         taskDefinition='report-task',
@@ -100,5 +122,16 @@ def launch_report_task(ecs):
                 'securityGroups': [os.environ.get('SECURITY_GROUP_ID', 'dummy-sg')],
                 'assignPublicIp': 'ENABLED'
             }
-        }
-    ) 
+        },
+        environment=[
+            {'name': 'QUERY_HASH', 'value': query_hash},
+            {'name': 'RAW_PATH', 'value': paths['raw']},
+            {'name': 'FILTERED_PATH', 'value': paths['filtered']},
+            {'name': 'ANALYSIS_PATH', 'value': paths['analysis']},
+            {'name': 'REPORTS_PATH', 'value': paths['reports']}
+        ]
+    )
+
+def wait_for_task(task_arn):
+    # Implement the logic to wait for a task to complete
+    pass 
