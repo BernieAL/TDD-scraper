@@ -56,10 +56,10 @@ ensure_init_files()
 
 
 from config.config import BASE_DIR, RBMQ_DIR  
-from rbmq.scrape_producer import SCRAPE_publish_to_queue
+from workers.scrape_producer import SCRAPE_publish_to_queue
 from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
 from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
-from rbmq.process_producer import PROCESS_publish_to_queue
+from workers.process_producer import PROCESS_publish_to_queue
 
 from config.config import RABBITMQ_HOST
 from config.connections import create_rabbitmq_connection

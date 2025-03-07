@@ -31,7 +31,7 @@ from db.db_utils import (
     DB_bulk_update_sold,
     DB_get_sold_daily
 )
-from rbmq.price_change_producer import PRICE_publish_to_queue
+from workers.price_change_producer import PRICE_publish_to_queue
 
 def parse_file_name(file):
     file_path_tokens = file.split('/')[-1]

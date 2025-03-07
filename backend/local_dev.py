@@ -1,4 +1,4 @@
-from tests.mock_pipeline import MockScraperPipeline
+from backend.tests.lambda_functions.mock_pipeline import MockScraperPipeline
 from backend.lambda.scrape_orchestrator.handler import orchestrate_scraping_pipeline
 import json
 

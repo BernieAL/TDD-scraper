@@ -4,6 +4,10 @@ import sys,csv
 import json
 from simple_chalk import chalk
 import boto3
+from backend.config.dynamodb import get_dynamodb, PRODUCTS_TABLE, PRICE_HISTORY_TABLE
+from datetime import datetime
+from botocore.exceptions import ClientError
+from backend.aws.db.dynamodb_config import dynamodb
 
 # For local development
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,8 +58,8 @@ ensure_init_files()
 
 
 from analysis.compare_data import compare_driver
-from rbmq.price_change_producer import PRICE_publish_to_queue
-from rbmq.process_producer import PROCESS_publish_to_queue
+from workers.price_change_producer import PRICE_publish_to_queue
+from workers.process_producer import PROCESS_publish_to_queue
 from config.connections import create_rabbitmq_connection
 
 
@@ -243,6 +247,37 @@ def main():
                 connection.close()
             except Exception as e:
                 print(chalk.red(f"Error closing connection: {e}"))
+
+class CompareWorker:
+    def __init__(self):
+        self.db = dynamodb
+    
+    async def update_product_price(self, product_id, source, new_price, old_price=None):
+        """Update product price in DynamoDB"""
+        try:
+            data = {
+                'current_price': new_price,
+                'last_updated': datetime.now().isoformat()
+            }
+            
+            if old_price:
+                data['previous_price'] = old_price
+                
+            await self.db.update_product(product_id, source, data)
+            
+            # Add to price history
+            await self.db.price_history_table.put_item(
+                Item={
+                    'PK': f'PROD#{product_id}',
+                    'SK': f'PRICE#{datetime.now().isoformat()}',
+                    'price': new_price,
+                    'scrape_date': datetime.now().date().isoformat()
+                }
+            )
+            
+        except Exception as e:
+            print(chalk.red(f"Error updating product price: {e}"))
+            raise
 
 if __name__ == "__main__":
     main()

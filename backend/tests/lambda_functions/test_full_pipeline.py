@@ -12,7 +12,7 @@ import sys
 # Add project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from backend.tests.mock_pipeline import MockScraperPipeline
+from backend.tests.lambda_functions.mock_pipeline import MockScraperPipeline
 from backend.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
 
 @mock_ecs
