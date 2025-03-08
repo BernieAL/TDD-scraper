@@ -3,6 +3,62 @@ import boto3
 from botocore.exceptions import ClientError
 from simple_chalk import chalk
 from backend.config.config import get_env_var
+from dataclasses import dataclass
+from typing import Dict, List
+
+@dataclass
+class TableSchema:
+    """Define table structure"""
+    name: str
+    partition_key: str
+    sort_key: str
+    attributes: Dict[str, str]  # name: type
+    indexes: List[Dict] = None  # GSIs/LSIs
+
+# Define table schemas
+TABLES = {
+    'products': TableSchema(
+        name='products-table',
+        partition_key='PK',  # PROD#{product_id}
+        sort_key='SK',      # META#{source}
+        attributes={
+            'PK': 'S',
+            'SK': 'S',
+            'product_name': 'S',
+            'current_price': 'N',
+            'previous_price': 'N',
+            'last_updated': 'S',
+            'url': 'S',
+            'source': 'S'
+        }
+    ),
+    'price_history': TableSchema(
+        name='price-history-table',
+        partition_key='PK',  # PROD#{product_id}
+        sort_key='SK',      # PRICE#{timestamp}
+        attributes={
+            'PK': 'S',
+            'SK': 'S',
+            'price': 'N',
+            'scrape_date': 'S'
+        }
+    ),
+    'query_results': TableSchema(
+        name='query-results-table',
+        partition_key='PK',  # QUERY#{query_hash}
+        sort_key='SK',      # RESULT#{timestamp}
+        attributes={
+            'PK': 'S',
+            'SK': 'S',
+            'brand': 'S',
+            'category': 'S',
+            'specific_item': 'S',
+            'status': 'S',
+            'email': 'S',
+            'paths': 'M'  # Map type for nested JSON
+        }
+    )
+}
 
 class DynamoDBClient:
     _instance = None
@@ -74,6 +130,27 @@ class DynamoDBClient:
         except ClientError as e:
             print(chalk.red(f"DynamoDB error updating product: {e}"))
             raise
+
+    def create_tables(self):
+        """Create tables if they don't exist"""
+        for table_name, schema in TABLES.items():
+            try:
+                self.client.create_table(
+                    TableName=schema.name,
+                    KeySchema=[
+                        {'AttributeName': schema.partition_key, 'KeyType': 'HASH'},
+                        {'AttributeName': schema.sort_key, 'KeyType': 'RANGE'}
+                    ],
+                    AttributeDefinitions=[
+                        {'AttributeName': name, 'AttributeType': type_}
+                        for name, type_ in schema.attributes.items()
+                        if name in [schema.partition_key, schema.sort_key]
+                    ],
+                    BillingMode='PAY_PER_REQUEST'
+                )
+                print(f"Created table: {schema.name}")
+            except self.client.exceptions.ResourceInUseException:
+                print(f"Table already exists: {schema.name}")
 
 # Singleton instance
 dynamodb = DynamoDBClient()
