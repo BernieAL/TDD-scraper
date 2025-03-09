@@ -112,13 +112,6 @@ def get_env_var(key: str, default: Optional[Any] = None) -> Any:
     """Get environment variable with default"""
     return os.environ.get(key, default)
 
-# AWS Configuration
-AWS_CONFIG = {
-    'region': get_env_var('AWS_REGION', 'us-east-1'),
-    'is_local': get_env_var('IS_LOCAL', False),
-    'tables': {
-        'products': get_env_var('PRODUCTS_TABLE', 'products-table'),
-        'price_history': get_env_var('PRICE_HISTORY_TABLE', 'price-history-table'),
-        'query_results': get_env_var('QUERY_RESULTS_TABLE', 'query-results-table')
-    }
-}
+
+
+
