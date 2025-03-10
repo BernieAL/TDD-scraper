@@ -1,28 +1,103 @@
-import os
+"""
+DynamoDB Configuration and Operations Manager
+
+This module provides a centralized interface for DynamoDB interactions in the price comparison application.
+It handles client configuration, table management, and database operations.
+
+The DynamoDB class serves as a repository pattern implementation, encapsulating all DynamoDB-related
+operations and configurations in one place.
+
+Typical usage:
+    db = DynamoDB()
+    product = await db.get_item('products', {'PK': 'PROD#123', 'SK': 'SOURCE#amazon'})
+
+Environment Variables:
+    AWS_REGION (str): AWS region for DynamoDB (default: 'us-east-1')
+    AWS_SAM_LOCAL (bool): Flag for local SAM testing
+    IS_LOCAL (bool): Flag for local development
+
+Dependencies:
+    - boto3: AWS SDK for Python
+    - table_schemas: Local module defining DynamoDB table structures
+"""
+
 import boto3
+from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
-from simple_chalk import chalk
-from backend.config.config import get_env_var
 from .table_schemas import TABLE_SCHEMAS
+from backend.config.config import get_env_var
+from simple_chalk import chalk
+from functools import wraps
 
 
+
+"""
+without decorator:
+    we would manually "wrap" the function to be handled
+    by passing it as an arg to handle_dynamo_error 
+
+    Ex. 
+    get_item = handle_dynamo_error(get_item)
+
+with decorator
+    the wrapping function recieves the function as a param
+    and returns a new wrapper function that wraps the original function in try/catch,
+    calls the original function with await func(*args,**kwargs), and handles any errors
+
+    @wraps(func) preserves the original functions metadata, so when you call get_item() it actually looks like:
+    
+     
+        async def wrapper(**args, **kwargs):
+            try:
+                return await get_item(*args, **kwargs) #original function
+            except ClientError as e:
+                #handle dynamodb errors
+            except Exception as e:
+                #handle other errors
+
+"""
+def handle_dynamo_error(func):
+    """Decorator for handling DynamoDB errors"""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            print(chalk.red(f"DynamoDB error in {func.__name__}: {error_code}"))
+            raise
+        except Exception as e:
+            print(chalk.red(f"Unexpected error in {func.__name__}: {str(e)}"))
+            raise
+    return wrapper
 
 class DynamoDB:
-    _instance = None
+    """
+    Manages DynamoDB configuration and operations.
     
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(DynamoDB, cls).__new__(cls)
-            cls._instance._initialize()
-        return cls._instance
+    This class handles:
+    1. Client setup for both local and production environments
+    2. Table reference management using predefined schemas
+    3. Basic CRUD operations for DynamoDB interactions
     
+    Attributes:
+        client: Boto3 DynamoDB resource
+        region (str): AWS region for DynamoDB
+        tables (Dict): References to all DynamoDB tables
+    """
+    
+    def __init__(self):
+        """Initialize DynamoDB client and table references"""
+        self.setup_dynamodb_client()
+
     def setup_dynamodb_client(self):
-        """Initialize DynamoDB connection"""
+        """Initialize DynamoDB connection and table references"""
         try:
             self.region = get_env_var('AWS_REGION', 'us-east-1')
+            self.is_local = get_env_var('AWS_SAM_LOCAL') or get_env_var('IS_LOCAL')
             
-            # For local testing with localstack
-            if get_env_var('AWS_SAM_LOCAL') or get_env_var('IS_LOCAL'):
+            # Configure client for local or production
+            if self.is_local:
                 self.client = boto3.resource(
                     'dynamodb',
                     endpoint_url='http://localhost:8000',
@@ -31,34 +106,41 @@ class DynamoDB:
                     aws_secret_access_key='dummy'
                 )
             else:
-                # Production AWS
                 self.client = boto3.resource('dynamodb', region_name=self.region)
             
             # Initialize table references
-            self.products_table = self.client.Table(get_env_var('PRODUCTS_TABLE', 'products-table'))
+            self._initialize_tables()
             
-            self.price_history_table = self.client.Table(get_env_var('PRICE_HISTORY_TABLE', 'price-history-table'))
-
-            self.users_table= self.client.Table(get_env_var('PRICE_HISTORY_TABLE', 'price-history-table'))
-            
-            self.user_searches_table = self.client.Table(get_env_var('PRICE_HISTORY_TABLE', 'price-history-table'))
-
         except Exception as e:
             print(chalk.red(f"Error initializing DynamoDB: {e}"))
             raise
-    
-    @property
-    def tables(self):
-        """Get all table references"""
-        return {
-            'products': self.products_table,
-            'price_history': self.price_history_table
-        }
+
     
    
+    #TABLE MGMT METHODS
+    def _initialize_tables(self):
+        """Initialize references to all tables, for each schema in TABLE_SCHEMAS list"""
+        self._tables = {
+            name: self.client.Table(schema.name)
+            for name, schema in TABLE_SCHEMAS.items()
+        }
+
+    @handle_dynamo_error
     def create_tables(self):
-        """Create tables if they don't exist"""
-        for table_name, schema in TABLES.items():
+        """
+        Creates DynamoDB tables if they don't exist
+        
+        Examples:
+            # Create all tables defined in TABLE_SCHEMAS
+            dynamodb.create_tables()
+            
+            # Tables are created with schema from TABLE_SCHEMAS:
+            # - products_table
+            # - price_history_table
+            # - users_table
+            # - user_searches_table
+        """
+        for name, schema in TABLE_SCHEMAS.items():
             try:
                 self.client.create_table(
                     TableName=schema.name,
@@ -73,70 +155,160 @@ class DynamoDB:
                     ],
                     BillingMode='PAY_PER_REQUEST'
                 )
-                print(f"Created table: {schema.name}")
+                print(chalk.green(f"Created table: {schema.name}"))
+                
+                # Wait for table to be created
+                waiter = self.client.get_waiter('table_exists')
+                waiter.wait(TableName=schema.name)
+                
             except self.client.exceptions.ResourceInUseException:
-                print(f"Table already exists: {schema.name}")
-    
-    async def update_product(self, product_id: str, source: str, data: dict):
-            """Update product in DynamoDB"""
-            try:
-                update_expr = "SET "
-                expr_values = {}
-                
-                for key, value in data.items():
-                    update_expr += f"#{key} = :{key}, "
-                    expr_values[f":{key}"] = value
-                
-                update_expr = update_expr.rstrip(", ")
-                
-                await self.products_table.update_item(
-                    Key={
-                        'PK': f'PROD#{product_id}',
-                        'SK': f'META#{source}'
-                    },
-                    UpdateExpression=update_expr,
-                    ExpressionAttributeValues=expr_values,
-                    ExpressionAttributeNames={f"#{k}": k for k in data.keys()}
-                )
-                
-            except ClientError as e:
-                print(chalk.red(f"DynamoDB error updating product: {e}"))
+                print(chalk.blue(f"Table already exists: {schema.name}"))
+            except Exception as e:
+                print(chalk.red(f"Error creating table {schema.name}: {e}"))
                 raise
 
-    async def add_price_history(self, product_id: str, source: str, price: float):
-        """Add price to product's price history"""
-        try:
-            await self.products_table.update_item(
-                Key={
-                    'PK': f'PROD#{product_id}',
-                    'SK': f'SOURCE#{source}'
-                },
-                UpdateExpression="SET price_history = list_append(if_not_exists(price_history, :empty), :price)",
-                ExpressionAttributeValues={
-                    ':price': [{
-                        'price': price,
-                        'timestamp': datetime.now().isoformat()
-                    }],
-                    ':empty': []
-                }
-            )
-        except Exception as e:
-            print(chalk.red(f"Error adding price history: {e}"))
-            raise
+    @handle_dynamo_error
+    def delete_tables(self):
+        """
+        Deletes all DynamoDB tables (use with caution!)
+        Typically used in local development to reset the database
+        """
+        if not self.is_local:
+            raise Exception("Cannot delete tables in production environment!")
+            
+        for name, schema in TABLE_SCHEMAS.items():
+            try:
+                table = self.client.Table(schema.name)
+                table.delete()
+                print(chalk.yellow(f"Deleted table: {schema.name}"))
+                
+                # Wait for table to be deleted
+                waiter = self.client.get_waiter('table_not_exists')
+                waiter.wait(TableName=schema.name)
+                
+            except Exception as e:
+                print(chalk.red(f"Error deleting table {schema.name}: {e}"))
+                raise
 
-    async def get_product_history(self, product_id: str, source: str):
-        """Get product's price history"""
-        try:
-            response = await self.products_table.get_item(
-                Key={
-                    'PK': f'PROD#{product_id}',
-                    'SK': f'SOURCE#{source}'
+    #PROPERTIES
+    @property
+    def tables(self) -> Dict:
+        """Get references to all tables"""
+        return self._tables
+
+    #CRUD OPS
+    @handle_dynamo_error
+    async def get_item(self, table_name: str, key: Dict) -> Optional[Dict]:
+        """
+        Get item from specified table
+        
+        Args:
+            table_name: Name of the table
+            key: Primary key of the item to get
+            
+        Returns:
+            Dict containing the item if found, None otherwise
+        """
+        response = await self.tables[table_name].get_item(Key=key)
+        return response.get('Item')
+
+    @handle_dynamo_error
+    async def put_item(self, table_name: str, item: Dict) -> Dict:
+        """
+        Put item in specified table
+        
+        Args:
+            table_name: Name of the table
+            item: Item to put in the table
+            
+        Returns:
+            Response from DynamoDB
+        """
+        return await self.tables[table_name].put_item(Item=item)
+
+    @handle_dynamo_error
+    async def update_item(self, table_name: str, key: Dict, updates: Dict) -> Dict:
+        """
+        Update item in specified table
+        
+        Args:
+            table_name: Name of the table
+            key: Primary key of item to update
+            updates: Dict containing UpdateExpression and ExpressionAttributeValues
+            
+        Returns:
+            Response from DynamoDB
+        """
+        return await self.tables[table_name].update_item(
+            Key=key,
+            UpdateExpression=updates['expression'],
+            ExpressionAttributeValues=updates['values']
+        )
+
+    @handle_dynamo_error
+    async def delete_item(self, table_name: str, key: Dict) -> Dict:
+        """
+        Delete item from specified table
+        
+        Args:
+            table_name: Name of the table
+            key: Primary key of item to delete
+            
+        Returns:
+            Response from DynamoDB
+        """
+        return await self.tables[table_name].delete_item(Key=key)
+
+    @handle_dynamo_error
+    async def query(self, table_name: str, key_condition: str, 
+                   values: Dict, index_name: Optional[str] = None) -> Dict:
+        """
+        Query items from specified table
+        
+        Args:
+            table_name: Name of the table
+            key_condition: KeyConditionExpression
+            values: ExpressionAttributeValues
+            index_name: Optional name of index to query
+            
+        Returns:
+            Query results from DynamoDB
+            
+        Examples:
+            # Query products from a specific source
+            await dynamodb.query(
+                table_name='products',
+                key_condition='PK = :pk AND begins_with(SK, :sk)',
+                values={
+                    ':pk': 'PRODUCT#123',
+                    ':sk': 'SOURCE#'
                 }
             )
-            return response.get('Item', {}).get('price_history', [])
-        except Exception as e:
-            print(chalk.red(f"Error getting price history: {e}"))
-            raise
+            
+            # Query price history with date range
+            await dynamodb.query(
+                table_name='price_history',
+                key_condition='PK = :pk AND SK BETWEEN :start_date AND :end_date',
+                values={
+                    ':pk': 'PRODUCT#123',
+                    ':start_date': 'PRICE#2023-01-01',
+                    ':end_date': 'PRICE#2023-12-31'
+                }
+            )
+        """
+        params = {
+            'KeyConditionExpression': key_condition,
+            'ExpressionAttributeValues': values
+        }
+        if index_name:
+            params['IndexName'] = index_name
+            
+        return await self.tables[table_name].query(**params)
 
 # Singleton instance
-dynamodb = DynamoDBClient()
+dynamodb = DynamoDB()
+    
+    
+    
+   
+   
