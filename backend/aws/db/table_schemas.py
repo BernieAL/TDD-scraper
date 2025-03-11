@@ -12,7 +12,7 @@ class TableSchema:
     indexes: List[Dict] = None  # GSIs/LSIs
 
 # Define table schemas
-TABLES = {
+TABLE_SCHEMAS = {
     'users': TableSchema(
         name='users-table',
         partition_key='PK',      # USER#{user_id}
@@ -52,7 +52,7 @@ TABLES = {
             'product_name': 'S',
             'current_price': 'N',
             'previous_price': 'N',
-            'last_scrape_date': 'S', 
+            'last_scrape_date': 'S',
             'url': 'S',
             'source': 'S'
         }

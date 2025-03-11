@@ -18,16 +18,24 @@ Environment Variables:
 
 Dependencies:
     - boto3: AWS SDK for Python
-    - table_schemas: Local module defining DynamoDB table structures
+    - .table_schemas: Local module defining DynamoDB table structures
 """
 
 import boto3
 from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
-from .table_schemas import TABLE_SCHEMAS
+from pathlib import Path
+import sys
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.append(str(project_root))
+
 from backend.config.config import get_env_var
 from simple_chalk import chalk
 from functools import wraps
+from table_schemas import TABLE_SCHEMAS
+
 
 
 
