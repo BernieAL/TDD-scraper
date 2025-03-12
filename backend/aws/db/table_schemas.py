@@ -23,7 +23,7 @@ TABLE_SCHEMAS = {
             'email': 'S',
             'created_at': 'S',
             'last_login': 'S',
-            'tier':'S'  #free,lvl 1 paid, lvl 2 paid etc.
+            'member_tier': 'N'  #0=free, 1 = lvl 1 paid, 2 = lvl 2 paid
         }
     ),
     'user_searches': TableSchema(
@@ -49,6 +49,7 @@ TABLE_SCHEMAS = {
         attributes={
             'PK': 'S',
             'SK': 'S',
+            'master_sku': 'S',
             'product_name': 'S',
             'current_price': 'N',
             'previous_price': 'N',
@@ -64,7 +65,9 @@ TABLE_SCHEMAS = {
         attributes={
             'PK': 'S',
             'SK': 'S',
-            'price': 'N',
+            'master_sku': 'S',
+            'high_price': 'N',
+            'low_low': 'N',
             'source': 'S',
             'scrape_date': 'S'
         }

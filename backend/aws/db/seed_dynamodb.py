@@ -42,50 +42,109 @@ print(seed_data_path.exists())
 
 #need to read in scraped data into dynamodb from local
 
-async def db_insert_to_products_table (item):
+async def db_insert_to_products_table (row):
     await dynamodb.put_item('products_table',item)
 
-async def db_insert_to_price_history_table(item):
+async def db_insert_to_price_history_table(row):
     
+    """
+    Going on the assumption that each product has a group_id
+    which is master id for that product.
 
-    #get product id off item
+    Ex. if product is LV NeverFull, then the master ID 
+        for this product would be LV-B-NV-421k02
+        LV for louis vuition
+        B for bag
+        NV for neverfull
+        421k02 - randomnumber 
 
-    #find all rows with this product_id, get their price
+    Then the each listing itself would have its own indiv product id
+
+        should product_listing_id be specific to source where they are listed?
+        ITAL-19234-12123 etc?
+
+
+    """
     
-    #encapsulate into obj, insert into db
+    print(row)
+    # #recieves csv row
+    # #get master_sku off row
+    # master_sku = row['master_sku']
 
-    await dynamodb.put_item('price_history',item)
-        # 'PK': f"PROD#{product_id}",
-        # 'SK': f"PRICE#{datetime.now().isoformat()}",
-        # 'price': float(price),
-        # 'source': source,
-        # 'scrape_date': datetime.now().isoformat()
-
-
-
-def insert_raw_scraped_data():
+    # #build new obj to insert
+    # #key is master_sku
+    # entry = {
+    #     'PK': f'{master_sku}',
+    #     'price': float(row['price']),
+    #     'source': row['source'],
+    #     'scrape_date': datetime.now().isoformat()
+    # }
     
-    #path to raw_scraped_data
+    # print(entry)
+    # # await dynamodb.put_item('price_history',entry)
+
+
+
+
+def validate_row(row: dict) -> bool:
+    """
+    Validate CSV row data before insertion
+    
+    Required fields:
+    - product_name: string
+    - price: numeric
+    - source: string
+    - url: valid URL
+    - master_sku: string (if we're using this)
+    """
+    try:
+        # Check required fields exist
+        required_fields = ['product_name', 'price', 'source', 'url']
+        if not all(field in row for field in required_fields):
+            print(chalk.yellow(f"Missing required fields in row: {row}"))
+            return False
+            
+        # Validate price is numeric
+        try:
+            price = float(row['price'])
+            if price <= 0:
+                print(chalk.yellow(f"Invalid price: {price}"))
+                return False
+        except ValueError:
+            print(chalk.yellow(f"Price not numeric: {row['price']}"))
+            return False
+            
+        # Validate source is known/valid
+        valid_sources = ['italist', 'farfetch', 'mytheresa']  # Add your sources
+        if row['source'].lower() not in valid_sources:
+            print(chalk.yellow(f"Unknown source: {row['source']}"))
+            return False
+            
+        # Basic URL validation
+        if not row['url'].startswith(('http://', 'https://')):
+            print(chalk.yellow(f"Invalid URL: {row['url']}"))
+            return False
+            
+        return True
+        
+    except Exception as e:
+        print(chalk.red(f"Validation error: {e}"))
+        return False
+
+async def insert_raw_scraped_data_runner():
+    """Reads CSV files and inserts valid data"""
     raw_data_path = seed_data_path / 'scrape_data' / 'raw'
-    print(raw_data_path.exists())
-
-
-    #get all csv files in raw data dir
     csv_files = list(raw_data_path.rglob('*.csv'))
-    print(f"found csv files {csv_files}")
     
     for file in csv_files:
-        print(f"processing: {file.name}")
-
         try:
-            #read csv file
             with file.open('r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    print(row)
-                    db_insert_to_products_table(item)
-                    db_insert_to_price_history_table(item)
-                   
+                    if validate_row(row):
+                        await db_insert_to_price_history_table(row)
+                    else:
+                        print(chalk.yellow(f"Skipping invalid row in {file.name}"))
                    
         except Exception as e:
             print(chalk.red(f"Error processing {file.name}: {e}"))
@@ -167,7 +226,8 @@ async def seed_from_s3():
 
 if __name__ == "__main__":
 
-    insert_raw_scraped_data()
+    import asyncio
+    asyncio.run(insert_raw_scraped_data_runner())
 
 
     # # Create tables first
