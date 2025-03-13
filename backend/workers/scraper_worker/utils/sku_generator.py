@@ -32,7 +32,7 @@ def generate_master_sku(product_name: str) -> str:
     return f"{brand}-{model}-{identifier}"
 
 
-def process_scraped_file(raw_file_path: Path) -> None:
+def generate_master_sku_col(raw_file_path: Path) -> None:
     """
     Read in raw CSV
     find unique products

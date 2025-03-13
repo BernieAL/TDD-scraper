@@ -1,7 +1,5 @@
 import sys,csv,json,os
 from typing import Dict, Set
-import pika
-from dotenv import load_dotenv,find_dotenv
 from simple_chalk import chalk
 from datetime import datetime
 from shutil import rmtree  # For removing directories
@@ -58,17 +56,14 @@ ensure_init_files()
 
 
 from config.config import BASE_DIR, RBMQ_DIR  
-from workers.scrape_producer import SCRAPE_publish_to_queue
-from selenium_scraper_container.utils.ScraperUtils import ScraperUtils
-from selenium_scraper_container.scrapers.italist_scraper import ItalistScraper
-from workers.process_producer import PROCESS_publish_to_queue
+from utils.ScraperUtils import ScraperUtils
+from scrapers.italist_scraper import ItalistScraper
+from utils.sku_generator import generate_master_sku_col
 
-from config.config import RABBITMQ_HOST
-from config.connections import create_rabbitmq_connection
 
 
 import sys, csv, json, os
-import pika
+import boto3
 from simple_chalk import chalk
 from datetime import datetime
 from typing import Dict, List, Optional, Set
@@ -169,147 +164,68 @@ class ScraperOrchestrator:
 def main():
     orchestrator = ScraperOrchestrator()
     
-    def callback(ch, method, properties, body):
-        try:
-            print(chalk.yellow("Received message on scrape_queue"))
-            
-            # Get environment variables
-            bucket = os.environ['S3_BUCKET']
-            query_hash = os.environ['QUERY_HASH']
-            raw_path = os.environ['RAW_PATH']
-            filtered_path = os.environ['FILTERED_PATH']
-            
-            # Get form data from S3
-            s3 = boto3.client('s3')
-            form_data = s3.get_object(
-                Bucket=bucket,
-                Key=f'queries/{query_hash}/form-params.json'
-            )
-            params = json.loads(form_data['Body'].read())
-            
-            print(chalk.blue("Starting scrape processes..."))
-            
-            # Run all scrapers
-            scraped_files = orchestrator.run_all_scrapers(
-                params['brand'],
-                params['category'],
-                raw_path,  # Use S3 path instead of local dir
-                query_hash,
-                params.get('local_test', True)
-            )
-            
-            # Upload results to S3
-            for scraper_name, file_path in scraped_files.items():
-                if file_path and os.path.exists(file_path):
-                    with open(file_path, 'rb') as f:
-                        filename = os.path.basename(file_path)
-                        s3.put_object(
-                            Bucket=bucket,
-                            Key=f"{raw_path}/{filename}",
-                            Body=f
-                        )
-            
-            # Get failure information
-            failed_scrapers = orchestrator.get_failed_scrapers(query_hash)
-            failure_details = orchestrator.get_failure_details(query_hash)
-            
-            # Check if any scrapers succeeded
-            if not scraped_files:
-                raise Exception(f"All scrapers failed. Failures: {failure_details}")
-            
-            # Send success message
-            complete_msg = {
-                'type': 'SCRAPE',
-                'status': 'PASS',
-                'query_hash': query_hash,
-                'output_dir': raw_path,  # Use S3 path
-                'specific_item': params.get('specific_item'),
-                'scraped_files': scraped_files,
-                'failed_scrapers': list(failed_scrapers),
-                'failure_details': failure_details
-            }
-            
-            print(chalk.blue(f"Publishing Scrape SUCCESS Msg: {complete_msg}"))
-            PROCESS_publish_to_queue(complete_msg)
-            
-            # After raw CSV is written
-            raw_file_path = Path(file_path)
-            process_scraped_file(raw_file_path)
-            
-        except Exception as e:
-            fail_msg = {
-                'type': 'SCRAPE',
-                'status': 'FAIL',
-                'query_hash': query_hash,
-                'output_dir': raw_path,
-                'specific_item': params.get('specific_item'),
-                'scraped_files': {},
-                'failed_scrapers': orchestrator.get_failed_scrapers(query_hash),
-                'failure_details': orchestrator.get_failure_details(query_hash),
-                'error': str(e)
-            }
-            
-            print(chalk.blue(f"Publishing Scrape FAIL Msg: {fail_msg}"))
-            PROCESS_publish_to_queue(fail_msg)
-            
-            print(chalk.red(f"Error processing message: {e}"))
-            import traceback
-            print(chalk.red(f"Traceback: {traceback.format_exc()}"))
-            
-        finally:
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+    # AWS messaging will go here
 
-    # RabbitMQ setup remains the same...
+    # Get environment variables
+    bucket = os.environ['S3_BUCKET']
+    query_hash = os.environ['QUERY_HASH']
+    raw_path = os.environ['RAW_PATH']
+    filtered_path = os.environ['FILTERED_PATH']
+    
+    # Get form data from S3
+    s3 = boto3.client('s3')
+    form_data = s3.get_object(
+        Bucket=bucket,
+        Key=f'queries/{query_hash}/form-params.json'
+    )
+    params = json.loads(form_data['Body'].read())
+    
+    print(chalk.blue("Starting scrape processes..."))
+    
+    # Run all scrapers, collects output files as return val
+    scraped_files = orchestrator.run_all_scrapers(
+        params['brand'],
+        params['category'],
+        raw_path,  # Use S3 path instead of local dir
+        query_hash,
+        params.get('local_test', True)
+    )
+    
+    # Upload results to S3
+    for scraper_name, file_path in scraped_files.items():
+        if file_path and os.path.exists(file_path):
+            with open(file_path, 'rb') as f:
+                filename = os.path.basename(file_path)
+                s3.put_object(
+                    Bucket=bucket,
+                    Key=f"{raw_path}/{filename}",
+                    Body=f
+                )
+    
+    # Get failure information
+    failed_scrapers = orchestrator.get_failed_scrapers(query_hash)
+    failure_details = orchestrator.get_failure_details(query_hash)
+    
+    # Check if any scrapers succeeded
+    if not scraped_files:
+        raise Exception(f"All scrapers failed. Failures: {failure_details}")
+    
+    # After raw CSV is written
+    raw_file_path = Path(file_path)
 
-    # RabbitMQ setup
-    try:
-        connection = create_rabbitmq_connection()
-        channel = connection.channel()
-
-        # Declare queue with all parameters explicit
-        channel.queue_declare(
-            queue='scrape_queue',
-            durable=True,
-            exclusive=False,
-            auto_delete=False
-        )
-
-        # Basic QoS and consume setup
-        channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(
-            queue='scrape_queue',
-            on_message_callback=callback,
-            auto_ack=False
-        )
-        
-        print(chalk.green("Clearing queue"))
-        channel.queue_purge(queue='scrape_queue')
-
-        print(chalk.blue('(SCRAPE_WORKER)[*] Waiting for messages. To exit press CTRL+C'))
-        channel.start_consuming()
-
-    except Exception as e:
-        print(chalk.red(f"Error during RabbitMQ setup: {e}"))
-        import traceback
-        print(chalk.red(f"Traceback: {traceback.format_exc()}"))
-    finally:
-        if connection and connection.is_open:
-            try:
-                connection.close()
-                print(chalk.blue("Connection closed successfully"))
-            except Exception as e:
-                print(chalk.red(f"Error closing connection: {e}"))
+    #group unique products, generate master sku for each unique product, create and insert new col
+    generate_master_sku_col(raw_file_path)
 
 if __name__ == "__main__":
     print(chalk.green("Starting scrape worker..."))
     main()
 
-def scrape_and_upload(params_data):
-    scraped_data = scrape_website()  # Your scraping logic
+# def scrape_and_upload(params_data):
+#     scraped_data = scrape_website()  # Your scraping logic
     
-    # Upload directly using the path pattern
-    s3.put_object(
-        Bucket='scraper-data-bucket',
-        Key=f'{params_data["paths"]["raw"]}/RAW_ITALIST_{params_data["brand"]}_{datetime.now():%Y-%d-%m}_{params_data["category"]}.csv',
-        Body=scraped_data
-    )
+#     # Upload directly using the path pattern
+#     s3.put_object(
+#         Bucket='scraper-data-bucket',
+#         Key=f'{params_data["paths"]["raw"]}/RAW_ITALIST_{params_data["brand"]}_{datetime.now():%Y-%d-%m}_{params_data["category"]}.csv',
+#         Body=scraped_data
+#     )
