@@ -6,6 +6,8 @@ from simple_chalk import chalk
 from datetime import datetime
 from shutil import rmtree  # For removing directories
 import boto3
+from pathlib import Path
+from .utils.sku_generator import process_scraped_file
 
 # For local development
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -229,6 +231,10 @@ def main():
             
             print(chalk.blue(f"Publishing Scrape SUCCESS Msg: {complete_msg}"))
             PROCESS_publish_to_queue(complete_msg)
+            
+            # After raw CSV is written
+            raw_file_path = Path(file_path)
+            process_scraped_file(raw_file_path)
             
         except Exception as e:
             fail_msg = {
