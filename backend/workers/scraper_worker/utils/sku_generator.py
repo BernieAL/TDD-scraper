@@ -9,6 +9,9 @@ def generate_master_sku(product_name: str) -> str:
     """
     Generate master SKU using hash of product name
     Example: "Louis Vuitton Neverfull MM" -> "LV-B-NV-a7b2c"
+
+    opted for hash becuase its deterministic as opposed to prev idea which was 
+    added random numbers to end of sku
     """
     tokens = product_name.split()
     
