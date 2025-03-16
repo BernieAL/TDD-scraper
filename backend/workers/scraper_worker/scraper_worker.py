@@ -149,6 +149,13 @@ class ScraperOrchestrator:
                         local: bool) -> Dict[str, Optional[str]]:
         """
         Runs all active scrapers and returns a dictionary of results
+        
+        Returns:
+            Dict[str, Optional[str]]: Dictionary mapping scraper names to their output file paths
+            Example: {
+                'italist': '/path/to/temp/italist/RAW_ITALIST_PRADA_...',
+                'farfetch': '/path/to/temp/farfetch/RAW_FARFETCH_PRADA_...'
+            }
         """
         results = {}
         

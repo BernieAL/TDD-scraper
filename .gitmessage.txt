@@ -1,0 +1,18 @@
+refactor(scraper): improve temp file organization and S3 upload logic
+
+- Split S3 upload into separate method for single responsibility
+- Add source-specific subdirectories in temp/ for better organization
+- Use pathlib for consistent path handling
+- Add comprehensive directory structure documentation
+
+Directory structure now:
+tmp/
+├── italist/      # Italist.com scraped data
+├── farfetch/     # Farfetch.com scraped data
+└── mytheresa/    # MyTheresa.com scraped data
+
+Modified files:
+- ScraperUtils.py: Add temp dir organization and split S3 upload
+- scraper_worker.py: Update file handling
+- sku_generator.py: Update path handling
+- italist_scraper.py: Use new temp dir structure 
