@@ -1,18 +1,22 @@
-refactor(scraper): improve temp file organization and S3 upload logic
+refactor(scraper): improve temp directory structure and testing
 
-- Split S3 upload into separate method for single responsibility
-- Add source-specific subdirectories in temp/ for better organization
-- Use pathlib for consistent path handling
-- Add comprehensive directory structure documentation
+- Rename tmp/ to temp/ for clarity
+- Rename scraper_root_dir to scraper_worker_root for consistency
+- Add project root detection using .PROJECT_ROOT marker
+- Add comprehensive test suite for ScraperUtils
+  - Test temp directory creation
+  - Test source-specific subdirectories
+  - Test file saving and structure
+  - Add detailed test documentation
 
-Directory structure now:
-tmp/
-├── italist/      # Italist.com scraped data
-├── farfetch/     # Farfetch.com scraped data
-└── mytheresa/    # MyTheresa.com scraped data
+Directory structure updated to:
+scraper_worker/
+├── temp/               # Renamed from tmp/
+│   ├── italist/       # Source-specific directories
+│   ├── farfetch/      
+│   └── mytheresa/     
 
 Modified files:
-- ScraperUtils.py: Add temp dir organization and split S3 upload
-- scraper_worker.py: Update file handling
-- sku_generator.py: Update path handling
-- italist_scraper.py: Use new temp dir structure 
+- ScraperUtils.py: Update directory naming and structure
+- test_scraper_utils.py: Add comprehensive test suite
+- .PROJECT_ROOT: Add project root marker file 

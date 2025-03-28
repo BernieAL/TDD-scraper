@@ -7,6 +7,7 @@ import pandas as pd
 from simple_chalk import chalk
 import shutil
 from pathlib import Path
+from backend.utils.project_paths import SCRAPER_WORKER_ROOT
 
 class ScraperUtils:
     """
@@ -27,15 +28,13 @@ class ScraperUtils:
         s3_client: Optional boto3 S3 client for uploads
     """
 
+    # Static class variable
+    TEMP_DIR = SCRAPER_WORKER_ROOT / 'temp'
+
     def __init__(self, s3_client=None):
-        # Get current file's directory (utils/) and navigate up to scraper_worker root
-        current_dir = Path(__file__).parent
-        self.scraper_worker_root = current_dir.parent.parent
         self.s3_client = s3_client
-        
-        # Create temp directory for staging files before S3 upload
-        self.temp_dir = self.scraper_worker_root / 'temp'
-        self.temp_dir.mkdir(exist_ok=True)
+        # Create temp directory if it doesn't exist
+        self.TEMP_DIR.mkdir(exist_ok=True, parents=True)  # Add parents=True
 
     def generate_hash(self, query: str, specific_item: str, date: str) -> str:
         """Generate hash for query identification"""
@@ -44,7 +43,7 @@ class ScraperUtils:
 
     def make_data_source_output_dir(self, source: str) -> Path:
         """Create source-specific directory in temp/"""
-        data_src_dir = self.temp_dir / source.lower()
+        data_src_dir = self.TEMP_DIR / source.lower()
         data_src_dir.mkdir(exist_ok=True)
         return data_src_dir
 
@@ -96,8 +95,8 @@ class ScraperUtils:
 
     def cleanup(self):
         """Remove temporary files"""
-        if os.path.exists(self.temp_dir):
-            shutil.rmtree(self.temp_dir)
+        if os.path.exists(self.TEMP_DIR):
+            shutil.rmtree(self.TEMP_DIR)
 
     def parse_file_name(self, file: str) -> tuple:
         """Parse standardized filename into components"""

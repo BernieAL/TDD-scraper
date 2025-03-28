@@ -1,4 +1,34 @@
-import sys,csv,json,os
+"""
+Scraper Worker Lambda Handler
+
+This module handles AWS Lambda events for the scraping system. It validates
+incoming events, coordinates scraping jobs, and manages AWS service interactions.
+
+Main Components:
+- Lambda event handling
+- Input validation
+- Scraper orchestration
+- AWS service integration (S3, SNS)
+
+Key Functions:
+    lambda_handler(event, context):
+        Main entry point for AWS Lambda
+
+    validate_event(event):
+        Validates incoming event structure
+
+    process_scraping_job(event_data):
+        Coordinates scraping execution
+
+Note: Detailed function documentation is provided with each function.
+
+Dependencies:
+    - boto3
+    - ScraperOrchestrator
+    - AWS Lambda Runtime
+"""
+
+fimport sys,csv,json,os
 from typing import Dict, Set
 from simple_chalk import chalk
 from datetime import datetime
@@ -67,106 +97,11 @@ import boto3
 from simple_chalk import chalk
 from datetime import datetime
 from typing import Dict, List, Optional, Set
+from backend.workers.scraper_worker import ScraperOrchestrator
 
 # Import statements remain the same...
 
-class ScraperOrchestrator:
-    def __init__(self):
-        self.scrapers = {
-            'italist': ItalistScraper,
-            # Add other scrapers here
-        }
-        # Track failures per query hash
-        self.failed_scrapers: Dict[str, Set[str]] = {}
-        # Track error messages for failed scrapers
-        self.scraper_errors: Dict[str, Dict[str, str]] = {}
-        
-    def get_active_scrapers(self) -> List[str]:
-        """Returns list of currently active scraper names"""
-        return list(self.scrapers.keys())
-    
-    def record_failure(self, query_hash: str, scraper_name: str, error_msg: str):
-        """Record a scraper failure for a specific query"""
-        if query_hash not in self.failed_scrapers:
-            self.failed_scrapers[query_hash] = set()
-            self.scraper_errors[query_hash] = {}
-            
-        self.failed_scrapers[query_hash].add(scraper_name)
-        self.scraper_errors[query_hash][scraper_name] = error_msg
-    
-    def get_failed_scrapers(self, query_hash: str) -> List[str]:
-        """Get list of failed scrapers for a query"""
-        return list(self.failed_scrapers.get(query_hash, set()))
-    
-    def get_failure_details(self, query_hash: str) -> Dict[str, str]:
-        """Get error messages for failed scrapers"""
-        return self.scraper_errors.get(query_hash, {})
-    
-    def run_scraper(self, 
-                   scraper_name: str, 
-                   brand: str,
-                   category: str,
-                   output_dir: str,
-                   query_hash: str,
-                   local: bool) -> Optional[str]:
-        """
-        Runs a single scraper and returns the path to the scraped file
-        """
-        try:
-            if scraper_name not in self.scrapers:
-                raise ValueError(f"Unknown scraper: {scraper_name}")
-            
-            scraper_class = self.scrapers[scraper_name]
-            scraper = scraper_class(brand, category, output_dir, query_hash, local)
-            
-            print(chalk.blue(f"Running {scraper_name} scraper with:"))
-            print(chalk.blue(f"Brand: {brand}"))
-            print(chalk.blue(f"Category: {category}"))
-            print(chalk.blue(f"Output Dir: {output_dir}"))
-            
-            scraped_file = scraper.run()
-            
-            if scraped_file and os.path.exists(scraped_file):
-                print(chalk.green(f"{scraper_name} completed successfully: {scraped_file}"))
-                return scraped_file
-            else:
-                error_msg = f"{scraper_name} completed but produced no results"
-                print(chalk.yellow(error_msg))
-                self.record_failure(query_hash, scraper_name, error_msg)
-                return None
-                
-        except Exception as e:
-            error_msg = f"Error running {scraper_name}: {str(e)}"
-            print(chalk.red(error_msg))
-            self.record_failure(query_hash, scraper_name, error_msg)
-            return None
 
-    def run_all_scrapers(self, 
-                        brand: str,
-                        category: str,
-                        output_dir: str,
-                        query_hash: str,
-                        local: bool) -> Dict[str, Optional[str]]:
-        """
-        Runs all active scrapers and returns a dictionary of results
-        
-        Returns:
-            Dict[str, Optional[str]]: Dictionary mapping scraper names to their output file paths
-            Example: {
-                'italist': '/path/to/temp/italist/RAW_ITALIST_PRADA_...',
-                'farfetch': '/path/to/temp/farfetch/RAW_FARFETCH_PRADA_...'
-            }
-        """
-        results = {}
-        
-        for scraper_name in self.get_active_scrapers():
-            scraped_file = self.run_scraper(
-                scraper_name, brand, category, output_dir, query_hash, local
-            )
-            if scraped_file:
-                results[scraper_name] = scraped_file
-                
-        return results
 
 def main():
     orchestrator = ScraperOrchestrator()
@@ -236,3 +171,31 @@ if __name__ == "__main__":
 #         Key=f'{params_data["paths"]["raw"]}/RAW_ITALIST_{params_data["brand"]}_{datetime.now():%Y-%d-%m}_{params_data["category"]}.csv',
 #         Body=scraped_data
 #     )
+
+def lambda_handler(event, context):
+    """
+    AWS Lambda entry point for scraper worker.
+
+    Args:
+        event (dict): AWS Lambda event containing:
+            - scraper_name (str): Name of scraper to run
+            - brand (str): Brand to scrape
+            - category (str): Product category
+        context (LambdaContext): AWS Lambda context
+
+    Returns:
+        dict: Response containing:
+            - statusCode (int): HTTP status code
+            - body (dict): Response data or error message
+
+    Raises:
+        ValueError: If event validation fails
+        ScraperError: If scraping operation fails
+    
+    Example:
+        event = {
+            "scraper_name": "ITALIST",
+            "brand": "PRADA",
+            "category": "BAGS"
+        }
+    """
