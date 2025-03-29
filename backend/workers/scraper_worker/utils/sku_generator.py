@@ -78,3 +78,35 @@ def generate_master_sku_col(raw_file_path: Path) -> None:
 
     except Exception as e:
         print(f"Error processing {raw_file_path}:{e}")
+
+
+def process_scraped_file(file_path: str) -> dict:
+    """
+    Process scraped file to generate SKUs and organize data.
+
+    Args:
+        file_path (str): Path to scraped data file
+
+    Returns:
+        dict: Processed data with SKUs
+    
+    Example:
+        >>> process_scraped_file('/temp/italist/RAW_ITALIST_PRADA_DATE_BAGS.csv')
+        {
+            'processed_data': [...],
+            'skus_generated': [...],
+            'stats': {...}
+        }
+    """
+    try:
+        # For now, return mock data for testing
+        return {
+            'processed_data': [],
+            'skus_generated': [],
+            'stats': {
+                'total_products': 0,
+                'skus_generated': 0
+            }
+        }
+    except Exception as e:
+        raise Exception(f"Error processing scraped file: {str(e)}")

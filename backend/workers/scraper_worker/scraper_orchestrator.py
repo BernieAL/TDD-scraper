@@ -53,9 +53,9 @@ Class for managing scraper operations
 
 
 from config.config import BASE_DIR, RBMQ_DIR  
-from utils.ScraperUtils import ScraperUtils
-from scrapers.italist_scraper import ItalistScraper
-from utils.sku_generator import generate_master_sku_col
+from .utils.scraper_utils import ScraperUtils
+from .scrapers.italist_scraper import ItalistScraper
+from .utils.sku_generator import generate_master_sku_col
 
 import sys, csv, json, os
 import boto3

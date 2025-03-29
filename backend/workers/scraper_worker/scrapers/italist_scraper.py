@@ -44,7 +44,7 @@ local_url = 'file:///' + local_saved_file_path.replace('\\','/')
 
 
 # from src.scrapers.base_scraper import BaseScraper
-from utils.ScraperUtils import ScraperUtils
+from ..utils.scraper_utils import ScraperUtils
 
 
 from scrapers.base_scraper import BaseScraper

@@ -28,7 +28,7 @@ Dependencies:
     - AWS Lambda Runtime
 """
 
-fimport sys,csv,json,os
+import sys,csv,json,os
 from typing import Dict, Set
 from simple_chalk import chalk
 from datetime import datetime
@@ -38,9 +38,9 @@ from pathlib import Path
 from .utils.sku_generator import process_scraped_file
 
 # For local development
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
+# parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# if parent_dir not in sys.path:
+#     sys.path.append(parent_dir)
 
 # For Docker
 if os.getenv('RUNNING_IN_DOCKER') == '1' and '/app' not in sys.path:
@@ -86,9 +86,10 @@ ensure_init_files()
 
 
 from config.config import BASE_DIR, RBMQ_DIR  
-from utils.ScraperUtils import ScraperUtils
-from scrapers.italist_scraper import ItalistScraper
-from utils.sku_generator import generate_master_sku_col
+from .utils.scraper_utils import ScraperUtils
+from .scrapers.italist_scraper import ItalistScraper
+from .utils.sku_generator import generate_master_sku_col, process_scraped_file
+from .scraper_orchestrator import ScraperOrchestrator
 
 
 
@@ -97,7 +98,6 @@ import boto3
 from simple_chalk import chalk
 from datetime import datetime
 from typing import Dict, List, Optional, Set
-from backend.workers.scraper_worker import ScraperOrchestrator
 
 # Import statements remain the same...
 
@@ -199,3 +199,99 @@ def lambda_handler(event, context):
             "category": "BAGS"
         }
     """
+    try:
+        # Get form data from S3
+        s3 = boto3.client('s3')
+        sns = boto3.client('sns')  # Add SNS client
+        
+        form_data = s3.get_object(
+            Bucket=event['bucket'],
+            Key=f'queries/{event["query_hash"]}/form-params.json'
+        )
+        params = json.loads(form_data['Body'].read())
+
+        # Initialize orchestrator
+        orchestrator = ScraperOrchestrator()
+        
+        # Run scraper
+        result = orchestrator.run_scraper(
+            scraper_name=params['scraper_name'],
+            brand=params['brand'],
+            category=params['category'],
+            output_dir="raw",
+            query_hash=event['query_hash'],
+            local=True
+        )
+
+        if result:
+            # Upload result to S3
+            filename = os.path.basename(result)
+            s3.upload_file(
+                result,
+                event['bucket'],
+                f'raw/{filename}'
+            )
+
+            # Store results in database
+            from backend.db import connection
+            db = connection()
+            
+            # Read CSV and store in database
+            with open(result, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    db.insert({
+                        'brand': params['brand'],
+                        'category': params['category'],
+                        'product_data': row,
+                        'scrape_date': datetime.now().isoformat(),
+                        'query_hash': event['query_hash']
+                    })
+
+            # Send success notification
+            sns.publish(
+                TopicArn='arn:aws:sns:region:account:scraper-notifications',
+                Message=f'Scraping completed successfully: {filename}',
+                Subject='Scraping Success'
+            )
+
+            return {
+                'statusCode': 200,
+                'body': {
+                    'success': True,
+                    'message': 'Scraping completed successfully',
+                    'file_path': result
+                }
+            }
+        else:
+            # Send failure notification
+            sns.publish(
+                TopicArn='arn:aws:sns:region:account:scraper-notifications',
+                Message=f'Scraping failed for {params["scraper_name"]}',
+                Subject='Scraping Failure'
+            )
+
+            return {
+                'statusCode': 500,
+                'body': {
+                    'error': 'Scraping failed',
+                    'details': 'No results returned from scraper'
+                }
+            }
+
+    except Exception as e:
+        # Send error notification
+        sns = boto3.client('sns')
+        sns.publish(
+            TopicArn='arn:aws:sns:region:account:scraper-notifications',
+            Message=f'Error during scraping: {str(e)}',
+            Subject='Scraping Error'
+        )
+
+        return {
+            'statusCode': 500,
+            'body': {
+                'error': str(e),
+                'details': 'Error during scraping process'
+            }
+        }
