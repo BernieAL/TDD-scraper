@@ -1,24 +1,47 @@
 #!/bin/bash
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../../.." && pwd )"
+
 # Wait for Backend LocalStack to be ready
 echo "Waiting for Backend LocalStack to be ready..."
-while ! curl -s http://localhost:4566/health | grep -q '"lambda": "available"'; do
+TIMEOUT=30
+COUNTER=0
+while ! curl -s http://localhost:4567/health > /dev/null; do
+    echo "Waiting for LocalStack to be available... ($COUNTER seconds)"
     sleep 1
+    COUNTER=$((COUNTER + 1))
+    if [ $COUNTER -ge $TIMEOUT ]; then
+        echo "Timeout waiting for LocalStack to be ready"
+        exit 1
+    fi
 done
+echo "LocalStack is ready!"
 
 # Set AWS credentials for Backend LocalStack
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=us-east-1
-export AWS_ENDPOINT_URL=http://localhost:4566
+export AWS_ENDPOINT_URL=http://localhost:4567
+
+# Check and package Lambda functions if needed
+LAMBDA_PACKAGES_DIR="$PROJECT_ROOT/backend/aws/lambda_functions/deployment-packages"
+if [ ! -f "$LAMBDA_PACKAGES_DIR/form-submission-deployment-package.zip" ] || \
+   [ ! -f "$LAMBDA_PACKAGES_DIR/scrape-orchestrator-deployment-package.zip" ]; then
+    echo "Lambda deployment packages not found. Packaging Lambda functions..."
+    cd "$PROJECT_ROOT/backend/aws/lambda_functions"
+    ./package_lambda.sh
+    cd -
+fi
 
 # Create S3 bucket for data storage
 echo "Creating S3 bucket for data storage..."
-aws --endpoint-url=http://localhost:4566 s3 mb s3://scraper-data-bucket
+aws --endpoint-url=http://localhost:4567 s3 mb s3://scraper-data-bucket
 
 # Create IAM role for Lambda
 echo "Creating IAM role..."
-aws --endpoint-url=http://localhost:4566 iam create-role \
+aws --endpoint-url=http://localhost:4567 iam create-role \
     --role-name lambda-role \
     --assume-role-policy-document '{
         "Version": "2012-10-17",
@@ -34,7 +57,7 @@ aws --endpoint-url=http://localhost:4566 iam create-role \
     }'
 
 # Attach basic Lambda execution policy
-aws --endpoint-url=http://localhost:4566 iam put-role-policy \
+aws --endpoint-url=http://localhost:4567 iam put-role-policy \
     --role-name lambda-role \
     --policy-name lambda-basic-policy \
     --policy-document '{
@@ -45,84 +68,34 @@ aws --endpoint-url=http://localhost:4566 iam put-role-policy \
                 "Action": [
                     "logs:CreateLogGroup",
                     "logs:CreateLogStream",
-                    "logs:PutLogEvents"
+                    "logs:PutLogEvents",
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:ListBucket"
                 ],
-                "Resource": "arn:aws:logs:*:*:*"
+                "Resource": [
+                    "arn:aws:logs:*:*:*",
+                    "arn:aws:s3:::scraper-data-bucket",
+                    "arn:aws:s3:::scraper-data-bucket/*"
+                ]
             }
         ]
     }'
 
-# Create ECS cluster
-echo "Creating ECS cluster..."
-aws --endpoint-url=http://localhost:4566 ecs create-cluster --cluster-name scraper-cluster
-
-# Register task definitions
-echo "Registering task definitions..."
-aws --endpoint-url=http://localhost:4566 ecs register-task-definition \
-    --family scraper-task \
-    --network-mode awsvpc \
-    --requires-compatibilities FARGATE \
-    --cpu 256 \
-    --memory 512 \
-    --execution-role-arn arn:aws:iam::000000000000:role/lambda-role \
-    --container-definitions '[{
-        "name": "scraper",
-        "image": "scraper:latest",
-        "essential": true,
-        "environment": [
-            {"name": "AWS_REGION", "value": "us-east-1"},
-            {"name": "S3_BUCKET", "value": "scraper-data-bucket"}
-        ]
-    }]'
-
-aws --endpoint-url=http://localhost:4566 ecs register-task-definition \
-    --family analysis-task \
-    --network-mode awsvpc \
-    --requires-compatibilities FARGATE \
-    --cpu 256 \
-    --memory 512 \
-    --execution-role-arn arn:aws:iam::000000000000:role/lambda-role \
-    --container-definitions '[{
-        "name": "analysis",
-        "image": "analysis:latest",
-        "essential": true,
-        "environment": [
-            {"name": "AWS_REGION", "value": "us-east-1"},
-            {"name": "S3_BUCKET", "value": "scraper-data-bucket"}
-        ]
-    }]'
-
-aws --endpoint-url=http://localhost:4566 ecs register-task-definition \
-    --family report-task \
-    --network-mode awsvpc \
-    --requires-compatibilities FARGATE \
-    --cpu 256 \
-    --memory 512 \
-    --execution-role-arn arn:aws:iam::000000000000:role/lambda-role \
-    --container-definitions '[{
-        "name": "report",
-        "image": "report:latest",
-        "essential": true,
-        "environment": [
-            {"name": "AWS_REGION", "value": "us-east-1"},
-            {"name": "S3_BUCKET", "value": "scraper-data-bucket"}
-        ]
-    }]'
-
 # Create Lambda functions
 echo "Creating Lambda functions..."
-aws --endpoint-url=http://localhost:4566 lambda create-function \
+aws --endpoint-url=http://localhost:4567 lambda create-function \
     --function-name form-submission \
     --runtime python3.10 \
     --handler form_handler.handle_form_submit \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --zip-file fileb://../../aws/lambda_functions/form_submission/deployment-package.zip
+    --zip-file "fileb://$LAMBDA_PACKAGES_DIR/form-submission-deployment-package.zip"
 
-aws --endpoint-url=http://localhost:4566 lambda create-function \
+aws --endpoint-url=http://localhost:4567 lambda create-function \
     --function-name scrape-orchestrator \
     --runtime python3.10 \
     --handler pipeline_orchestrator.orchestrate_scraping_pipeline \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --zip-file fileb://../../aws/lambda_functions/scrape_orchestrator/deployment-package.zip
+    --zip-file "fileb://$LAMBDA_PACKAGES_DIR/scrape-orchestrator-deployment-package.zip"
 
 echo "Backend LocalStack setup complete!" 

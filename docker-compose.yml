@@ -5,33 +5,39 @@ services:
   frontend-localstack:
     image: localstack/localstack:latest
     ports:
-      - "4567:4566"  # Different port for frontend services
+      - "4566:4566"
     environment:
       - SERVICES=s3,cloudfront
-      - DEBUG=1
-      - AWS_DEFAULT_REGION=us-east-1
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
-      - "${FRONTEND_LOCALSTACK_VOLUME_DIR:-./frontend/localstack/volume}:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    networks:
-      - frontend-network
+      - ./frontend/localstack/scripts:/scripts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Backend LocalStack (for Lambda, ECS, and data S3)
   backend-localstack:
     image: localstack/localstack:latest
     ports:
-      - "4566:4566"  # Main port for backend services
+      - "4567:4566"
     environment:
-      - SERVICES=lambda,s3,ecs
-      - DEBUG=1
-      - AWS_DEFAULT_REGION=us-east-1
+      - SERVICES=s3,iam,lambda
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
-      - "${BACKEND_LOCALSTACK_VOLUME_DIR:-./backend/localstack/volume}:/var/lib/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    networks:
-      - backend-network
+      - ./backend/localstack/scripts:/scripts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   frontend-network:
