@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # Frontend LocalStack (for S3 and CloudFront)
+  frontend-localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4567:4566"  # Different port for frontend services
+    environment:
+      - SERVICES=s3,cloudfront
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "${FRONTEND_LOCALSTACK_VOLUME_DIR:-./frontend/localstack/volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - frontend-network
+
+  # Frontend development server
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - S3_ENDPOINT_URL=http://frontend-localstack:4566
+      - CLOUDFRONT_ENDPOINT_URL=http://frontend-localstack:4566
+    depends_on:
+      - frontend-localstack
+    networks:
+      - frontend-network
+
+  # Backend LocalStack (for Lambda, ECS, and data S3)
+  backend-localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"  # Main port for backend services
+    environment:
+      - SERVICES=lambda,s3,ecs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "${BACKEND_LOCALSTACK_VOLUME_DIR:-./backend/localstack/volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - backend-network
+
+  # Backend services (scraper, analysis, report)
+  scraper:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile.scraper
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - S3_ENDPOINT_URL=http://backend-localstack:4566
+      - LAMBDA_ENDPOINT_URL=http://backend-localstack:4566
+      - ECS_ENDPOINT_URL=http://backend-localstack:4566
+    depends_on:
+      - backend-localstack
+    networks:
+      - backend-network
+
+  analysis:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile.analysis
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - S3_ENDPOINT_URL=http://backend-localstack:4566
+      - LAMBDA_ENDPOINT_URL=http://backend-localstack:4566
+      - ECS_ENDPOINT_URL=http://backend-localstack:4566
+    depends_on:
+      - backend-localstack
+    networks:
+      - backend-network
+
+  report:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile.report
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - S3_ENDPOINT_URL=http://backend-localstack:4566
+      - LAMBDA_ENDPOINT_URL=http://backend-localstack:4566
+      - ECS_ENDPOINT_URL=http://backend-localstack:4566
+    depends_on:
+      - backend-localstack
+    networks:
+      - backend-network
+
+networks:
+  frontend-network:
+    driver: bridge
+  backend-network:
+    driver: bridge 
