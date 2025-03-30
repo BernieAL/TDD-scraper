@@ -28,7 +28,8 @@ export AWS_ENDPOINT_URL=http://localhost:4567
 # Check and package Lambda functions if needed
 LAMBDA_PACKAGES_DIR="$PROJECT_ROOT/backend/aws/lambda_functions/deployment-packages"
 if [ ! -f "$LAMBDA_PACKAGES_DIR/form-submission-deployment-package.zip" ] || \
-   [ ! -f "$LAMBDA_PACKAGES_DIR/scrape-orchestrator-deployment-package.zip" ]; then
+   [ ! -f "$LAMBDA_PACKAGES_DIR/scrape-orchestrator-deployment-package.zip" ] || \
+   [ ! -f "$LAMBDA_PACKAGES_DIR/price-analyzer-deployment-package.zip" ]; then
     echo "Lambda deployment packages not found. Packaging Lambda functions..."
     cd "$PROJECT_ROOT/backend/aws/lambda_functions"
     ./package_lambda.sh
@@ -37,7 +38,31 @@ fi
 
 # Create S3 bucket for data storage
 echo "Creating S3 bucket for data storage..."
-aws --endpoint-url=http://localhost:4567 s3 mb s3://scraper-data-bucket
+aws --endpoint-url=http://localhost:4567 s3 mb s3://scraper-data-bucket 2>/dev/null || true
+
+# Delete existing DynamoDB tables if they exist
+echo "Deleting existing DynamoDB tables..."
+aws --endpoint-url=http://localhost:4567 dynamodb delete-table --table-name products-table 2>/dev/null || true
+aws --endpoint-url=http://localhost:4567 dynamodb delete-table --table-name price-history-table 2>/dev/null || true
+
+# Wait for tables to be deleted
+echo "Waiting for tables to be deleted..."
+sleep 5
+
+# Create DynamoDB tables
+echo "Creating DynamoDB tables..."
+cd "$PROJECT_ROOT"
+PYTHONPATH="$PROJECT_ROOT" python3 backend/aws/db/table_schemas.py
+
+# Seed DynamoDB with data
+echo "Seeding DynamoDB with data..."
+PYTHONPATH="$PROJECT_ROOT" python3 backend/aws/db/seed_dynamodb.py
+
+# Create SNS topics
+echo "Creating SNS topics..."
+aws --endpoint-url=http://localhost:4567 sns create-topic --name price-change-topic 2>/dev/null || true
+aws --endpoint-url=http://localhost:4567 sns create-topic --name sold-items-topic 2>/dev/null || true
+aws --endpoint-url=http://localhost:4567 sns create-topic --name analysis-complete-topic 2>/dev/null || true
 
 # Create IAM role for Lambda
 echo "Creating IAM role..."
@@ -54,7 +79,7 @@ aws --endpoint-url=http://localhost:4567 iam create-role \
                 "Action": "sts:AssumeRole"
             }
         ]
-    }'
+    }' 2>/dev/null || true
 
 # Attach basic Lambda execution policy
 aws --endpoint-url=http://localhost:4567 iam put-role-policy \
@@ -71,12 +96,23 @@ aws --endpoint-url=http://localhost:4567 iam put-role-policy \
                     "logs:PutLogEvents",
                     "s3:PutObject",
                     "s3:GetObject",
-                    "s3:ListBucket"
+                    "s3:ListBucket",
+                    "dynamodb:PutItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:Scan",
+                    "sns:Publish",
+                    "sns:Subscribe",
+                    "sns:ListSubscriptionsByTopic",
+                    "sns:GetTopicAttributes"
                 ],
                 "Resource": [
                     "arn:aws:logs:*:*:*",
                     "arn:aws:s3:::scraper-data-bucket",
-                    "arn:aws:s3:::scraper-data-bucket/*"
+                    "arn:aws:s3:::scraper-data-bucket/*",
+                    "arn:aws:dynamodb:us-east-1:000000000000:table/*",
+                    "arn:aws:sns:us-east-1:000000000000:price-change-topic",
+                    "arn:aws:sns:us-east-1:000000000000:sold-items-topic",
+                    "arn:aws:sns:us-east-1:000000000000:analysis-complete-topic"
                 ]
             }
         ]
@@ -89,6 +125,9 @@ aws --endpoint-url=http://localhost:4567 lambda create-function \
     --runtime python3.10 \
     --handler form_handler.handle_form_submit \
     --role arn:aws:iam::000000000000:role/lambda-role \
+    --zip-file "fileb://$LAMBDA_PACKAGES_DIR/form-submission-deployment-package.zip" 2>/dev/null || \
+    aws --endpoint-url=http://localhost:4567 lambda update-function-code \
+    --function-name form-submission \
     --zip-file "fileb://$LAMBDA_PACKAGES_DIR/form-submission-deployment-package.zip"
 
 aws --endpoint-url=http://localhost:4567 lambda create-function \
@@ -96,6 +135,19 @@ aws --endpoint-url=http://localhost:4567 lambda create-function \
     --runtime python3.10 \
     --handler pipeline_orchestrator.orchestrate_scraping_pipeline \
     --role arn:aws:iam::000000000000:role/lambda-role \
+    --zip-file "fileb://$LAMBDA_PACKAGES_DIR/scrape-orchestrator-deployment-package.zip" 2>/dev/null || \
+    aws --endpoint-url=http://localhost:4567 lambda update-function-code \
+    --function-name scrape-orchestrator \
     --zip-file "fileb://$LAMBDA_PACKAGES_DIR/scrape-orchestrator-deployment-package.zip"
+
+aws --endpoint-url=http://localhost:4567 lambda create-function \
+    --function-name price-analyzer \
+    --runtime python3.10 \
+    --handler price_analyzer.handle_analysis \
+    --role arn:aws:iam::000000000000:role/lambda-role \
+    --zip-file "fileb://$LAMBDA_PACKAGES_DIR/price-analyzer-deployment-package.zip" 2>/dev/null || \
+    aws --endpoint-url=http://localhost:4567 lambda update-function-code \
+    --function-name price-analyzer \
+    --zip-file "fileb://$LAMBDA_PACKAGES_DIR/price-analyzer-deployment-package.zip"
 
 echo "Backend LocalStack setup complete!" 
