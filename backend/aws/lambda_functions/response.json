@@ -1,0 +1,1 @@
+{"errorMessage": "'ScraperOrchestrator' object has no attribute 'run_scraping'", "errorType": "AttributeError", "requestId": "4553a67e-7f60-4b8f-b0cf-2bda4a1a2281", "stackTrace": ["  File \"/var/task/pipeline_orchestrator.py\", line 70, in orchestrate_scraping_pipeline\n    scraper.run_scraping(\n"]}

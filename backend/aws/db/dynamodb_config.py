@@ -4,12 +4,12 @@ DynamoDB Configuration and Operations Manager
 This module provides a centralized interface for DynamoDB interactions in the price comparison application.
 It handles client configuration, table management, and database operations.
 
-The DynamoDB class serves as a repository pattern implementation, encapsulating all DynamoDB-related
+The DynamoDBClient class serves as a repository pattern implementation, encapsulating all DynamoDB-related
 operations and configurations in one place.
 
 Typical usage:
-    db = DynamoDB()
-    product = await db.get_item('products', {'PK': 'PROD#123', 'SK': 'SOURCE#amazon'})
+    db = DynamoDBClient()
+    product = await db.get_item('products-table', {'PK': {'S': 'PROD#123'}, 'SK': {'S': 'SOURCE#amazon'}})
 
 Environment Variables:
     AWS_REGION (str): AWS region for DynamoDB (default: 'us-east-1')
@@ -34,7 +34,7 @@ sys.path.append(str(project_root))
 from backend.config.config import get_env_var
 from simple_chalk import chalk
 from functools import wraps
-from table_schemas import TABLE_SCHEMAS
+from backend.aws.db.table_schemas import PRODUCTS_TABLE, PRICE_HISTORY_TABLE
 
 
 
@@ -67,9 +67,9 @@ with decorator
 def handle_dynamo_error(func):
     """Decorator for handling DynamoDB errors"""
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         try:
-            return await func(*args, **kwargs)
+            return func(*args, **kwargs)
         except ClientError as e:
             error_code = e.response['Error']['Code']
             print(chalk.red(f"DynamoDB error in {func.__name__}: {error_code}"))
@@ -79,204 +79,113 @@ def handle_dynamo_error(func):
             raise
     return wrapper
 
-class DynamoDB:
+class DynamoDBClient:
     """
     Manages DynamoDB configuration and operations.
     
     This class handles:
     1. Client setup for both local and production environments
-    2. Table reference management using predefined schemas
-    3. Basic CRUD operations for DynamoDB interactions
+    2. Basic CRUD operations for DynamoDB interactions using the low-level client interface
     
     Attributes:
-        client: Boto3 DynamoDB resource
+        client: Boto3 DynamoDB client
         region (str): AWS region for DynamoDB
-        tables (Dict): References to all DynamoDB tables
     """
     
     def __init__(self):
-        """Initialize DynamoDB client and table references"""
+        """Initialize DynamoDB client"""
         self.setup_dynamodb_client()
 
-    def setup_dynamodb_client(self):
-        """Initialize DynamoDB connection and table references"""
+    @classmethod
+    def setup_dynamodb_client(cls):
+        """Set up DynamoDB client with LocalStack configuration."""
         try:
-            self.region = get_env_var('AWS_REGION', 'us-east-1')
-            self.is_local = get_env_var('AWS_SAM_LOCAL') or get_env_var('IS_LOCAL')
-            
-            # Configure client for local or production
-            if self.is_local:
-                self.client = boto3.resource(
-                    'dynamodb',
-                    endpoint_url='http://localhost:8000',
-                    region_name=self.region,
-                    aws_access_key_id='dummy',
-                    aws_secret_access_key='dummy'
-                )
-            else:
-                self.client = boto3.resource('dynamodb', region_name=self.region)
-            
-            # Initialize table references
-            self._initialize_tables()
-            
+            cls.client = boto3.client(
+                'dynamodb',
+                endpoint_url='http://localhost:4567',  # Backend LocalStack endpoint
+                aws_access_key_id='test',
+                aws_secret_access_key='test',
+                region_name='us-east-1',
+                verify=False  # Disable SSL verification for local development
+            )
+            print("DynamoDB client initialized successfully")
         except Exception as e:
-            print(chalk.red(f"Error initializing DynamoDB: {e}"))
+            print(f"Error initializing DynamoDB client: {str(e)}")
             raise
 
-    
-   
-    #TABLE MGMT METHODS
-    def _initialize_tables(self):
-        """Initialize references to all tables, for each schema in TABLE_SCHEMAS list"""
-        self._tables = {
-            name: self.client.Table(schema.name)
-            for name, schema in TABLE_SCHEMAS.items()
-        }
-
     @handle_dynamo_error
-    def create_tables(self):
-        """
-        Creates DynamoDB tables if they don't exist
-        
-        Examples:
-            # Create all tables defined in TABLE_SCHEMAS
-            dynamodb.create_tables()
-            
-            # Tables are created with schema from TABLE_SCHEMAS:
-            # - products_table
-            # - price_history_table
-            # - users_table
-            # - user_searches_table
-        """
-        for name, schema in TABLE_SCHEMAS.items():
-            try:
-                self.client.create_table(
-                    TableName=schema.name,
-                    KeySchema=[
-                        {'AttributeName': schema.partition_key, 'KeyType': 'HASH'},
-                        {'AttributeName': schema.sort_key, 'KeyType': 'RANGE'}
-                    ],
-                    AttributeDefinitions=[
-                        {'AttributeName': name, 'AttributeType': type_}
-                        for name, type_ in schema.attributes.items()
-                        if name in [schema.partition_key, schema.sort_key]
-                    ],
-                    BillingMode='PAY_PER_REQUEST'
-                )
-                print(chalk.green(f"Created table: {schema.name}"))
-                
-                # Wait for table to be created
-                waiter = self.client.get_waiter('table_exists')
-                waiter.wait(TableName=schema.name)
-                
-            except self.client.exceptions.ResourceInUseException:
-                print(chalk.blue(f"Table already exists: {schema.name}"))
-            except Exception as e:
-                print(chalk.red(f"Error creating table {schema.name}: {e}"))
-                raise
-
-    @handle_dynamo_error
-    def delete_tables(self):
-        """
-        Deletes all DynamoDB tables (use with caution!)
-        Typically used in local development to reset the database
-        """
-        if not self.is_local:
-            raise Exception("Cannot delete tables in production environment!")
-            
-        for name, schema in TABLE_SCHEMAS.items():
-            try:
-                table = self.client.Table(schema.name)
-                table.delete()
-                print(chalk.yellow(f"Deleted table: {schema.name}"))
-                
-                # Wait for table to be deleted
-                waiter = self.client.get_waiter('table_not_exists')
-                waiter.wait(TableName=schema.name)
-                
-            except Exception as e:
-                print(chalk.red(f"Error deleting table {schema.name}: {e}"))
-                raise
-
-    #PROPERTIES
-    @property
-    def tables(self) -> Dict:
-        """Get references to all tables"""
-        return self._tables
-
-    #CRUD OPS
-    @handle_dynamo_error
-    async def get_item(self, table_name: str, key: Dict) -> Optional[Dict]:
+    def get_item(self, table_name: str, key: Dict[str, Dict[str, Any]]) -> Optional[Dict]:
         """
         Get item from specified table
         
         Args:
             table_name: Name of the table
-            key: Primary key of the item to get
+            key: Primary key of the item to get in DynamoDB format
             
         Returns:
             Dict containing the item if found, None otherwise
         """
-        response = await self.tables[table_name].get_item(Key=key)
+        response = self.client.get_item(TableName=table_name, Key=key)
         return response.get('Item')
 
     @handle_dynamo_error
-    async def put_item(self, table_name: str, item: Dict) -> Dict:
+    def put_item(self, table_name: str, item: Dict[str, Dict[str, Any]]) -> Dict:
         """
         Put item in specified table
         
         Args:
             table_name: Name of the table
-            item: Item to put in the table
+            item: Item to put in the table in DynamoDB format
             
         Returns:
             Response from DynamoDB
         """
-        return await self.tables[table_name].put_item(Item=item)
+        return self.client.put_item(TableName=table_name, Item=item)
 
     @handle_dynamo_error
-    async def update_item(self, table_name: str, key: Dict, updates: Dict) -> Dict:
+    def update_item(self, table_name: str, key: Dict[str, Dict[str, Any]], updates: Dict) -> Dict:
         """
         Update item in specified table
         
         Args:
             table_name: Name of the table
-            key: Primary key of item to update
+            key: Primary key of item to update in DynamoDB format
             updates: Dict containing UpdateExpression and ExpressionAttributeValues
             
         Returns:
             Response from DynamoDB
         """
-        return await self.tables[table_name].update_item(
+        return self.client.update_item(
+            TableName=table_name,
             Key=key,
-            UpdateExpression=updates['expression'],
-            ExpressionAttributeValues=updates['values']
+            UpdateExpression=updates['UpdateExpression'],
+            ExpressionAttributeValues=updates['ExpressionAttributeValues']
         )
 
     @handle_dynamo_error
-    async def delete_item(self, table_name: str, key: Dict) -> Dict:
+    def delete_item(self, table_name: str, key: Dict[str, Dict[str, Any]]) -> Dict:
         """
         Delete item from specified table
         
         Args:
             table_name: Name of the table
-            key: Primary key of item to delete
+            key: Primary key of item to delete in DynamoDB format
             
         Returns:
             Response from DynamoDB
         """
-        return await self.tables[table_name].delete_item(Key=key)
+        return self.client.delete_item(TableName=table_name, Key=key)
 
     @handle_dynamo_error
-    async def query(self, table_name: str, key_condition: str, 
-                   values: Dict, index_name: Optional[str] = None) -> Dict:
+    def query(self, table_name: str, key_condition: str, 
+             values: Dict[str, Dict[str, Any]], index_name: Optional[str] = None) -> Dict:
         """
         Query items from specified table
         
         Args:
             table_name: Name of the table
             key_condition: KeyConditionExpression
-            values: ExpressionAttributeValues
+            values: ExpressionAttributeValues in DynamoDB format
             index_name: Optional name of index to query
             
         Returns:
@@ -285,36 +194,37 @@ class DynamoDB:
         Examples:
             # Query products from a specific source
             await dynamodb.query(
-                table_name='products',
+                table_name='products-table',
                 key_condition='PK = :pk AND begins_with(SK, :sk)',
                 values={
-                    ':pk': 'PRODUCT#123',
-                    ':sk': 'SOURCE#'
+                    ':pk': {'S': 'PROD#123'},
+                    ':sk': {'S': 'SOURCE#'}
                 }
             )
             
             # Query price history with date range
             await dynamodb.query(
-                table_name='price_history',
+                table_name='price-history-table',
                 key_condition='PK = :pk AND SK BETWEEN :start_date AND :end_date',
                 values={
-                    ':pk': 'PRODUCT#123',
-                    ':start_date': 'PRICE#2023-01-01',
-                    ':end_date': 'PRICE#2023-12-31'
+                    ':pk': {'S': 'PROD#123'},
+                    ':start_date': {'S': 'PRICE#2023-01-01'},
+                    ':end_date': {'S': 'PRICE#2023-12-31'}
                 }
             )
         """
         params = {
+            'TableName': table_name,
             'KeyConditionExpression': key_condition,
             'ExpressionAttributeValues': values
         }
         if index_name:
             params['IndexName'] = index_name
             
-        return await self.tables[table_name].query(**params)
+        return self.client.query(**params)
 
-# Singleton instance
-dynamodb = DynamoDB()
+# Create a singleton instance
+dynamodb = DynamoDBClient()
     
     
     

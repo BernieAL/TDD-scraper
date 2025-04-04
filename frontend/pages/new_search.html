@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Product Search</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">New Product Search</h1>
+            
+            <form id="searchForm" class="space-y-4">
+                <div>
+                    <label for="brand" class="block text-sm font-medium text-gray-700">Brand</label>
+                    <input 
+                        type="text" 
+                        id="brand" 
+                        name="brand" 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Enter brand name (e.g., PRADA)"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                    <input 
+                        type="text" 
+                        id="category" 
+                        name="category" 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Enter category (e.g., BAGS)"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="specific_item" class="block text-sm font-medium text-gray-700">Specific Item (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="specific_item" 
+                        name="specific_item" 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Enter specific item (e.g., TOTE)"
+                    >
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email for Results</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Enter your email"
+                        required
+                    >
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <button 
+                        type="submit" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        Start Search
+                    </button>
+                </div>
+            </form>
+
+            <div id="status" class="mt-4 hidden">
+                <div class="rounded-md p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p id="statusMessage" class="text-sm font-medium text-green-800"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const brand = document.getElementById('brand').value.trim().toUpperCase();
+            const category = document.getElementById('category').value.trim().toUpperCase();
+            const specific_item = document.getElementById('specific_item').value.trim().toUpperCase() || null;
+            const email = document.getElementById('email').value.trim();
+            
+            try {
+                const response = await axios.post('http://localhost:5000/lambda/form-submission', {
+                    brand: brand,
+                    category: category,
+                    specific_item: specific_item,
+                    user_email: email
+                });
+                
+                const statusDiv = document.getElementById('status');
+                const statusMessage = document.getElementById('statusMessage');
+                
+                if (response.data.statusCode === 200) {
+                    statusDiv.classList.remove('hidden');
+                    statusMessage.textContent = 'Search started successfully! You will receive results at your email.';
+                    statusDiv.querySelector('.rounded-md').classList.remove('bg-red-50');
+                    statusDiv.querySelector('.rounded-md').classList.add('bg-green-50');
+                    
+                    // Clear form
+                    document.getElementById('brand').value = '';
+                    document.getElementById('category').value = '';
+                    document.getElementById('specific_item').value = '';
+                    document.getElementById('email').value = '';
+                } else {
+                    throw new Error('Request failed');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const statusDiv = document.getElementById('status');
+                const statusMessage = document.getElementById('statusMessage');
+                
+                statusDiv.classList.remove('hidden');
+                statusMessage.textContent = 'Error starting search. Please try again.';
+                statusDiv.querySelector('.rounded-md').classList.remove('bg-green-50');
+                statusDiv.querySelector('.rounded-md').classList.add('bg-red-50');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -35,7 +35,11 @@ from datetime import datetime
 from shutil import rmtree  # For removing directories
 import boto3
 from pathlib import Path
-from .utils.sku_generator import process_scraped_file
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # For local development
 # parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -45,6 +49,22 @@ from .utils.sku_generator import process_scraped_file
 # For Docker
 if os.getenv('RUNNING_IN_DOCKER') == '1' and '/app' not in sys.path:
     sys.path.insert(0, '/app')
+
+from config.config import BASE_DIR, RBMQ_DIR  
+from .utils.scraper_utils import ScraperUtils
+from .scrapers.italist_scraper import ItalistScraper
+from .utils.sku_generator import process_scraped_file
+from .scraper_orchestrator import ScraperOrchestrator
+
+
+
+import sys, csv, json, os
+import boto3
+from simple_chalk import chalk
+from datetime import datetime
+from typing import Dict, List, Optional, Set
+
+# Import statements remain the same...
 
 
 
@@ -82,24 +102,6 @@ def ensure_init_files():
                 print(f"__init__.py already exists for {dir}")
 
 ensure_init_files()  
-
-
-
-from config.config import BASE_DIR, RBMQ_DIR  
-from .utils.scraper_utils import ScraperUtils
-from .scrapers.italist_scraper import ItalistScraper
-from .utils.sku_generator import generate_master_sku_col, process_scraped_file
-from .scraper_orchestrator import ScraperOrchestrator
-
-
-
-import sys, csv, json, os
-import boto3
-from simple_chalk import chalk
-from datetime import datetime
-from typing import Dict, List, Optional, Set
-
-# Import statements remain the same...
 
 
 
@@ -174,124 +176,97 @@ if __name__ == "__main__":
 
 def lambda_handler(event, context):
     """
-    AWS Lambda entry point for scraper worker.
-
-    Args:
-        event (dict): AWS Lambda event containing:
-            - scraper_name (str): Name of scraper to run
-            - brand (str): Brand to scrape
-            - category (str): Product category
-        context (LambdaContext): AWS Lambda context
-
-    Returns:
-        dict: Response containing:
-            - statusCode (int): HTTP status code
-            - body (dict): Response data or error message
-
-    Raises:
-        ValueError: If event validation fails
-        ScraperError: If scraping operation fails
+    AWS Lambda handler for the scraper worker.
     
-    Example:
-        event = {
-            "scraper_name": "ITALIST",
-            "brand": "PRADA",
-            "category": "BAGS"
-        }
+    Args:
+        event (dict): The Lambda event containing:
+            - query_hash: Unique identifier for the scraping job
+            - brand: Brand to scrape
+            - category: Product category
+            - local_test: Whether to run in local test mode
+        context: Lambda context object
+    
+    Returns:
+        dict: Response containing status and results
     """
     try:
-        # Get form data from S3
-        s3 = boto3.client('s3')
-        sns = boto3.client('sns')  # Add SNS client
+        logger.info("=== Starting Scraper Worker Lambda ===")
+        logger.info(f"Event received: {json.dumps(event)}")
         
-        form_data = s3.get_object(
-            Bucket=event['bucket'],
-            Key=f'queries/{event["query_hash"]}/form-params.json'
-        )
-        params = json.loads(form_data['Body'].read())
-
         # Initialize orchestrator
+        logger.info("Initializing ScraperOrchestrator...")
         orchestrator = ScraperOrchestrator()
         
-        # Run scraper
-        result = orchestrator.run_scraper(
-            scraper_name=params['scraper_name'],
-            brand=params['brand'],
-            category=params['category'],
-            output_dir="raw",
-            query_hash=event['query_hash'],
-            local=True
+        # Get environment variables
+        bucket = os.environ['S3_BUCKET']
+        query_hash = event['query_hash']
+        raw_path = os.environ['RAW_PATH']
+        filtered_path = os.environ['FILTERED_PATH']
+        
+        logger.info("Starting scrape processes...")
+        logger.info(f"Configuration:")
+        logger.info(f"- Bucket: {bucket}")
+        logger.info(f"- Query Hash: {query_hash}")
+        logger.info(f"- Raw Path: {raw_path}")
+        logger.info(f"- Filtered Path: {filtered_path}")
+        logger.info(f"- Brand: {event['brand']}")
+        logger.info(f"- Category: {event['category']}")
+        
+        # Run all scrapers
+        logger.info("Executing scrapers...")
+        scraped_files = orchestrator.run_all_scrapers(
+            event['brand'],
+            event['category'],
+            raw_path,
+            query_hash,
+            event.get('local_test', True)
         )
-
-        if result:
-            # Upload result to S3
-            filename = os.path.basename(result)
-            s3.upload_file(
-                result,
-                event['bucket'],
-                f'raw/{filename}'
-            )
-
-            # Store results in database
-            from backend.db import connection
-            db = connection()
-            
-            # Read CSV and store in database
-            with open(result, 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    db.insert({
-                        'brand': params['brand'],
-                        'category': params['category'],
-                        'product_data': row,
-                        'scrape_date': datetime.now().isoformat(),
-                        'query_hash': event['query_hash']
-                    })
-
-            # Send success notification
-            sns.publish(
-                TopicArn='arn:aws:sns:region:account:scraper-notifications',
-                Message=f'Scraping completed successfully: {filename}',
-                Subject='Scraping Success'
-            )
-
-            return {
-                'statusCode': 200,
-                'body': {
-                    'success': True,
-                    'message': 'Scraping completed successfully',
-                    'file_path': result
-                }
+        
+        # Upload results to S3
+        logger.info("Uploading results to S3...")
+        s3 = boto3.client('s3')
+        for scraper_name, file_path in scraped_files.items():
+            if file_path and os.path.exists(file_path):
+                logger.info(f"Uploading {scraper_name} results: {file_path}")
+                with open(file_path, 'rb') as f:
+                    filename = os.path.basename(file_path)
+                    s3.put_object(
+                        Bucket=bucket,
+                        Key=f"{raw_path}/{filename}",
+                        Body=f
+                    )
+                logger.info(f"Successfully uploaded {filename}")
+        
+        # Check for failures
+        logger.info("Checking for failed scrapers...")
+        failed_scrapers = orchestrator.get_failed_scrapers(query_hash)
+        failure_details = orchestrator.get_failure_details(query_hash)
+        
+        if failed_scrapers:
+            logger.warning(f"Some scrapers failed: {failed_scrapers}")
+            logger.warning(f"Failure details: {failure_details}")
+        
+        if not scraped_files:
+            error_msg = f"All scrapers failed. Failures: {failure_details}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        logger.info("=== Scraper Worker Lambda completed successfully ===")
+        return {
+            'statusCode': 200,
+            'body': {
+                'message': 'Scraping completed successfully',
+                'scraped_files': scraped_files,
+                'failed_scrapers': failed_scrapers,
+                'failure_details': failure_details
             }
-        else:
-            # Send failure notification
-            sns.publish(
-                TopicArn='arn:aws:sns:region:account:scraper-notifications',
-                Message=f'Scraping failed for {params["scraper_name"]}',
-                Subject='Scraping Failure'
-            )
-
-            return {
-                'statusCode': 500,
-                'body': {
-                    'error': 'Scraping failed',
-                    'details': 'No results returned from scraper'
-                }
-            }
-
+        }
+        
     except Exception as e:
-        # Send error notification
-        sns = boto3.client('sns')
-        sns.publish(
-            TopicArn='arn:aws:sns:region:account:scraper-notifications',
-            Message=f'Error during scraping: {str(e)}',
-            Subject='Scraping Error'
-        )
-
+        logger.error(f"Error in scraper worker: {str(e)}", exc_info=True)
         return {
             'statusCode': 500,
             'body': {
-                'error': str(e),
-                'details': 'Error during scraping process'
+                'error': str(e)
             }
         }

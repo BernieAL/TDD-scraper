@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: TDD Scraper Lambda Functions
+
+Resources:
+  ScrapeOrchestratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: scrape_orchestrator/
+      Handler: scrape_orchestrator.pipeline_orchestrator.orchestrate_scraping_pipeline
+      Runtime: python3.10
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: local
+          S3_BUCKET: tdd-scraper-local
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_ENDPOINT_URL: http://tdd-scraper-backend-localstack-1:4566
+          AWS_CA_BUNDLE: /dev/null
+      Events:
+        ScrapeOrchestratorApi:
+          Type: Api
+          Properties:
+            Path: /scrape
+            Method: post
+
+  ReportWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: deployment-packages/report-worker-deployment-package.zip
+      Handler: report_worker.report_worker_lambda.lambda_handler
+      Runtime: python3.10
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: local
+      Events:
+        ReportWorkerApi:
+          Type: Api
+          Properties:
+            Path: /report
+            Method: post
+
+  AnalysisFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: deployment-packages/analysis-deployment-package.zip
+      Handler: analysis.price_analyzer.lambda_handler
+      Runtime: python3.10
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: local
+      Events:
+        AnalysisApi:
+          Type: Api
+          Properties:
+            Path: /analyze
+            Method: post
+
+  FormSubmissionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: deployment-packages/form-submission-deployment-package.zip
+      Handler: form_submission.form_handler.lambda_handler
+      Runtime: python3.10
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: local
+      Events:
+        FormSubmissionApi:
+          Type: Api
+          Properties:
+            Path: /form
+            Method: post
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: deployment-packages/auth-deployment-package.zip
+      Handler: auth.lambda_handler.lambda_handler
+      Runtime: python3.10
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: local
+      Events:
+        AuthApi:
+          Type: Api
+          Properties:
+            Path: /auth
+            Method: post 

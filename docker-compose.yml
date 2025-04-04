@@ -14,6 +14,7 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - ./frontend/localstack/scripts:/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
       interval: 10s
@@ -26,13 +27,14 @@ services:
     ports:
       - "4567:4566"
     environment:
-      - SERVICES=s3,iam,lambda
+      - SERVICES=s3,iam,lambda,logs,dynamodb,sns
       - DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - ./backend/localstack/scripts:/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
       interval: 10s

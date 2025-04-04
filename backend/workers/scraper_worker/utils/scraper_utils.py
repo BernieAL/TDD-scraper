@@ -26,15 +26,17 @@ class ScraperUtils:
         scraper_worker_root (Path): Root directory of scraper_worker module
         temp_dir (Path): Temporary directory for staging files before S3 upload
         s3_client: Optional boto3 S3 client for uploads
+        dynamodb_client: Optional boto3 DynamoDB client for status tracking
     """
 
     # Static class variable
     TEMP_DIR = SCRAPER_WORKER_ROOT / 'temp'
 
-    def __init__(self, s3_client=None):
+    def __init__(self, s3_client=None, dynamodb_client=None):
         self.s3_client = s3_client
+        self.dynamodb_client = dynamodb_client
         # Create temp directory if it doesn't exist
-        self.TEMP_DIR.mkdir(exist_ok=True, parents=True)  # Add parents=True
+        self.TEMP_DIR.mkdir(exist_ok=True, parents=True)
 
     def generate_hash(self, query: str, specific_item: str, date: str) -> str:
         """Generate hash for query identification"""
@@ -47,33 +49,69 @@ class ScraperUtils:
         data_src_dir.mkdir(exist_ok=True)
         return data_src_dir
 
+    def log_scraper_status(self, source, query_hash, status='SUCCESS', error=None):
+        """Log scraper execution status to DynamoDB."""
+        if not self.dynamodb_client:
+            return False
+            
+        try:
+            item = {
+                'query_hash': {'S': query_hash},
+                'timestamp': {'N': str(int(datetime.now().timestamp()))},
+                'source': {'S': source},
+                'status': {'S': status}
+            }
+            
+            if error:
+                item['error'] = {'S': str(error)}
+                
+            self.dynamodb_client.put_item(
+                TableName=os.environ['DYNAMODB_TABLE'],
+                Item=item
+            )
+            print(f"Logged {status} status for {source} to DynamoDB")
+            return True
+        except Exception as e:
+            print(f"DynamoDB logging failed: {e}")
+            return False
+
     def save_to_file(self, data, brand, category, source, output_dir, query_hash, data_type):
         """Save data to local temp file in source-specific directory"""
-        current_date = datetime.now().strftime('%Y-%d-%m')
-        
-        prefix = "FILTERED_" if data_type == 1 else "RAW_"
-        filename = f"{prefix}{source}_{brand}_{current_date}_{category}_{query_hash}.csv"
-        
-        source_dir = self.make_data_source_output_dir(source.lower())
-        temp_file = source_dir / filename
-        
-        with open(temp_file, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerow([f"Scraped: {current_date}"])
-            writer.writerow([f"category: {brand}-{category}"])
-            writer.writerow(['product_id','brand','product_name','curr_price','listing_url','source'])
-            writer.writerow(['----------------------'])
+        try:
+            current_date = datetime.now().strftime('%Y-%d-%m')
+            
+            prefix = "FILTERED_" if data_type == 1 else "RAW_"
+            filename = f"{prefix}{source}_{brand}_{current_date}_{category}_{query_hash}.csv"
+            
+            source_dir = self.make_data_source_output_dir(source.lower())
+            temp_file = source_dir / filename
+            
+            with open(temp_file, mode='w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerow([f"Scraped: {current_date}"])
+                writer.writerow([f"category: {brand}-{category}"])
+                writer.writerow(['product_id','brand','product_name','curr_price','listing_url','source'])
+                writer.writerow(['----------------------'])
 
-            for row in data:
-                if any(str(x).strip() for x in row):
-                    processed_row = [
-                        str(element).upper() if isinstance(element,str) else element
-                        for element in row
-                    ]
-                    writer.writerow(processed_row)
-                
-        print(f"Data successfully saved to {temp_file}")
-        return temp_file, filename
+                for row in data:
+                    if any(str(x).strip() for x in row):
+                        processed_row = [
+                            str(element).upper() if isinstance(element,str) else element
+                            for element in row
+                        ]
+                        writer.writerow(processed_row)
+                    
+            print(f"Data successfully saved to {temp_file}")
+            
+            # Log success status
+            self.log_scraper_status(source, query_hash, 'SUCCESS')
+            
+            return temp_file, filename
+            
+        except Exception as e:
+            # Log failure status
+            self.log_scraper_status(source, query_hash, 'FAILED', str(e))
+            raise
 
     def upload_to_s3(self, file_path: str, s3_key: str) -> bool:
         """Upload file to S3"""

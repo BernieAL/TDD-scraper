@@ -1,23 +1,23 @@
 import sys, csv, json, os
-import pika
 from simple_chalk import chalk
 from datetime import datetime
 from shutil import rmtree
 import boto3
 from io import StringIO
+import asyncio
+from pathlib import Path
 
 # Initialize paths
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
+project_root = Path(__file__).parent.parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.append(str(project_root))
 
 from analysis.percent_change_analysis import calc_percentage_diff_driver
-from workers.compare_producer import COMPARE_publish_to_queue
-from workers.process_producer import PROCESS_publish_to_queue
 from email_sender import send_email_with_report
-from config.config import RABBITMQ_HOST
-from config.connections import create_rabbitmq_connection
-
+from aws.sns_config.sns_client import sns
+from aws.sns_config.sns_topics import SNS_TOPICS, TOPIC_ARNS
+from aws.db.dynamodb_config import dynamodb
+from aws.db.table_schemas import TABLE_SCHEMAS
 
 # Globals to hold current query data in mem
 curr_query_info = {
@@ -101,264 +101,264 @@ def extract_query_hash(file_key):
         print(chalk.red(f"Error extracting query hash: {e}"))
         return None
 
-def main():
-    no_change_sources = []
-
-    def callback(ch, method, properties, body):
-        try:
-            msg = json.loads(body)
-            print(f"\n{chalk.green('[NEW MESSAGE]')} Received: {msg}")
-
-            # Get environment variables
-            bucket = os.environ['S3_BUCKET']
-            query_hash = os.environ['QUERY_HASH']
-            raw_path = os.environ['RAW_PATH']
-            analysis_path = os.environ['ANALYSIS_PATH']
-            reports_path = os.environ['REPORTS_PATH']
-
-            if msg.get('type') == "NEW_QUERY":
-                try:
-                    source_file = msg['source_file']
-                    current_query_hash = extract_query_hash(source_file)
-                    
-                    if current_query_hash != curr_query_info.get('query_hash'):
-                        print(chalk.yellow("[INFO] New query detected - resetting state"))
-                        reset_query_info()
-                        reset_process_status()
-                        
-                        source, date, brand, category, query_hash = parse_file_name(source_file)
-                        curr_query_info.update({
-                            'source': source,
-                            'date': date,
-                            'category': category,
-                            'brand': brand,
-                            'query_hash': query_hash,
-                            'source_file': source_file,
-                            'product_name': msg.get('spec_item'),
-                            'paths': {  # Use environment variables for paths
-                                'raw_path': raw_path,
-                                'analysis_path': analysis_path,
-                                'reports_path': reports_path,
-                                'price_reports_dir': f"{reports_path}/prices",
-                                'sold_reports_dir': f"{reports_path}/sold"
-                            }
-                        })
-                        print(chalk.blue(f"[INFO] Process info updated for file"))
-                    else:
-                        print(chalk.yellow(f"[INFO] Continuing existing query {current_query_hash} - maintaining state"))
-                        print(chalk.yellow(f"[INFO] Current received products count: {len(recd_products)}"))
-
-                    process_status['NEW_QUERY_MSG'] = True
-
-                except Exception as e:
-                    print(chalk.red(f"Error processing NEW_QUERY message: {e}"))
-                    raise
-
-            elif msg.get('type') == 'PRODUCT_PRICE_CHANGE':
-                try:
-                    recd_products.append(msg)
-                    print(f"[PROCESSING] Added product price change. Total items: {len(recd_products)}")
-
-                    # Write price changes to S3
-                    if recd_products:
-                        s3 = boto3.client('s3')
-                        filename = f"PRICE_CHANGES_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.json"
-                        try:
-                            s3.put_object(
-                                Bucket=bucket,
-                                Key=f"{reports_path}/prices/{filename}",
-                                Body=json.dumps(recd_products),
-                                ContentType='application/json'
-                            )
-                        except boto3.exceptions.S3UploadFailedError as e:
-                            print(chalk.red(f"Failed to upload to S3: {e}"))
-                            raise
-                        except boto3.exceptions.ClientError as e:
-                            print(chalk.red(f"S3 client error: {e}"))
-                            raise
-
-                except Exception as e:
-                    print(chalk.red(f"Error processing PRODUCT_PRICE_CHANGE: {e}"))
-                    raise
-
-            elif msg.get('type') == 'PROCESSING_SCRAPED_FILE_COMPLETE':
-                try:
-                    if msg.get('scrape_file_empty') or msg.get('filter_file_empty'):
-                        print(chalk.yellow("[INFO] Scraped file was empty"))
-                        empty_scrape_files.append(msg.get('source'))
-                    else:
-                        print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS"))
-                        
-                        if recd_products:
-                            # Use S3 paths for report generation
-                            s3 = boto3.client('s3')
-                            
-                            # Generate report data
-                            report_data = calc_percentage_diff_driver(
-                                recd_products,
-                                curr_query_info['source_file'],
-                                curr_query_info['category']
-                            )
-                            
-                            # Save report directly to S3
-                            filename = f"PRICE_ANALYSIS_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.json"
-                            try:
-                                s3.put_object(
-                                    Bucket=bucket,
-                                    Key=f"{analysis_path}/{filename}",
-                                    Body=json.dumps(report_data),
-                                    ContentType='application/json'
-                                )
-                            except boto3.exceptions.S3UploadFailedError as e:
-                                print(chalk.red(f"Failed to upload to S3: {e}"))
-                                raise
-                            except boto3.exceptions.ClientError as e:
-                                print(chalk.red(f"S3 client error: {e}"))
-                                raise
-                            print(chalk.green(f"[SUCCESS] Report generated at {analysis_path}/{filename}"))
-                        else:
-                            print(chalk.yellow("[INFO] No price changes detected"))
-                            no_change_sources.append(curr_query_info['source'])
-
-                    process_status['PROCESSING_SCRAPED_FILE_COMPLETE'] = True
-                    COMPARE_publish_to_queue({
-                        'type': 'PRICE_WORKER_COMPLETE',
-                        'query_hash': curr_query_info['query_hash'],
-                        'products_processed': len(recd_products)
-                    })
-
-                except Exception as e:
-                    print(chalk.red(f"Error processing SCRAPED_FILE_COMPLETE: {e}"))
-                    raise
-
-            elif msg.get('type') == 'PROCESSING_SOLD_ITEMS_COMPLETE':
-                try:
-                    print(chalk.green(f"[PROCESSING] SOLD ITEMS"))
-                    sold_items_dict = msg.get('sold_items_dict')
-                    
-                    if sold_items_dict:
-                        # Create CSV in memory
-                        output = StringIO()
-                        writer = csv.DictWriter(output, fieldnames=[
-                            'product_id', 'product_name', 'curr_price', 'curr_scrape_date',
-                            'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source'
-                        ])
-                        writer.writeheader()
-                        for product_id, product_data in sold_items_dict.items():
-                            writer.writerow({'product_id': product_id, **product_data})
-
-                        # Upload to S3
-                        s3 = boto3.client('s3')
-                        filename = f"SOLD_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.csv"
-                        try:
-                            s3.put_object(
-                                Bucket=bucket,
-                                Key=f"{reports_path}/sold/{filename}",
-                                Body=output.getvalue(),
-                                ContentType='text/csv'
-                            )
-                        except boto3.exceptions.S3UploadFailedError as e:
-                            print(chalk.red(f"Failed to upload to S3: {e}"))
-                            raise
-                        except boto3.exceptions.ClientError as e:
-                            print(chalk.red(f"S3 client error: {e}"))
-                            raise
-                        print(chalk.green(f"[SUCCESS] Sold items written to S3: {filename}"))
-                    else:
-                        print(chalk.magenta(f"[INFO] No sold items for query {curr_query_info['query_hash']}"))
-
-                    process_status['PROCESSING_SOLD_ITEMS_COMPLETE'] = True
-
-                except Exception as e:
-                    print(chalk.red(f"Error processing SOLD_ITEMS_COMPLETE: {e}"))
-                    raise
-
-            elif msg.get('type') == 'PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY':
-                if processes_up_to_end_signal():
-                    try:
-                        # Build query string
-                        query_string = (
-                            f"{curr_query_info['brand']}_{curr_query_info['category']}"
-                            + (f"_{curr_query_info['product_name']}" if curr_query_info['product_name'] else "_GENERAL")
-                        )
-
-                        # Send email with S3 paths
-                        email_sent = send_email_with_report(
-                            msg,
-                            curr_query_info['query_hash'],
-                            f"{reports_path}/prices",  # S3 paths
-                            f"{reports_path}/sold",    # S3 paths
-                            query_string,
-                            no_change_sources,
-                            empty_scrape_files
-                        )
-
-                        # Send process complete message
-                        PROCESS_publish_to_queue({
-                            'type': 'EMAIL',
-                            'status': 'PASS' if email_sent else 'FAIL',
-                            'query_hash': curr_query_info['query_hash'],
-                            'paths': {
-                                'raw_path': raw_path,
-                                'analysis_path': analysis_path,
-                                'reports_path': reports_path,
-                                'price_reports_dir': f"{reports_path}/prices",
-                                'sold_reports_dir': f"{reports_path}/sold"
-                            }
-                        })
-
-                        if not email_sent:
-                            print(chalk.red("[ERROR] Email failed to send"))
-                            
-                    except Exception as e:
-                        print(chalk.red(f"Error sending email: {e}"))
-                        PROCESS_publish_to_queue({
-                            'type': 'EMAIL',
-                            'status': 'FAIL',
-                            'query_hash': curr_query_info['query_hash'],
-                            'paths': {
-                                'raw_path': raw_path,
-                                'analysis_path': analysis_path,
-                                'reports_path': reports_path,
-                                'price_reports_dir': f"{reports_path}/prices",
-                                'sold_reports_dir': f"{reports_path}/sold"
-                            }
-                        })
-                        raise
-                    finally:
-                        no_change_sources.clear()
-                        reset_query_info()
-                        reset_process_status()
-                else:
-                    print(chalk.yellow("[WARNING] Not all processes complete for end signal"))
-                    process_status['PROCESSED_ALL_SCRAPED_FILES_FOR_QUERY'] = True
-
-        except Exception as e:
-            print(chalk.red(f"[ERROR] Message processing failed: {e}"))
-            raise
-        finally:
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-
-    # RabbitMQ setup
-    connection = None
+async def store_price_history(product_data):
+    """Store price history in DynamoDB"""
     try:
- 
-        connection = create_rabbitmq_connection()
-        channel = connection.channel()
+        # Create price history entry
+        price_history_item = {
+            'PK': f"PROD#{product_data['product_id']}",
+            'SK': f"PRICE#{datetime.now().isoformat()}",
+            'master_sku': product_data.get('master_sku', ''),
+            'high_price': float(product_data.get('current_price', 0)),
+            'low_price': float(product_data.get('current_price', 0)),
+            'source': product_data.get('source', ''),
+            'scrape_date': datetime.now().isoformat()
+        }
         
-        channel.queue_declare(queue='price_change_queue', durable=True)
-        channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(queue='price_change_queue', on_message_callback=callback)
+        await dynamodb.put_item('price-history-table', price_history_item)
+        print(chalk.green(f"[SUCCESS] Stored price history for product: {product_data['product_id']}"))
         
-        print(chalk.green("Clearing queue"))
-        channel.queue_purge(queue='price_change_queue')
-        print(chalk.blue('[SYSTEM START] Waiting for messages. To exit press CTRL+C'))
-        channel.start_consuming()
     except Exception as e:
-        print(chalk.red(f"[ERROR] RabbitMQ setup failed: {e}"))
-    finally:
-        if connection and connection.is_open:
-            connection.close()
+        print(chalk.red(f"Error storing price history: {e}"))
+        raise
+
+async def handle_price_change(message):
+    """Handle price change message from SNS"""
+    try:
+        recd_products.append(message)
+        print(f"[PROCESSING] Added product price change. Total items: {len(recd_products)}")
+
+        # Store price history in DynamoDB
+        await store_price_history(message)
+
+        # Write price changes to S3
+        if recd_products:
+            s3 = boto3.client('s3')
+            filename = f"PRICE_CHANGES_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.json"
+            try:
+                s3.put_object(
+                    Bucket=os.environ['S3_BUCKET'],
+                    Key=f"{curr_query_info['paths']['reports_path']}/prices/{filename}",
+                    Body=json.dumps(recd_products),
+                    ContentType='application/json'
+                )
+            except Exception as e:
+                print(chalk.red(f"Error uploading to S3: {e}"))
+                raise
+
+    except Exception as e:
+        print(chalk.red(f"Error processing price change: {e}"))
+        raise
+
+async def handle_scraped_file_complete(message):
+    """Handle scraped file complete message from SNS"""
+    try:
+        if message.get('scrape_file_empty') or message.get('filter_file_empty'):
+            print(chalk.yellow("[INFO] Scraped file was empty"))
+            empty_scrape_files.append(message.get('source'))
+        else:
+            print(chalk.green(f"[PROCESSING] SCRAPED FILE COMPLETE - GENERATING REPORTS"))
+            
+            if recd_products:
+                # Use S3 paths for report generation
+                s3 = boto3.client('s3')
+                
+                # Generate report data
+                report_data = calc_percentage_diff_driver(
+                    recd_products,
+                    curr_query_info['source_file'],
+                    curr_query_info['category']
+                )
+                
+                # Save report directly to S3
+                filename = f"PRICE_ANALYSIS_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.json"
+                try:
+                    s3.put_object(
+                        Bucket=os.environ['S3_BUCKET'],
+                        Key=f"{curr_query_info['paths']['analysis_path']}/{filename}",
+                        Body=json.dumps(report_data),
+                        ContentType='application/json'
+                    )
+                except Exception as e:
+                    print(chalk.red(f"Error uploading to S3: {e}"))
+                    raise
+                print(chalk.green(f"[SUCCESS] Report generated at {curr_query_info['paths']['analysis_path']}/{filename}"))
+            else:
+                print(chalk.yellow("[INFO] No price changes detected"))
+
+        process_status['PROCESSING_SCRAPED_FILE_COMPLETE'] = True
+        
+        # Publish completion message to SNS
+        await sns.publish_message(
+            TOPIC_ARNS['analysis_complete'],
+            {
+                'type': 'PRICE_WORKER_COMPLETE',
+                'query_hash': curr_query_info['query_hash'],
+                'products_processed': len(recd_products)
+            }
+        )
+
+    except Exception as e:
+        print(chalk.red(f"Error processing scraped file complete: {e}"))
+        raise
+
+async def handle_sold_items_complete(message):
+    """Handle sold items complete message from SNS"""
+    try:
+        print(chalk.green(f"[PROCESSING] SOLD ITEMS"))
+        sold_items_dict = message.get('sold_items_dict')
+        
+        if sold_items_dict:
+            # Create CSV in memory
+            output = StringIO()
+            writer = csv.DictWriter(output, fieldnames=[
+                'product_id', 'product_name', 'curr_price', 'curr_scrape_date',
+                'prev_price', 'prev_scrape_date', 'sold_date', 'sold', 'url', 'source'
+            ])
+            writer.writeheader()
+            for product_id, product_data in sold_items_dict.items():
+                writer.writerow({'product_id': product_id, **product_data})
+
+            # Upload to S3
+            s3 = boto3.client('s3')
+            filename = f"SOLD_ITEMS_{curr_query_info['source']}_{curr_query_info['brand']}_{curr_query_info['date']}_{curr_query_info['query_hash']}.csv"
+            try:
+                s3.put_object(
+                    Bucket=os.environ['S3_BUCKET'],
+                    Key=f"{curr_query_info['paths']['reports_path']}/sold/{filename}",
+                    Body=output.getvalue(),
+                    ContentType='text/csv'
+                )
+            except Exception as e:
+                print(chalk.red(f"Error uploading to S3: {e}"))
+                raise
+
+        process_status['PROCESSING_SOLD_ITEMS_COMPLETE'] = True
+
+    except Exception as e:
+        print(chalk.red(f"Error processing sold items complete: {e}"))
+        raise
+
+async def handle_new_query(message):
+    """Handle new query message from SNS"""
+    try:
+        source_file = message['source_file']
+        current_query_hash = extract_query_hash(source_file)
+        
+        if current_query_hash != curr_query_info.get('query_hash'):
+            print(chalk.yellow("[INFO] New query detected - resetting state"))
+            reset_query_info()
+            reset_process_status()
+            
+            source, date, brand, category, query_hash = parse_file_name(source_file)
+            curr_query_info.update({
+                'source': source,
+                'date': date,
+                'category': category,
+                'brand': brand,
+                'query_hash': query_hash,
+                'source_file': source_file,
+                'product_name': message.get('spec_item'),
+                'paths': {
+                    'raw_path': os.environ['RAW_PATH'],
+                    'analysis_path': os.environ['ANALYSIS_PATH'],
+                    'reports_path': os.environ['REPORTS_PATH'],
+                    'price_reports_dir': f"{os.environ['REPORTS_PATH']}/prices",
+                    'sold_reports_dir': f"{os.environ['REPORTS_PATH']}/sold"
+                }
+            })
+            print(chalk.blue(f"[INFO] Process info updated for file"))
+        else:
+            print(chalk.yellow(f"[INFO] Continuing existing query {current_query_hash} - maintaining state"))
+            print(chalk.yellow(f"[INFO] Current received products count: {len(recd_products)}"))
+
+        process_status['NEW_QUERY_MSG'] = True
+
+    except Exception as e:
+        print(chalk.red(f"Error processing new query: {e}"))
+        raise
+
+async def handle_sns_message(message):
+    """Handle incoming SNS message"""
+    try:
+        msg_type = message.get('type')
+        
+        if msg_type == 'NEW_QUERY':
+            await handle_new_query(message)
+        elif msg_type == 'PRODUCT_PRICE_CHANGE':
+            await handle_price_change(message)
+        elif msg_type == 'PROCESSING_SCRAPED_FILE_COMPLETE':
+            await handle_scraped_file_complete(message)
+        elif msg_type == 'PROCESSING_SOLD_ITEMS_COMPLETE':
+            await handle_sold_items_complete(message)
+        else:
+            print(chalk.yellow(f"[INFO] Unknown message type: {msg_type}"))
+            
+        # Check if we should send email
+        if processes_up_to_end_signal():
+            # Send email request through SNS
+            await sns.publish_message(
+                TOPIC_ARNS['analysis_complete'],
+                {
+                    'type': 'SEND_EMAIL',
+                    'query_hash': curr_query_info['query_hash'],
+                    'query': curr_query_info['product_name'],
+                    'email': curr_query_info.get('email'),
+                    'price_reports_path': curr_query_info['paths'].get('reports_path', 'reports'),
+                    'sold_reports_path': curr_query_info['paths'].get('sold_path', 'sold'),
+                    'no_price_change_sources': empty_scrape_files
+                }
+            )
+            
+            # Reset state for next query
+            reset_query_info()
+            reset_process_status()
+            
+    except Exception as e:
+        print(chalk.red(f"Error handling SNS message: {e}"))
+        raise
+
+async def main():
+    """Main function to handle SNS messages"""
+    try:
+        # Subscribe to SNS topics
+        for topic_name, topic in SNS_TOPICS.items():
+            try:
+                # Create topic if it doesn't exist
+                topic_arn = await sns.create_topic(topic.name)
+                TOPIC_ARNS[topic_name] = topic_arn
+                print(chalk.green(f"[SUCCESS] Created/Found topic: {topic.name}"))
+            except Exception as e:
+                print(chalk.red(f"Error creating topic {topic.name}: {e}"))
+                raise
+
+        # Start processing messages
+        while True:
+            try:
+                # Get messages from SNS
+                response = await sns.client.receive_message(
+                    QueueUrl=os.environ['SNS_QUEUE_URL']
+                )
+                
+                for message in response.get('Messages', []):
+                    try:
+                        # Parse message body
+                        body = json.loads(message['Body'])
+                        await handle_sns_message(body)
+                    except Exception as e:
+                        print(chalk.red(f"Error processing message: {e}"))
+                        continue
+                
+                # Wait before next poll
+                await asyncio.sleep(1)
+                
+            except Exception as e:
+                print(chalk.red(f"Error in message processing loop: {e}"))
+                await asyncio.sleep(5)  # Wait longer on error
+
+    except Exception as e:
+        print(chalk.red(f"Fatal error in main: {e}"))
+        raise
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

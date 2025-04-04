@@ -20,6 +20,10 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
 import boto3
+import logging
+from bs4 import BeautifulSoup
+import pandas as pd
+from typing import Dict, List, Optional
 
 #target purse
 target = "locky bb"
@@ -49,6 +53,10 @@ from ..utils.scraper_utils import ScraperUtils
 
 from scrapers.base_scraper import BaseScraper
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 class ItalistScraper(BaseScraper):
 
 
@@ -58,6 +66,14 @@ class ItalistScraper(BaseScraper):
         self.output_dir = output_dir
         self.source = "ITALIST"
         self.query_hash = query_hash
+        self.base_url = "https://www.italist.com"
+        self.search_url = f"{self.base_url}/search"
+        logger.info(f"Configuration:")
+        logger.info(f"- Brand: {self.brand}")
+        logger.info(f"- Query: {self.query}")
+        logger.info(f"- Output Directory: {self.output_dir}")
+        logger.info(f"- Query Hash: {self.query_hash}")
+        logger.info(f"- Local Mode: {self.local}")
         
 
     def get_listings(self, driver):
@@ -93,6 +109,90 @@ class ItalistScraper(BaseScraper):
         """Strip characters and return only the numeric part."""
         return int(price_str.split("USD")[1])
 
+    def _extract_listing_data(self, listing: BeautifulSoup) -> Dict:
+        """Extract data from a single product listing"""
+        try:
+            logger.debug("Extracting data from product listing...")
+            product_data = {
+                'title': self._get_text(listing, 'h3.product-title'),
+                'brand': self._get_text(listing, 'span.product-brand'),
+                'price': self._get_text(listing, 'span.product-price'),
+                'original_price': self._get_text(listing, 'span.product-original-price'),
+                'discount': self._get_text(listing, 'span.product-discount'),
+                'url': self._get_attribute(listing, 'a.product-link', 'href'),
+                'image_url': self._get_attribute(listing, 'img.product-image', 'src')
+            }
+            logger.debug(f"Extracted product data: {product_data}")
+            return product_data
+        except Exception as e:
+            logger.error(f"Error extracting listing data: {str(e)}", exc_info=True)
+            return {}
+            
+    def _get_text(self, element: BeautifulSoup, selector: str) -> str:
+        """Helper to safely extract text from an element"""
+        try:
+            result = element.select_one(selector)
+            return result.text.strip() if result else ""
+        except Exception as e:
+            logger.warning(f"Error extracting text with selector {selector}: {str(e)}")
+            return ""
+            
+    def _get_attribute(self, element: BeautifulSoup, selector: str, attr: str) -> str:
+        """Helper to safely extract attribute from an element"""
+        try:
+            result = element.select_one(selector)
+            return result[attr] if result and attr in result.attrs else ""
+        except Exception as e:
+            logger.warning(f"Error extracting attribute {attr} with selector {selector}: {str(e)}")
+            return ""
+            
+    def _fetch_search_results(self, page: int = 1) -> Optional[BeautifulSoup]:
+        """Fetch search results page"""
+        try:
+            logger.info(f"Fetching search results page {page}...")
+            params = {
+                'q': f"{self.brand} {self.query}",
+                'page': page
+            }
+            logger.debug(f"Request parameters: {params}")
+            
+            response = requests.get(self.search_url, params=params)
+            response.raise_for_status()
+            
+            logger.info(f"Successfully fetched page {page}")
+            return BeautifulSoup(response.text, 'html.parser')
+        except Exception as e:
+            logger.error(f"Error fetching search results page {page}: {str(e)}", exc_info=True)
+            return None
+            
+    def _find_product_listings(self, soup: BeautifulSoup) -> List[BeautifulSoup]:
+        """Find all product listings on the page"""
+        try:
+            logger.debug("Finding product listings...")
+            listings = soup.select('div.product-listing')
+            logger.info(f"Found {len(listings)} product listings")
+            return listings
+        except Exception as e:
+            logger.error(f"Error finding product listings: {str(e)}", exc_info=True)
+            return []
+            
+    def _save_results(self, products: List[Dict]) -> str:
+        """Save scraped products to CSV file"""
+        try:
+            logger.info("Saving results to CSV...")
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"RAW_ITALIST_{self.brand.upper()}_{self.query.upper()}_{timestamp}_{self.query_hash}.csv"
+            filepath = os.path.join(self.output_dir, filename)
+            
+            df = pd.DataFrame(products)
+            df.to_csv(filepath, index=False)
+            
+            logger.info(f"Results saved to {filepath}")
+            return filepath
+        except Exception as e:
+            logger.error(f"Error saving results: {str(e)}", exc_info=True)
+            raise
+            
     def run(self):
         """Scrapes Italist website and writes results to a CSV."""
         
