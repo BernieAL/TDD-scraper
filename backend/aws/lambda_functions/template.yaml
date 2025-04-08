@@ -6,8 +6,8 @@ Resources:
   ScrapeOrchestratorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: scrape_orchestrator/
-      Handler: scrape_orchestrator.pipeline_orchestrator.orchestrate_scraping_pipeline
+      CodeUri: deployment-packages/scraper-worker-deployment-package.zip
+      Handler: scraper_worker.scraper_worker_lambda.lambda_handler
       Runtime: python3.10
       MemorySize: 512
       Timeout: 300
@@ -47,8 +47,8 @@ Resources:
   AnalysisFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: deployment-packages/analysis-deployment-package.zip
-      Handler: analysis.price_analyzer.lambda_handler
+      CodeUri: deployment-packages/analysis-worker-deployment-package.zip
+      Handler: analysis_worker.analysis_worker_lambda.lambda_handler
       Runtime: python3.10
       MemorySize: 512
       Timeout: 300

@@ -101,7 +101,7 @@ class ScraperUtils:
                         ]
                         writer.writerow(processed_row)
                     
-            print(f"Data successfully saved to {temp_file}")
+            print(f"Data fsuccessfully saved to {temp_file}")
             
             # Log success status
             self.log_scraper_status(source, query_hash, 'SUCCESS')
