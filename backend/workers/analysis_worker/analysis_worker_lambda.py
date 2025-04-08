@@ -99,6 +99,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Validate event
         validate_event(event)
+
+        # Get paths from event
+        paths = event['paths']
+        query_hash = event['query_hash']
+        
+        # Determine if this is a specific product search
+        is_specific_search = event.get('is_specific_search', False)
         
         # Get environment variables
         bucket = os.environ.get('S3_BUCKET', 'scraper-data-bucket')
@@ -108,14 +115,22 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         s3 = boto3.client('s3')
         dynamodb = boto3.client('dynamodb')
         
-        # Read scraped data from S3
-        logger.info("Reading scraped data from S3...")
-        scraped_data_response = s3.get_object(
+        # Determine which data to read based on search type
+        if is_specific_search:
+            logger.info("Reading filtered data for specific product search...")
+            data_path = f"{paths['filtered']}/filtered_data.json"
+        else:
+            logger.info("Reading raw data for general search...")
+            data_path = f"{paths['raw']}/raw_data.json"
+        
+        # Read data from S3
+        logger.info(f"Reading data from S3 path: {data_path}")
+        data_response = s3.get_object(
             Bucket=bucket,
-            Key=f'queries/{event["query_hash"]}/filtered/filtered_data.json'
+            Key=data_path
         )
-        scraped_data = json.loads(scraped_data_response['Body'].read().decode('utf-8'))
-        logger.info(f"Read {len(scraped_data)} items from S3")
+        data = json.loads(data_response['Body'].read().decode('utf-8'))
+        logger.info(f"Read {len(data)} items from S3")
         
         # Read historical data from DynamoDB
         logger.info("Reading historical data from DynamoDB...")
@@ -125,29 +140,30 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # Analyze price changes
         logger.info("Analyzing price changes...")
-        changes = analyze_price_changes(scraped_data, historical_data)
+        changes = analyze_price_changes(data, historical_data)
         logger.info(f"Found {len(changes)} price changes")
         
         # Store analysis results in S3
         logger.info("Storing analysis results in S3...")
         analysis_result = {
-            'query_hash': event['query_hash'],
+            'query_hash': query_hash,
             'timestamp': datetime.now().isoformat(),
             'changes': changes,
-            'total_items_analyzed': len(scraped_data),
-            'items_with_changes': len(changes)
+            'total_items_analyzed': len(data),
+            'items_with_changes': len(changes),
+            'search_type': 'specific' if is_specific_search else 'general'
         }
         
         s3.put_object(
             Bucket=bucket,
-            Key=f'queries/{event["query_hash"]}/analysis/price_changes.json',
+            Key=f'queries/{query_hash}/analysis/price_changes.json',
             Body=json.dumps(analysis_result)
         )
         logger.info("Successfully stored analysis results")
         
         # Update DynamoDB with new prices
         logger.info("Updating DynamoDB with new prices...")
-        for item in scraped_data:
+        for item in data:
             dynamodb.put_item(
                 TableName=dynamodb_table,
                 Item={
@@ -162,7 +178,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'statusCode': 200,
             'body': json.dumps({
                 'message': 'Analysis completed successfully',
-                'changes_found': len(changes)
+                'changes_found': len(changes),
+                'search_type': 'specific' if is_specific_search else 'general'
             })
         }
         

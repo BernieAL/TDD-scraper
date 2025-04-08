@@ -203,6 +203,9 @@ def lambda_handler(event, context):
         raw_path = os.environ['RAW_PATH']
         filtered_path = os.environ['FILTERED_PATH']
         
+        # Determine if this is a specific product search
+        is_specific_search = bool(event.get('specific_item'))  # If specific_item exists, it's a specific search
+        
         logger.info("Starting scrape processes...")
         logger.info(f"Configuration:")
         logger.info(f"- Bucket: {bucket}")
@@ -211,6 +214,7 @@ def lambda_handler(event, context):
         logger.info(f"- Filtered Path: {filtered_path}")
         logger.info(f"- Brand: {event['brand']}")
         logger.info(f"- Category: {event['category']}")
+        logger.info(f"- Search Type: {'Specific' if is_specific_search else 'General'}")
         
         # Run all scrapers
         logger.info("Executing scrapers...")
@@ -252,14 +256,52 @@ def lambda_handler(event, context):
             raise Exception(error_msg)
         
         logger.info("=== Scraper Worker Lambda completed successfully ===")
+
+        # After successful scraping and S3 upload
+        logger.info("Invoking analysis Lambda...")
+        
+        # Initialize Lambda client
+        lambda_client = boto3.client('lambda')
+        
+        # Prepare analysis event with all data needed for analysis lambda
+        analysis_event = {
+            'query_hash': event['query_hash'],
+            'brand': event['brand'],
+            'category': event['category'],
+            'paths': {
+                'raw': os.environ['RAW_PATH'],
+                'filtered': os.environ['FILTERED_PATH'],
+                'analysis': f"queries/{event['query_hash']}/analysis"
+            },
+            'scraped_files': list(scraped_files.keys()),  # List of which scrapers succeeded
+            'timestamp': datetime.now().isoformat(),
+            'is_specific_search': is_specific_search,  # Add flag for search type
+            'specific_item': event.get('specific_item')  # Include specific item if it exists
+        }
+
+        # Add any failure information if relevant
+        if failed_scrapers:
+            analysis_event['failed_scrapers'] = list(failed_scrapers)
+            analysis_event['failure_details'] = failure_details
+        
+        # Invoke analysis Lambda
+        lambda_client.invoke(
+            FunctionName='AnalysisFunction',
+            InvocationType='Event',  # Asynchronous invocation
+            Payload=json.dumps(analysis_event)
+        )
+        
+        logger.info("Analysis Lambda invoked successfully")
+
         return {
             'statusCode': 200,
-            'body': {
+            'body': json.dumps({
                 'message': 'Scraping completed successfully',
-                'scraped_files': scraped_files,
-                'failed_scrapers': failed_scrapers,
-                'failure_details': failure_details
-            }
+                'analysis_triggered': True,
+                'scraped_files': list(scraped_files.keys()),
+                'failed_scrapers': list(failed_scrapers) if failed_scrapers else [],
+                'search_type': 'specific' if is_specific_search else 'general'
+            })
         }
         
     except Exception as e:

@@ -55,12 +55,13 @@ Resources:
       Environment:
         Variables:
           ENVIRONMENT: local
-      Events:
-        AnalysisApi:
-          Type: Api
-          Properties:
-            Path: /analyze
-            Method: post
+          S3_BUCKET: tdd-scraper-local
+          DYNAMODB_TABLE: historical_prices
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_ENDPOINT_URL: http://tdd-scraper-backend-localstack-1:4566
+          AWS_CA_BUNDLE: /dev/null
+      
 
   FormSubmissionFunction:
     Type: AWS::Serverless::Function
