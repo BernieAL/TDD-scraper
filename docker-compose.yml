@@ -1,27 +1,26 @@
-version: '3.8'
-
 services:
   localstack:
     image: localstack/localstack:latest
     ports:
-      - "4566:4566"            # LocalStack Edge Proxy
-      - "4510-4559:4510-4559"  # external services port range
+      - "4567:4566"  # LocalStack port
     environment:
+      - SERVICES=s3,sns,sqs
       - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - PORT_WEB_UI=8080
+      - LAMBDA_EXECUTOR=local
       - DOCKER_HOST=unix:///var/run/docker.sock
-      - SERVICES=s3,lambda,cloudfront,iam,logs,dynamodb,sns
-      - AWS_DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - localstack
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
-  default:
+  localstack:
     driver: bridge 

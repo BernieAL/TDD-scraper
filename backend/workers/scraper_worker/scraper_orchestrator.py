@@ -1,5 +1,7 @@
 import os
 import logging
+import json
+import boto3
 from typing import Dict, List, Optional, Set
 from datetime import datetime
 
@@ -150,3 +152,95 @@ class ScraperOrchestrator:
         
         logger.info(f"Completed all scrapers. Results: {results}")
         return results 
+
+def orchestrate_scraping_pipeline(event: Dict, context: Optional[Dict]) -> Dict:
+    """
+    Lambda handler function that orchestrates the scraping pipeline.
+    
+    Args:
+        event: Lambda event containing query_hash and form_data
+        context: Lambda context (unused)
+        
+    Returns:
+        Dict containing status and results
+    """
+    try:
+        logger.info("Starting scraping pipeline orchestration")
+        
+        # Validate event
+        if 'query_hash' not in event:
+            raise ValueError("query_hash not found in event")
+            
+        query_hash = event['query_hash']
+        form_data = event.get('form_data', {})
+        brand = form_data.get('brand', '')
+        category = form_data.get('category', '')
+        
+        if not brand or not category:
+            raise ValueError("brand and category are required in form_data")
+        
+        # Initialize S3 client
+        s3 = boto3.client('s3', endpoint_url=os.environ.get('AWS_ENDPOINT_URL'))
+        bucket = os.environ.get('S3_BUCKET', 'tdd-scraper-test')
+        
+        # Create output directory
+        output_dir = f"/tmp/{query_hash}"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Initialize paths_file early
+        paths_file = os.path.join(output_dir, 'paths.json')
+        results = {}
+        
+        try:
+            # Initialize orchestrator
+            orchestrator = ScraperOrchestrator()
+            
+            # Run scrapers
+            results = orchestrator.run_all_scrapers(
+                brand=brand,
+                category=category,
+                output_dir=output_dir,
+                query_hash=query_hash,
+                local=False
+            )
+            
+            # Upload results to S3
+            for scraper_name, filepath in results.items():
+                if filepath and os.path.exists(filepath):
+                    s3_key = f"queries/{query_hash}/{os.path.basename(filepath)}"
+                    s3.upload_file(filepath, bucket, s3_key)
+                    logger.info(f"Uploaded {filepath} to s3://{bucket}/{s3_key}")
+            
+            # Create and upload paths.json
+            paths = {
+                scraper_name: f"s3://{bucket}/queries/{query_hash}/{os.path.basename(filepath)}"
+                for scraper_name, filepath in results.items()
+                if filepath and os.path.exists(filepath)
+            }
+            with open(paths_file, 'w') as f:
+                json.dump(paths, f)
+            s3.upload_file(paths_file, bucket, f"queries/{query_hash}/paths.json")
+            
+            return {
+                'status': 'success',
+                'query_hash': query_hash,
+                'results': paths
+            }
+            
+        finally:
+            # Clean up
+            for filepath in results.values():
+                if filepath and os.path.exists(filepath):
+                    os.remove(filepath)
+            if os.path.exists(paths_file):
+                os.remove(paths_file)
+            if os.path.exists(output_dir):
+                try:
+                    os.rmdir(output_dir)
+                except OSError:
+                    # Directory not empty, but that's okay
+                    pass
+        
+    except Exception as e:
+        logger.error(f"Error in scraping pipeline: {str(e)}", exc_info=True)
+        raise  # Re-raise the exception to be caught by the test 

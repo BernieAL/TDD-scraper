@@ -4,121 +4,100 @@
 set -e
 
 # Colors for output
-GREEN='\033[0;32m'
 RED='\033[0;31m'
+GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Function to print section headers
-print_header() {
-    echo -e "\n${GREEN}=== $1 ===${NC}"
-}
-
-# Function to check if a command exists
-check_command() {
-    if ! command -v $1 &> /dev/null; then
-        echo -e "${RED}Error: $1 is required but not installed.${NC}"
-        echo -e "${YELLOW}Please install $1 and try again.${NC}"
-        exit 1
-    fi
-}
-
-# Function to check for docker compose
-check_docker_compose() {
-    if command -v docker-compose &> /dev/null; then
-        DOCKER_COMPOSE_CMD="docker-compose"
-    elif docker compose version &> /dev/null; then
-        DOCKER_COMPOSE_CMD="docker compose"
-    else
-        echo -e "${RED}Error: Neither 'docker-compose' nor 'docker compose' is available.${NC}"
-        echo -e "${YELLOW}Please install Docker Compose and try again.${NC}"
-        exit 1
-    fi
-}
+# Configuration
+TEST_BUCKET="tdd-scraper-test"
+LOCALSTACK_ENDPOINT="http://localhost:4567"
+PYTHONPATH=$PYTHONPATH:$(pwd)
 
 # Function to check if LocalStack is ready
-wait_for_localstack() {
-    print_header "Waiting for LocalStack to be ready"
-    until curl -s http://localhost:4566/health | grep -q '"s3": "running"'; do
-        echo "Waiting for LocalStack..."
+check_localstack() {
+    echo -e "${YELLOW}Waiting for LocalStack to be ready...${NC}"
+    max_retries=30
+    retry_count=0
+    
+    while [ $retry_count -lt $max_retries ]; do
+        if aws --endpoint-url=$LOCALSTACK_ENDPOINT s3 ls s3://$TEST_BUCKET 2>/dev/null; then
+            echo -e "${GREEN}LocalStack is ready!${NC}"
+            return 0
+        fi
+        
+        echo -e "${YELLOW}LocalStack not ready yet, retrying... ($((retry_count + 1))/$max_retries)${NC}"
         sleep 2
+        retry_count=$((retry_count + 1))
     done
-    echo -e "${GREEN}LocalStack is ready!${NC}"
+    
+    echo -e "${RED}LocalStack failed to start within the timeout period${NC}"
+    return 1
 }
 
-# Function to setup environment
+# Function to setup test environment
 setup_environment() {
-    print_header "Setting up environment"
+    echo -e "${YELLOW}Setting up test environment...${NC}"
     
-    # Set up Python virtual environment
-    if [ ! -d "venv" ]; then
-        python3 -m venv venv
+    # Start LocalStack
+    if command -v docker-compose &> /dev/null; then
+        docker-compose up -d
+    else
+        docker compose up -d
     fi
-    source venv/bin/activate
     
-    # Install dependencies
-    pip install -r requirements.txt
-    pip install pytest pytest-cov moto boto3
+    # Wait for LocalStack
+    if ! check_localstack; then
+        echo -e "${RED}Failed to start LocalStack${NC}"
+        exit 1
+    fi
     
-    # Set AWS environment variables
-    export AWS_ACCESS_KEY_ID=test
-    export AWS_SECRET_ACCESS_KEY=test
-    export AWS_DEFAULT_REGION=us-east-1
-    export AWS_ENDPOINT_URL=http://localhost:4566
-    export S3_BUCKET=tdd-scraper-test
+    # Configure AWS CLI for LocalStack
+    aws configure set aws_access_key_id test
+    aws configure set aws_secret_access_key test
+    aws configure set region us-east-1
+    aws configure set output json
+    
+    # Create test bucket
+    aws --endpoint-url=$LOCALSTACK_ENDPOINT s3 mb s3://$TEST_BUCKET
+    
+    echo -e "${GREEN}Test environment setup complete!${NC}"
 }
 
 # Function to run tests
 run_tests() {
-    local test_type=$1
-    local test_path=$2
-    local coverage_path=$3
+    echo -e "${YELLOW}Running tests...${NC}"
     
-    print_header "Running $test_type tests"
-    
-    pytest $test_path \
-        --cov=$coverage_path \
+    # Run tests with coverage
+    pytest backend/tests/lambda_functions/scrape_orchestrator/test_pipeline_integration.py \
+        --cov=backend.workers.scraper_worker.scraper_orchestrator \
         --cov-report=term-missing \
-        --cov-report=html:htmlcov/$test_type
+        --cov-report=html
     
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}$test_type tests passed!${NC}"
+        echo -e "${GREEN}All tests passed!${NC}"
     else
-        echo -e "${RED}$test_type tests failed!${NC}"
+        echo -e "${RED}Tests failed!${NC}"
         exit 1
     fi
 }
 
+# Function to cleanup
+cleanup() {
+    echo -e "${YELLOW}Cleaning up...${NC}"
+    
+    # Stop LocalStack
+    if command -v docker-compose &> /dev/null; then
+        docker-compose down
+    else
+        docker compose down
+    fi
+    
+    echo -e "${GREEN}Cleanup complete!${NC}"
+}
+
 # Main execution
-print_header "Starting test suite"
+trap cleanup EXIT
 
-# Check for required dependencies
-print_header "Checking dependencies"
-check_command docker
-check_docker_compose
-check_command python3
-check_command pip
-check_command curl
-
-# Start LocalStack
-$DOCKER_COMPOSE_CMD up -d localstack
-wait_for_localstack
-
-# Setup environment
 setup_environment
-
-# Create test bucket
-print_header "Creating test bucket"
-aws --endpoint-url=$AWS_ENDPOINT_URL s3 mb s3://$S3_BUCKET
-
-# Run different test types
-run_tests "lambda" "backend/tests/lambda_functions/scrape_orchestrator/test_pipeline_integration.py" "backend.aws.lambda_functions.scrape_orchestrator"
-run_tests "integration" "backend/tests/integration/test_localstack_integration.py backend/tests/integration/test_full_pipeline.py" "backend/aws/lambda_functions/scrape_orchestrator"
-
-# Cleanup
-print_header "Cleaning up"
-$DOCKER_COMPOSE_CMD down
-deactivate
-
-echo -e "\n${GREEN}All tests completed successfully!${NC}"
-exit 0 
+run_tests 

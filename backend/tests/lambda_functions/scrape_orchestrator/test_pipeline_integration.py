@@ -20,6 +20,13 @@ from pathlib import Path
 import time
 import zipfile
 import io
+from typing import Dict, Optional
+
+# Import from the new location
+from backend.workers.scraper_worker.scraper_orchestrator import (
+    orchestrate_scraping_pipeline,
+    ScraperOrchestrator
+)
 
 # Test configuration
 TEST_BUCKET = 'tdd-scraper-test'
@@ -42,6 +49,7 @@ def s3(aws_credentials):
     """Mocked S3 client that creates a test bucket."""
     with mock_s3():
         s3 = boto3.client('s3', endpoint_url='http://localhost:4567')
+        # Create the test bucket
         s3.create_bucket(Bucket=TEST_BUCKET)
         yield s3
 
@@ -107,14 +115,14 @@ def test_pipeline_execution(mock_scraper_class, test_event, s3):
     # Mock the scraper
     mock_scraper = mock_scraper_class.return_value
     mock_scraper.run_all_scrapers.return_value = {
-        'test_scraper': 'test_data.csv'
+        'test_scraper': '/tmp/test123/test_data.csv'
     }
     
-    # Create a test data file
-    with open('test_data.csv', 'w') as f:
+    # Create a test data file in the correct location
+    os.makedirs('/tmp/test123', exist_ok=True)
+    test_file = '/tmp/test123/test_data.csv'
+    with open(test_file, 'w') as f:
         f.write('test,data\n1,2\n')
-    
-    from backend.aws.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
     
     try:
         # Execute pipeline
@@ -125,18 +133,21 @@ def test_pipeline_execution(mock_scraper_class, test_event, s3):
         assert 'status' in response
         assert response['status'] == 'success'
         
+    finally:
         # Clean up
-        os.remove('test_data.csv')
-    except Exception as e:
-        # Clean up even if test fails
-        if os.path.exists('test_data.csv'):
-            os.remove('test_data.csv')
-        raise
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        if os.path.exists('/tmp/test123/paths.json'):
+            os.remove('/tmp/test123/paths.json')
+        if os.path.exists('/tmp/test123'):
+            try:
+                os.rmdir('/tmp/test123')
+            except OSError:
+                # Directory not empty, but that's okay
+                pass
 
 def test_error_handling(test_event, s3):
     """Test error handling capabilities."""
-    from backend.aws.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
-    
     # Test with missing query_hash
     invalid_event = test_event.copy()
     del invalid_event['query_hash']
@@ -150,14 +161,14 @@ def test_s3_path_management(mock_scraper_class, test_event, s3):
     # Mock the scraper
     mock_scraper = mock_scraper_class.return_value
     mock_scraper.run_all_scrapers.return_value = {
-        'test_scraper': 'test_data.csv'
+        'test_scraper': '/tmp/test123/test_data.csv'
     }
     
-    # Create a test data file
-    with open('test_data.csv', 'w') as f:
+    # Create a test data file in the correct location
+    os.makedirs('/tmp/test123', exist_ok=True)
+    test_file = '/tmp/test123/test_data.csv'
+    with open(test_file, 'w') as f:
         f.write('test,data\n1,2\n')
-    
-    from backend.aws.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
     
     try:
         # Execute pipeline
@@ -168,13 +179,18 @@ def test_s3_path_management(mock_scraper_class, test_event, s3):
         assert 'Contents' in response
         assert any(obj['Key'].endswith('paths.json') for obj in response['Contents'])
         
+    finally:
         # Clean up
-        os.remove('test_data.csv')
-    except Exception as e:
-        # Clean up even if test fails
-        if os.path.exists('test_data.csv'):
-            os.remove('test_data.csv')
-        raise
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        if os.path.exists('/tmp/test123/paths.json'):
+            os.remove('/tmp/test123/paths.json')
+        if os.path.exists('/tmp/test123'):
+            try:
+                os.rmdir('/tmp/test123')
+            except OSError:
+                # Directory not empty, but that's okay
+                pass
 
 @patch('backend.workers.scraper_worker.scraper_orchestrator.ScraperOrchestrator')
 def test_concurrent_execution(mock_scraper_class, test_event, s3):
@@ -182,21 +198,29 @@ def test_concurrent_execution(mock_scraper_class, test_event, s3):
     # Mock the scraper
     mock_scraper = mock_scraper_class.return_value
     mock_scraper.run_all_scrapers.return_value = {
-        'test_scraper': 'test_data.csv'
+        'test_scraper': '/tmp/test123/test_data.csv'
     }
     
-    # Create a test data file
-    with open('test_data.csv', 'w') as f:
-        f.write('test,data\n1,2\n')
-    
-    from backend.aws.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
-    
+    # Create test directories and files
+    test_dirs = []
+    test_files = []
     try:
         # Execute multiple pipelines concurrently
         responses = []
         for i in range(3):
             event = test_event.copy()
             event['query_hash'] = f'{TEST_QUERY_HASH}_{i}'
+            
+            # Create test directory and file
+            test_dir = f'/tmp/{event["query_hash"]}'
+            test_file = f'{test_dir}/test_data.csv'
+            os.makedirs(test_dir, exist_ok=True)
+            with open(test_file, 'w') as f:
+                f.write('test,data\n1,2\n')
+            
+            test_dirs.append(test_dir)
+            test_files.append(test_file)
+            
             response = orchestrate_scraping_pipeline(event, None)
             responses.append(response)
         
@@ -204,13 +228,14 @@ def test_concurrent_execution(mock_scraper_class, test_event, s3):
         assert len(responses) == 3
         assert all(r['status'] == 'success' for r in responses)
         
+    finally:
         # Clean up
-        os.remove('test_data.csv')
-    except Exception as e:
-        # Clean up even if test fails
-        if os.path.exists('test_data.csv'):
-            os.remove('test_data.csv')
-        raise
+        for test_file in test_files:
+            if os.path.exists(test_file):
+                os.remove(test_file)
+        for test_dir in test_dirs:
+            if os.path.exists(test_dir):
+                os.rmdir(test_dir)
 
 @patch('backend.workers.scraper_worker.scraper_orchestrator.ScraperOrchestrator')
 def test_resource_cleanup(mock_scraper_class, test_event, s3):
@@ -218,14 +243,14 @@ def test_resource_cleanup(mock_scraper_class, test_event, s3):
     # Mock the scraper
     mock_scraper = mock_scraper_class.return_value
     mock_scraper.run_all_scrapers.return_value = {
-        'test_scraper': 'test_data.csv'
+        'test_scraper': '/tmp/test123/test_data.csv'
     }
     
-    # Create a test data file
-    with open('test_data.csv', 'w') as f:
+    # Create a test data file in the correct location
+    os.makedirs('/tmp/test123', exist_ok=True)
+    test_file = '/tmp/test123/test_data.csv'
+    with open(test_file, 'w') as f:
         f.write('test,data\n1,2\n')
-    
-    from backend.aws.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
     
     try:
         # Execute pipeline
@@ -236,44 +261,41 @@ def test_resource_cleanup(mock_scraper_class, test_event, s3):
         assert 'Contents' in response
         assert all(not obj['Key'].endswith('.tmp') for obj in response['Contents'])
         
+    finally:
         # Clean up
-        os.remove('test_data.csv')
-    except Exception as e:
-        # Clean up even if test fails
-        if os.path.exists('test_data.csv'):
-            os.remove('test_data.csv')
-        raise
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        if os.path.exists('/tmp/test123/paths.json'):
+            os.remove('/tmp/test123/paths.json')
+        if os.path.exists('/tmp/test123'):
+            try:
+                os.rmdir('/tmp/test123')
+            except OSError:
+                # Directory not empty, but that's okay
+                pass
 
 def test_error_logging(test_event, s3):
     """Test error logging."""
-    from backend.aws.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
-    
-    # Empty the bucket first
-    response = s3.list_objects_v2(Bucket=TEST_BUCKET)
-    if 'Contents' in response:
-        for obj in response['Contents']:
-            s3.delete_object(Bucket=TEST_BUCKET, Key=obj['Key'])
-    
-    # Force an error by removing the bucket
-    s3.delete_bucket(Bucket=TEST_BUCKET)
-    
-    with pytest.raises(Exception):
+    # Test with invalid S3 bucket
+    os.environ['S3_BUCKET'] = 'non-existent-bucket'
+    with pytest.raises(boto3.exceptions.S3UploadFailedError):
         orchestrate_scraping_pipeline(test_event, None)
+    os.environ['S3_BUCKET'] = TEST_BUCKET
 
 @patch('backend.workers.scraper_worker.scraper_orchestrator.ScraperOrchestrator')
 def test_performance_metrics(mock_scraper_class, test_event, s3):
-    """Test performance metrics and timing."""
+    """Test performance metrics collection."""
     # Mock the scraper
     mock_scraper = mock_scraper_class.return_value
     mock_scraper.run_all_scrapers.return_value = {
-        'test_scraper': 'test_data.csv'
+        'test_scraper': '/tmp/test123/test_data.csv'
     }
     
-    # Create a test data file
-    with open('test_data.csv', 'w') as f:
+    # Create a test data file in the correct location
+    os.makedirs('/tmp/test123', exist_ok=True)
+    test_file = '/tmp/test123/test_data.csv'
+    with open(test_file, 'w') as f:
         f.write('test,data\n1,2\n')
-    
-    from backend.aws.lambda_functions.scrape_orchestrator.pipeline_orchestrator import orchestrate_scraping_pipeline
     
     try:
         # Execute pipeline and measure time
@@ -281,14 +303,19 @@ def test_performance_metrics(mock_scraper_class, test_event, s3):
         response = orchestrate_scraping_pipeline(test_event, None)
         end_time = time.time()
         
-        # Verify performance
+        # Verify response
         assert response['status'] == 'success'
-        assert end_time - start_time < 30  # Should complete within 30 seconds
+        assert end_time - start_time < 5.0  # Should complete within 5 seconds
         
+    finally:
         # Clean up
-        os.remove('test_data.csv')
-    except Exception as e:
-        # Clean up even if test fails
-        if os.path.exists('test_data.csv'):
-            os.remove('test_data.csv')
-        raise 
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        if os.path.exists('/tmp/test123/paths.json'):
+            os.remove('/tmp/test123/paths.json')
+        if os.path.exists('/tmp/test123'):
+            try:
+                os.rmdir('/tmp/test123')
+            except OSError:
+                # Directory not empty, but that's okay
+                pass 
