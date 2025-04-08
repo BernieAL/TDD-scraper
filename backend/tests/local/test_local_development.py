@@ -15,7 +15,7 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock
 from backend.workers.scraper_worker.scraper_orchestrator import ScraperOrchestrator
 from backend.workers.scraper_worker.scrapers.italist_scraper import ItalistScraper
-from backend.workers.scraper_worker.scrapers.farfetch_scraper import FarfetchScraper
+from backend.workers.scraper_worker.scrapers.rebag_scraper import RebagScraper
 
 @pytest.fixture
 def temp_dir():
@@ -53,7 +53,7 @@ def mock_scraper_data():
             "price": 1100.0,
             "currency": "USD",
             "url": "http://example.com/2",
-            "source": "farfetch"
+            "source": "rebag"
         }
     ]
 
@@ -61,11 +61,11 @@ def test_local_scraper_execution(temp_dir, sample_scraping_config, mock_scraper_
     """Test local scraper execution"""
     # Mock scraper classes
     with patch('backend.workers.scraper_worker.scrapers.italist_scraper.ItalistScraper.scrape') as mock_italist, \
-         patch('backend.workers.scraper_worker.scrapers.farfetch_scraper.FarfetchScraper.scrape') as mock_farfetch:
+         patch('backend.workers.scraper_worker.scrapers.rebag_scraper.RebagScraper.scrape') as mock_rebag:
         
         # Configure mock scrapers
         mock_italist.return_value = [mock_scraper_data[0]]
-        mock_farfetch.return_value = [mock_scraper_data[1]]
+        mock_rebag.return_value = [mock_scraper_data[1]]
         
         # Initialize orchestrator
         orchestrator = ScraperOrchestrator(
@@ -87,7 +87,7 @@ def test_local_scraper_execution(temp_dir, sample_scraping_config, mock_scraper_
         
         # Verify files were created
         assert os.path.exists(os.path.join(temp_dir, "raw", "italist.json"))
-        assert os.path.exists(os.path.join(temp_dir, "raw", "farfetch.json"))
+        assert os.path.exists(os.path.join(temp_dir, "raw", "rebag.json"))
         assert os.path.exists(os.path.join(temp_dir, "filtered", "combined.json"))
 
 def test_local_data_processing(temp_dir, mock_scraper_data):
@@ -103,7 +103,7 @@ def test_local_data_processing(temp_dir, mock_scraper_data):
     # Write test data
     with open(os.path.join(raw_dir, "italist.json"), "w") as f:
         json.dump([mock_scraper_data[0]], f)
-    with open(os.path.join(raw_dir, "farfetch.json"), "w") as f:
+    with open(os.path.join(raw_dir, "rebag.json"), "w") as f:
         json.dump([mock_scraper_data[1]], f)
     
     # Process data

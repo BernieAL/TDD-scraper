@@ -36,37 +36,24 @@ from shutil import rmtree  # For removing directories
 import boto3
 from pathlib import Path
 import logging
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 # Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# For local development
-# parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# if parent_dir not in sys.path:
-#     sys.path.append(parent_dir)
-
 # For Docker
 if os.getenv('RUNNING_IN_DOCKER') == '1' and '/app' not in sys.path:
     sys.path.insert(0, '/app')
 
-from config.config import BASE_DIR, RBMQ_DIR  
+from config.config import BASE_DIR
 from .utils.scraper_utils import ScraperUtils
 from .scrapers.italist_scraper import ItalistScraper
 from .utils.sku_generator import process_scraped_file
 from .scraper_orchestrator import ScraperOrchestrator
 
-
-
-import sys, csv, json, os
-import boto3
-from simple_chalk import chalk
-from datetime import datetime
-from typing import Dict, List, Optional, Set
-
 # Import statements remain the same...
-
-
 
 def ensure_init_files():
     """
@@ -102,8 +89,6 @@ def ensure_init_files():
                 print(f"__init__.py already exists for {dir}")
 
 ensure_init_files()  
-
-
 
 def main():
     orchestrator = ScraperOrchestrator()
@@ -311,4 +296,96 @@ def lambda_handler(event, context):
             'body': {
                 'error': str(e)
             }
+        }
+
+# Configure boto3 for LocalStack in development
+if os.getenv('LOCALSTACK_ENDPOINT'):
+    s3_config = Config(
+        region_name='us-east-1',
+        retries={'max_attempts': 5, 'mode': 'standard'}
+    )
+    s3 = boto3.client(
+        's3',
+        endpoint_url=os.getenv('LOCALSTACK_ENDPOINT'),
+        config=s3_config
+    )
+else:
+    s3 = boto3.client('s3')
+
+def validate_event(event: Dict[str, Any]) -> bool:
+    """Validate the incoming event.
+    
+    Args:
+        event: The Lambda event
+        
+    Returns:
+        bool: True if event is valid, False otherwise
+    """
+    required_fields = ['email', 'query_hash', 'bucket_name', 'sns_topic_arn', 'analysis_results']
+    return all(field in event for field in required_fields)
+
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """Lambda handler for the report worker.
+    
+    Args:
+        event: The Lambda event
+        context: The Lambda context
+        
+    Returns:
+        Dict containing the response
+    """
+    try:
+        # Validate event
+        if not validate_event(event):
+            logger.error("Invalid event: missing required fields")
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Invalid event: missing required fields"})
+            }
+        
+        # Initialize AWS clients
+        if os.getenv('LOCALSTACK_ENDPOINT'):
+            sns = boto3.client(
+                'sns',
+                endpoint_url=os.getenv('LOCALSTACK_ENDPOINT'),
+                config=s3_config
+            )
+        else:
+            sns = boto3.client('sns')
+        
+        # Generate report
+        report_generator = ReportGenerator(event['analysis_results'])
+        report_path = report_generator.save_report(event['bucket_name'], s3)
+        
+        # Send notification
+        sns.publish(
+            TopicArn=event['sns_topic_arn'],
+            Message=json.dumps({
+                "email": event['email'],
+                "query_hash": event['query_hash'],
+                "report_path": report_path,
+                "timestamp": datetime.now().isoformat()
+            }),
+            Subject="Price Analysis Report Ready"
+        )
+        
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": "Report generated successfully",
+                "report_path": report_path
+            })
+        }
+        
+    except ClientError as e:
+        logger.error(f"AWS error: {str(e)}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": f"AWS error: {str(e)}"})
+        }
+    except Exception as e:
+        logger.error(f"Error generating report: {str(e)}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": f"Error generating report: {str(e)}"})
         }

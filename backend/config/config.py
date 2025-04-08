@@ -19,14 +19,12 @@ if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 
 # Directory paths
-RBMQ_DIR = os.path.join(BASE_DIR, 'rbmq')
 SCRAPER_DIR = os.path.join(BASE_DIR, 'selenium_scraper_container')
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
 
 class Config:
     """Configuration settings loaded from environment variables"""
     BASE_DIR = BASE_DIR
-    RBMQ_DIR = RBMQ_DIR
     SCRAPER_DIR = SCRAPER_DIR
     OUTPUT_DIR = OUTPUT_DIR
     
@@ -35,13 +33,10 @@ class Config:
     
     # Database settings
     DB_URI = os.getenv('DB_URI')
-
-
     
     # Network settings
     PROXY_HTTPS = os.getenv('PROXY_HTTPS')
     PROXY_HTTP = os.getenv('PROXY_HTTP')
-    RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
     
     # Google settings
     GOOGLE_APP_PW = os.getenv('GOOGLE_APP_PW')

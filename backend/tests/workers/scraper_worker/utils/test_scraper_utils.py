@@ -4,7 +4,7 @@ from pathlib import Path,sys
 
 
 
-from backend.workers.scraper_worker.utils.ScraperUtils import ScraperUtils
+from backend.workers.scraper_worker.utils.scraper_utils import ScraperUtils
 from backend.utils.project_paths import SCRAPER_WORKER_ROOT
 
 import shutil

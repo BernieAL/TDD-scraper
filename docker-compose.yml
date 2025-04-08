@@ -1,40 +1,21 @@
 version: '3.8'
 
 services:
-  # Frontend LocalStack (for S3 and CloudFront)
-  frontend-localstack:
+  localstack:
     image: localstack/localstack:latest
     ports:
-      - "4566:4566"
+      - "4566:4566"            # LocalStack Edge Proxy
+      - "4510-4559:4510-4559"  # external services port range
     environment:
-      - SERVICES=s3,cloudfront
-      - DEFAULT_REGION=us-east-1
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - SERVICES=s3,lambda,cloudfront,iam,logs,dynamodb,sns
+      - AWS_DEFAULT_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
-      - ./frontend/localstack/scripts:/scripts
-      - /var/run/docker.sock:/var/run/docker.sock
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Backend LocalStack (for Lambda, ECS, and data S3)
-  backend-localstack:
-    image: localstack/localstack:latest
-    ports:
-      - "4567:4566"
-    environment:
-      - SERVICES=s3,iam,lambda,logs,dynamodb,sns
-      - DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      - DOCKER_HOST=unix:///var/run/docker.sock
-    volumes:
-      - ./backend/localstack/scripts:/scripts
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
       interval: 10s
@@ -42,7 +23,5 @@ services:
       retries: 5
 
 networks:
-  frontend-network:
-    driver: bridge
-  backend-network:
+  default:
     driver: bridge 

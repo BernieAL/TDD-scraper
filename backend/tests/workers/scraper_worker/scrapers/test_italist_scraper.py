@@ -1,5 +1,5 @@
 import pytest
-from backend.workers.scraper_worker.scrapers import ItalistScraper
+from backend.workers.scraper_worker.scrapers.italist_scraper import ItalistScraper
 from backend.utils.test_utils import load_test_html
 
 class TestItalistScraper:

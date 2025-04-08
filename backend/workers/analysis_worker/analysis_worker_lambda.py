@@ -174,6 +174,24 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
         logger.info("Successfully updated DynamoDB")
         
+        # Trigger report worker
+        logger.info("Triggering report worker...")
+        lambda_client = boto3.client('lambda')
+        report_event = {
+            'analysis_results': analysis_result,
+            'email': event.get('email'),  # User's email from form submission
+            'query_hash': query_hash,
+            'bucket_name': bucket,
+            'sns_topic_arn': os.environ.get('SNS_TOPIC_ARN')  # Add this to your environment variables
+        }
+        
+        lambda_client.invoke(
+            FunctionName='ReportWorkerFunction',
+            InvocationType='Event',  # Asynchronous invocation
+            Payload=json.dumps(report_event)
+        )
+        logger.info("Successfully triggered report worker")
+        
         return {
             'statusCode': 200,
             'body': json.dumps({

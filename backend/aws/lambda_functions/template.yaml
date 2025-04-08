@@ -57,6 +57,7 @@ Resources:
           ENVIRONMENT: local
           S3_BUCKET: tdd-scraper-local
           DYNAMODB_TABLE: historical_prices
+          SNS_TOPIC_ARN: !Ref PriceAlertTopic
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
           AWS_ENDPOINT_URL: http://tdd-scraper-backend-localstack-1:4566
@@ -97,4 +98,10 @@ Resources:
           Type: Api
           Properties:
             Path: /auth
-            Method: post 
+            Method: post
+
+  PriceAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: price-alerts
+      DisplayName: Price Alert Notifications 

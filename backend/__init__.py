@@ -1,0 +1,9 @@
+"""
+Backend package for the TDD scraper application.
+"""
+
+import os
+import sys
+
+# Add the backend directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

@@ -1,63 +1,67 @@
+"""
+Report generator for price analysis results.
+"""
 import json
-import logging
-from typing import Dict, List
 from datetime import datetime
-
-logger = logging.getLogger(__name__)
+from typing import Dict, Any, List
 
 class ReportGenerator:
-    def __init__(self):
-        pass
-        
-    def generate_report(self, analysis_results: Dict, email: str, query_hash: str) -> Dict:
-        """
-        Generate a report from analysis results
-        """
-        try:
-            logger.info(f"Generating report for query hash: {query_hash}")
-            
-            # Create report structure
-            report = {
-                'query_hash': query_hash,
-                'email': email,
-                'timestamp': datetime.utcnow().isoformat(),
-                'summary': {
-                    'total_products': analysis_results['total_products'],
-                    'files_analyzed': analysis_results['files_analyzed'],
-                    'price_range': {
-                        'min': analysis_results['price_stats']['min'],
-                        'max': analysis_results['price_stats']['max'],
-                        'average': analysis_results['price_stats']['avg']
-                    }
-                },
-                'brand_distribution': analysis_results['products_by_brand'],
-                'category_distribution': analysis_results['products_by_category'],
-                'recommendations': self._generate_recommendations(analysis_results)
-            }
-            
-            logger.info(f"Report generated: {json.dumps(report)}")
-            return report
-            
-        except Exception as e:
-            logger.error(f"Report generation failed: {str(e)}", exc_info=True)
-            raise
+    """Generates reports from price analysis results."""
     
-    def _generate_recommendations(self, analysis_results: Dict) -> List[str]:
-        """Generate recommendations based on analysis results"""
-        recommendations = []
+    def __init__(self, analysis_results: Dict[str, Any]):
+        """Initialize the report generator with analysis results.
         
-        # Price-based recommendations
-        if analysis_results['price_stats']['min'] < analysis_results['price_stats']['avg'] * 0.8:
-            recommendations.append("Some products are significantly below average price - potential good deals")
-        if analysis_results['price_stats']['max'] > analysis_results['price_stats']['avg'] * 1.2:
-            recommendations.append("Some products are significantly above average price - consider waiting for price drops")
+        Args:
+            analysis_results: Dictionary containing price analysis results
+        """
+        self.analysis_results = analysis_results
+        self.timestamp = datetime.now().isoformat()
+    
+    def generate_report(self) -> Dict[str, Any]:
+        """Generate a report from the analysis results.
         
-        # Brand distribution recommendations
-        if len(analysis_results['products_by_brand']) > 1:
-            recommendations.append("Multiple brands available - consider comparing options")
+        Returns:
+            Dictionary containing the report data
+        """
+        return {
+            "timestamp": self.timestamp,
+            "query_hash": self.analysis_results.get("query_hash", ""),
+            "summary": self._generate_summary(),
+            "changes": self.analysis_results.get("changes", []),
+            "metadata": self.analysis_results.get("metadata", {})
+        }
+    
+    def _generate_summary(self) -> Dict[str, Any]:
+        """Generate a summary of the analysis results.
         
-        # Category distribution recommendations
-        if len(analysis_results['products_by_category']) > 1:
-            recommendations.append("Products available in multiple categories - consider exploring different categories")
+        Returns:
+            Dictionary containing summary information
+        """
+        changes = self.analysis_results.get("changes", [])
+        return {
+            "total_items": len(changes),
+            "items_with_changes": sum(1 for change in changes if change.get("price_change", 0) != 0),
+            "average_price_change": sum(change.get("price_change", 0) for change in changes) / len(changes) if changes else 0,
+            "average_percentage_change": sum(change.get("percentage_change", 0) for change in changes) / len(changes) if changes else 0
+        }
+    
+    def save_report(self, bucket_name: str, s3_client) -> str:
+        """Save the report to S3.
         
-        return recommendations 
+        Args:
+            bucket_name: Name of the S3 bucket
+            s3_client: Boto3 S3 client
+            
+        Returns:
+            Path to the saved report
+        """
+        report = self.generate_report()
+        report_path = f"reports/{report['query_hash']}/{self.timestamp}.json"
+        
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Key=report_path,
+            Body=json.dumps(report, indent=2)
+        )
+        
+        return report_path 
