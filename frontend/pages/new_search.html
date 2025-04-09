@@ -74,12 +74,13 @@
                 <div class="rounded-md p-4">
                     <div class="flex">
                         <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            <svg id="statusIcon" class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <!-- Icon will be set dynamically -->
                             </svg>
                         </div>
                         <div class="ml-3">
-                            <p id="statusMessage" class="text-sm font-medium text-green-800"></p>
+                            <p id="statusMessage" class="text-sm font-medium"></p>
+                            <p id="queryHash" class="text-sm mt-1 hidden"></p>
                         </div>
                     </div>
                 </div>
@@ -88,6 +89,41 @@
     </div>
 
     <script>
+        function showStatus(message, isError = false, queryHash = null) {
+            const statusDiv = document.getElementById('status');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusIcon = document.getElementById('statusIcon');
+            const queryHashElement = document.getElementById('queryHash');
+            
+            statusDiv.classList.remove('hidden');
+            statusMessage.textContent = message;
+            
+            if (isError) {
+                statusDiv.querySelector('.rounded-md').classList.remove('bg-green-50');
+                statusDiv.querySelector('.rounded-md').classList.add('bg-red-50');
+                statusMessage.classList.remove('text-green-800');
+                statusMessage.classList.add('text-red-800');
+                statusIcon.classList.remove('text-green-400');
+                statusIcon.classList.add('text-red-400');
+                statusIcon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />';
+            } else {
+                statusDiv.querySelector('.rounded-md').classList.remove('bg-red-50');
+                statusDiv.querySelector('.rounded-md').classList.add('bg-green-50');
+                statusMessage.classList.remove('text-red-800');
+                statusMessage.classList.add('text-green-800');
+                statusIcon.classList.remove('text-red-400');
+                statusIcon.classList.add('text-green-400');
+                statusIcon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />';
+            }
+            
+            if (queryHash) {
+                queryHashElement.classList.remove('hidden');
+                queryHashElement.textContent = `Query Hash: ${queryHash}`;
+            } else {
+                queryHashElement.classList.add('hidden');
+            }
+        }
+
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -96,22 +132,29 @@
             const specific_item = document.getElementById('specific_item').value.trim().toUpperCase() || null;
             const email = document.getElementById('email').value.trim();
             
+            if (!brand || !category || !email) {
+                showStatus('Please fill in all required fields', true);
+                return;
+            }
+            
+            showStatus('Submitting search request...');
+            
             try {
-                const response = await axios.post('http://localhost:5000/lambda/form-submission', {
-                    brand: brand,
-                    category: category,
-                    specific_item: specific_item,
-                    user_email: email
+                const formData = new FormData();
+                formData.append('brand', brand);
+                formData.append('category', category);
+                if (specific_item) formData.append('specific_item', specific_item);
+                formData.append('email', email);
+                
+                const response = await fetch('/submit', {
+                    method: 'POST',
+                    body: formData
                 });
                 
-                const statusDiv = document.getElementById('status');
-                const statusMessage = document.getElementById('statusMessage');
+                const data = await response.json();
                 
-                if (response.data.statusCode === 200) {
-                    statusDiv.classList.remove('hidden');
-                    statusMessage.textContent = 'Search started successfully! You will receive results at your email.';
-                    statusDiv.querySelector('.rounded-md').classList.remove('bg-red-50');
-                    statusDiv.querySelector('.rounded-md').classList.add('bg-green-50');
+                if (response.ok) {
+                    showStatus('Search started successfully! You will receive results at your email.', false, data.query_hash);
                     
                     // Clear form
                     document.getElementById('brand').value = '';
@@ -119,18 +162,11 @@
                     document.getElementById('specific_item').value = '';
                     document.getElementById('email').value = '';
                 } else {
-                    throw new Error('Request failed');
+                    throw new Error(data.error || 'Request failed');
                 }
-                
             } catch (error) {
                 console.error('Error:', error);
-                const statusDiv = document.getElementById('status');
-                const statusMessage = document.getElementById('statusMessage');
-                
-                statusDiv.classList.remove('hidden');
-                statusMessage.textContent = 'Error starting search. Please try again.';
-                statusDiv.querySelector('.rounded-md').classList.remove('bg-green-50');
-                statusDiv.querySelector('.rounded-md').classList.add('bg-red-50');
+                showStatus(`Error: ${error.message}`, true);
             }
         });
     </script>
