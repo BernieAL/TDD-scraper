@@ -1,0 +1,30 @@
+{
+    "family": "scraper-task",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [{
+        "name": "scraper",
+        "image": "${ECR_REPO}/scraper_worker:latest",
+        "environment": [
+            {
+                "name": "S3_BUCKET",
+                "value": "scraper-data-bucket"
+            },
+            {
+                "name": "AWS_REGION",
+                "value": "${AWS_REGION}"
+            }
+        ],
+        "essential": true,
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "/ecs/scraper",
+                "awslogs-region": "${AWS_REGION}",
+                "awslogs-stream-prefix": "scraper"
+            }
+        }
+    }],
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512"
+} 

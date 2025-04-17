@@ -109,7 +109,7 @@ setup_environment() {
     # Create Lambda function
     log_status "Creating Lambda function..."
     aws --endpoint-url=http://localhost:4567 lambda create-function \
-        --function-name scrape-orchestrator \
+        --function-name scraper-worker \
         --runtime python3.9 \
         --handler scraper_orchestrator.orchestrate_scraping_pipeline \
         --zip-file fileb://backend/workers/scraper_worker/scraper_orchestrator.zip \

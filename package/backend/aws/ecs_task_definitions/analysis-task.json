@@ -1,0 +1,39 @@
+{
+    "family": "analysis-task-definition",
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "compare_worker",
+            "image": "${ECR_REPO}/compare_worker:latest",
+            "essential": true,
+            "environment": [
+                {
+                    "name": "RUNNING_IN_DOCKER",
+                    "value": "1"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/analysis",
+                    "awslogs-region": "${AWS_REGION}",
+                    "awslogs-stream-prefix": "analysis"
+                }
+            }
+        },
+        {
+            "name": "price_change_worker",
+            "image": "${ECR_REPO}/price_change_worker:latest",
+            "essential": true,
+            "environment": [
+                {
+                    "name": "RUNNING_IN_DOCKER",
+                    "value": "1"
+                }
+            ]
+        }
+    ],
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "512",
+    "memory": "1024"
+} 

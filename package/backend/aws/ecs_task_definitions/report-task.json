@@ -1,0 +1,28 @@
+{
+    "family": "report-task-definition", 
+    "networkMode": "awsvpc",
+    "containerDefinitions": [
+        {
+            "name": "report_generator",
+            "image": "${ECR_REPO}/report_generator:latest",
+            "essential": true,
+            "environment": [
+                {
+                    "name": "RUNNING_IN_DOCKER",
+                    "value": "1"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/reports",
+                    "awslogs-region": "${AWS_REGION}",
+                    "awslogs-stream-prefix": "reports"
+                }
+            }
+        }
+    ],
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512"
+} 

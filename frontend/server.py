@@ -1,45 +1,21 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
-import boto3
+"""Frontend server module."""
 import json
-import os
 import logging
 from datetime import datetime
 import sys
+import boto3
+from flask import Flask, render_template, request, jsonify
+from backend.config.localstack import get_boto3_client
 
-# Get the directory where the script is located
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(SCRIPT_DIR, 'web_server.log'))
-    ]
-)
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, 
-            template_folder=os.path.join(SCRIPT_DIR, 'templates'),
-            static_folder=os.path.join(SCRIPT_DIR, 'static'))
+app = Flask(__name__)
 
 # Configure AWS clients for LocalStack
-lambda_client = boto3.client(
-    'lambda',
-    endpoint_url='http://localhost:4567',
-    region_name='us-east-1',
-    aws_access_key_id='test',
-    aws_secret_access_key='test'
-)
-
-s3_client = boto3.client(
-    's3',
-    endpoint_url='http://localhost:4567',
-    region_name='us-east-1',
-    aws_access_key_id='test',
-    aws_secret_access_key='test'
-)
+lambda_client = get_boto3_client('lambda')
+s3_client = get_boto3_client('s3')
 
 @app.route('/')
 def index():
@@ -57,11 +33,18 @@ def submit_form():
         return response
 
     try:
-        # Get form data
-        brand = request.form.get('brand')
-        category = request.form.get('category')
-        specific_item = request.form.get('specific_item')
-        email = request.form.get('email')
+        # Get data from either form data or JSON
+        if request.is_json:
+            data = request.get_json()
+            brand = data.get('brand')
+            category = data.get('category')
+            specific_item = data.get('specific_item')
+            email = data.get('email')
+        else:
+            brand = request.form.get('brand')
+            category = request.form.get('category')
+            specific_item = request.form.get('specific_item')
+            email = request.form.get('email')
         
         logger.info(f"Form submission received - Brand: {brand}, Category: {category}, Email: {email}")
         
@@ -73,29 +56,34 @@ def submit_form():
         query_hash = f"{brand}_{category}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         logger.info(f"Generated query hash: {query_hash}")
         
-        # Create event for Lambda
-        event = {
-            'query_hash': query_hash,
+        # Create form data dictionary
+        form_data = {
             'brand': brand,
             'category': category,
             'email': email
         }
         
         if specific_item:
-            event['specific_item'] = specific_item
+            form_data['specific_item'] = specific_item
+        
+        # Create event for Lambda with correct structure
+        event = {
+            'query_hash': query_hash,
+            'form_data': form_data
+        }
         
         logger.info(f"Invoking Lambda with event: {json.dumps(event, indent=2)}")
         
-        # Invoke the orchestrator Lambda
+        # Create Lambda client and invoke the orchestrator Lambda
         response = lambda_client.invoke(
-            FunctionName='scrape-orchestrator',
+            FunctionName='scraper-worker',
             InvocationType='Event',  # Asynchronous invocation
             Payload=json.dumps(event)
         )
-        
+
         logger.info(f"Lambda invocation response: {response}")
         logger.info(f"Form submitted successfully. Query hash: {query_hash}")
-        
+
         return jsonify({
             'message': 'Form submitted successfully',
             'query_hash': query_hash
@@ -106,5 +94,4 @@ def submit_form():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    logger.info("Starting Flask server...")
-    app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False) 
+    app.run(debug=True) 

@@ -1,0 +1,12 @@
+{
+    "query_hash": "test_query_hash_123",
+    "form_data": {
+        "url": "https://example.com",
+        "brand": "test_brand",
+        "category": "test_category",
+        "selectors": {
+            "price": ".price",
+            "title": ".title"
+        }
+    }
+}

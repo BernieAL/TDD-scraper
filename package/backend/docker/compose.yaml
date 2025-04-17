@@ -1,0 +1,77 @@
+version: '3.8'
+services:
+
+  container_pgsql:
+    hostname: pgsql
+    container_name: pgsql
+    restart: always
+    build: 
+      context: ./
+      dockerfile: Dockerfile.pgsql
+    ports:
+        - "5433:5432"
+    networks:
+      - my-network
+    environment:
+      - RUNNING_IN_DOCKER=1
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nginx:
+    build: 
+      context: ./
+      dockerfile: Dockerfile.nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - ui_container
+    networks:
+      - my-network
+  
+  ui_container:
+    hostname: ui_container
+    container_name: ui_container
+    build: 
+      context: ./
+      dockerfile: Dockerfile.ui_container
+    expose: 
+      - "8000"
+    restart: on-failure
+    tty: true
+    stdin_open: true
+    depends_on: 
+      - container_pgsql
+    networks:
+      - my-network
+    environment:
+      - RUNNING_IN_DOCKER=1
+      - FLASK_ENV=development
+    env_file:
+      - .env.docker
+    volumes:
+      - shared_data:/app/shared_data
+
+networks:
+      my-network: {}
+
+volumes:
+  shared_data:
+    name: shared_data
+  postgres_data:
+    name: postgres_data
+
+
+
+
+    # container_scrape:
+    #   build:
+    #       context: ./
+    #       dockerfile: Dockerfile.container_scrape
+    #   ports:
+    #     - "7777:7777"     
+    #   tty: true
+    #   stdin_open: true    
